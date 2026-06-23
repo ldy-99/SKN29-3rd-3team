@@ -1,0 +1,15 @@
+{
+  "bankbook_type": null,
+  "bankbook_join_date": "2022-01-15",
+  "bankbook_payment_count": 24,
+  "bankbook_balance_krw": 2400000,
+  "residence_region": "",
+  "is_homeless": true,
+  "is_household_head": true,
+  "household_member_count": 0,
+  "birth_year": 1995,
+  "marital_status": "SINGLE",
+  "minor_child_count": null,
+  "has_household_property_ownership_history": false
+}
+
