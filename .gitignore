@@ -6,3 +6,4 @@ __pycache__/
 *.py[cod]
 Backend/src/preprocessing/chroma_db/
 *.pyc
+.pnpm-store/

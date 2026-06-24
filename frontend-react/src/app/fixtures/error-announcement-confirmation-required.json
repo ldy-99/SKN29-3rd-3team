@@ -1,0 +1,14 @@
+{
+  "data": null,
+  "error": {
+    "code": "ANNOUNCEMENT_CONFIRMATION_REQUIRED",
+    "message": "PDF/LLM 추출값을 사용자가 확인하기 전에는 공고 기반 진단에 사용할 수 없습니다.",
+    "field_errors": {
+      "pdf_analysis_id": [
+        "추출 결과 확인이 필요합니다."
+      ]
+    }
+  },
+  "request_id": "77777777-7777-7777-7777-777777777777"
+}
+

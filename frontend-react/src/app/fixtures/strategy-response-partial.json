@@ -1,0 +1,42 @@
+{
+  "data": {
+    "strategy_id": "33333333-3333-3333-3333-333333333333",
+    "status": "SUCCEEDED",
+    "diagnosis_mode": "ANNOUNCEMENT_BASED",
+    "overall_analysis_status": "PARTIAL",
+    "announcement_confirmed": {
+      "announcement_name": null,
+      "region": "SEOUL_GANGSEO",
+      "regulated_area_type": "NON_REGULATED",
+      "supply_category": "PRIVATE",
+      "housing_type": "PRIVATE_HOUSING",
+      "exclusive_area_sqm": 84.0,
+      "area_text": "84_SQM",
+      "sale_price_krw": 598000000,
+      "deposit_krw": null,
+      "supply_household_count": 80,
+      "application_start_date": null,
+      "application_end_date": null,
+      "special_supply_types_available": [
+        "NEWLYWED",
+        "FIRST_LIFE"
+      ]
+    },
+    "missing_fields_by_supply_type": {
+      "FIRST_LIFE": [
+        "has_income_tax_5_years",
+        "monthly_household_income_krw"
+      ],
+      "NEWLYWED": [
+        "is_dual_income",
+        "monthly_household_income_krw"
+      ]
+    },
+    "warnings": [
+      "Some special-supply checks are partial because income and conditional fields are missing."
+    ],
+    "created_at": "2026-06-23T05:10:00Z"
+  },
+  "error": null,
+  "request_id": "44444444-4444-4444-4444-444444444444"
+}
