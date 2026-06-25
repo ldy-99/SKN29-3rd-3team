@@ -1,0 +1,218 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser
+from rest_framework.throttling import UserRateThrottle
+from rest_framework.exceptions import NotFound, ValidationError
+from accounts.serializers import ProfileSerializer
+from accounts.permissions import IsOwner
+from strategy.models import StrategyRun, AnnouncementInput
+from strategy.serializers import (
+    StrategyRunSerializer, StrategyRequestSerializer, AnnouncementInputSerializer, ChatbotRequestSerializer
+)
+from strategy.adapters import ProfileAdapter
+from strategy.services import FastAPIClient
+import logging
+
+logger = logging.getLogger(__name__)
+
+class StrategyRunAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        내 청약 진단 이력 목록 조회
+        """
+        runs = StrategyRun.objects.filter(user=request.user).order_by('-created_at')
+        serializer = StrategyRunSerializer(runs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """
+        청약 진단 실행 (Post strategy)
+        """
+        user = request.user
+        
+        # 1. 사용자 프로필 존재 여부 확인
+        try:
+            profile = user.profile
+        except AttributeError:
+            exc = ValidationError("전략 진단에 필요한 사용자 프로필이 존재하지 않습니다.")
+            exc.code = "PROFILE_REQUIRED"
+            exc.message = "자가진단을 진행하기 전 프로필 정보를 먼저 등록해야 합니다."
+            raise exc
+
+        # 2. 프로필의 필수 필드가 전부 다 차있는지 검증
+        profile_serializer = ProfileSerializer(profile)
+        temp_serializer = ProfileSerializer(profile, data=profile_serializer.data, partial=False)
+        if not temp_serializer.is_valid():
+            raise ValidationError(temp_serializer.errors)
+
+        # 3. 요청 바디 유효성 검사
+        req_serializer = StrategyRequestSerializer(data=request.data)
+        req_serializer.is_valid(raise_exception=True)
+        
+        announcement_data = req_serializer.validated_data.get('announcement')
+        announcement_instance = None
+        if announcement_data:
+            announcement_serializer = AnnouncementInputSerializer(data=announcement_data)
+            announcement_serializer.is_valid(raise_exception=True)
+            announcement_instance = announcement_serializer.save(user=user)
+
+        # 4. StrategyRun 생성 (PENDING 상태)
+        strategy_run = StrategyRun.objects.create(
+            user=user,
+            status='PENDING'
+        )
+
+        # 5. 입력값 스냅샷 딕셔너리 생성
+        input_snapshot = {
+            "profile": profile_serializer.data,
+            "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else None
+        }
+        strategy_run.input_snapshot = input_snapshot
+        strategy_run.save()
+
+        # 6. 4차 스펙 -> 3차 스펙 변환
+        profile_3rd = ProfileAdapter.to_3rd_spec(profile_serializer.data)
+        session_id = str(strategy_run.id)
+        
+        announcement_text = None
+        if announcement_instance:
+            announcement_text = announcement_instance.announcement_text or announcement_instance.announcement_name or announcement_instance.area_text
+
+        # 7. FastAPI 호출
+        client = FastAPIClient()
+        try:
+            strategy_run.status = 'RUNNING'
+            strategy_run.save()
+            
+            result = client.run_diagnosis(
+                session_id=session_id,
+                profile_3rd=profile_3rd,
+                announcement_text=announcement_text
+            )
+            
+            # 성공 시 결과 적재 및 상태 갱신
+            strategy_run.status = 'SUCCEEDED'
+            strategy_run.result_payload = result
+            strategy_run.save()
+            
+            return Response(StrategyRunSerializer(strategy_run).data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            strategy_run.status = 'FAILED'
+            strategy_run.result_payload = {"error": str(e)}
+            strategy_run.save()
+            
+            logger.error(f"Strategy run {session_id} failed: {e}")
+            raise e
+
+
+class StrategyDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get_object(self, strategy_id):
+        try:
+            run = StrategyRun.objects.get(id=strategy_id)
+            self.check_object_permissions(self.request, run)
+            return run
+        except (StrategyRun.DoesNotExist, ValidationError):
+            raise NotFound("해당 진단 기록을 찾을 수 없습니다.")
+
+    def get(self, request, strategy_id):
+        """
+        내 특정 진단 기록 상세 조회
+        """
+        run = self.get_object(strategy_id)
+        serializer = StrategyRunSerializer(run)
+        return Response(serializer.data)
+
+
+class PDFAnalyzeAPIView(APIView):
+    """
+    모집공고문 PDF 파일 수신 및 내부 FastAPI AI 분석 프록시 API.
+    """
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            raise ValidationError("업로드된 파일이 없습니다.")
+
+        # 1. 파일 검증 (PDF 파일 확장자 또는 MIME)
+        if not file_obj.name.lower().endswith('.pdf') and file_obj.content_type != 'application/pdf':
+            exc = ValidationError("PDF 형식의 파일만 업로드할 수 있습니다.")
+            exc.code = "PDF_INVALID_TYPE"
+            exc.message = "PDF 파일 형식이 유효하지 않습니다."
+            raise exc
+
+        # 2. FastAPI 프록시 전송
+        client = FastAPIClient()
+        try:
+            result = client.proxy_pdf_analysis(file_obj.name, file_obj.read())
+            
+            # FastAPI 응답을 받아 그대로 반환
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"PDF Analysis proxy failed: {e}")
+            raise e
+
+
+class AnnouncementInputAPIView(APIView):
+    """
+    분석 확정된 공고 정보 또는 수동 입력된 공고 정보를 검증하고 개별 저장하는 API.
+    """
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get_object(self, announcement_id):
+        try:
+            announcement = AnnouncementInput.objects.get(id=announcement_id)
+            self.check_object_permissions(self.request, announcement)
+            return announcement
+        except (AnnouncementInput.DoesNotExist, ValidationError):
+            raise NotFound("해당 공고 정보를 찾을 수 없습니다.")
+
+    def get(self, request, announcement_id):
+        """
+        특정 공고 정보 상세 조회 (IsOwner 권한 적용)
+        """
+        announcement = self.get_object(announcement_id)
+        serializer = AnnouncementInputSerializer(announcement)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """
+        공고 정보 신규 생성 및 검증
+        """
+        serializer = AnnouncementInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ChatbotAPIView(APIView):
+    """
+    RAG 기반 FAQ 챗봇 질문 수신 및 내부 FastAPI AI 통신 프록시 API.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def post(self, request):
+        serializer = ChatbotRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        question = serializer.validated_data.get('question')
+        session_id = serializer.validated_data.get('session_id')
+
+        client = FastAPIClient()
+        try:
+            result = client.call_chatbot(question, session_id)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Chatbot proxy failed: {e}")
+            raise e
+
+
