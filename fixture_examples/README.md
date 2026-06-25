@@ -14,7 +14,7 @@
 
 ## enum 기준
 
-fixture의 enum 값은 `4차_청약_입력필드_null_enum_설계안.md`와 `4차_API_데이터_계약.md` 기준으로 고정한다. enum 추가·삭제·이름 변경은 계약 변경 절차를 거친다.
+fixture의 enum 값은 `docs/4th_docs/01_API_데이터_계약_명세.md` 기준으로 고정한다. enum 추가·삭제·이름 변경은 계약 변경 절차를 거친다.
 
 - `BankbookType`
 - `MaritalStatus`
@@ -26,3 +26,13 @@ fixture의 enum 값은 `4차_청약_입력필드_null_enum_설계안.md`와 `4�
 - `SpecialSupplyType`
 - `AnalysisStatus`
 - `ExtractionFieldStatus`
+
+## Day 2 최소 fixture 매핑
+
+| 구분 | 파일 |
+|---|---|
+| 정상 프로필 | `profile-basic-p0.json` |
+| 필수값 누락 | `profile-invalid.json`, `error-profile-required-fields-missing.json` |
+| 부분 진단 | `profile-partial.json`, `strategy-response-profile-only-partial.json`, `strategy-response-partial.json` |
+| 공고 입력/PDF fallback | `strategy-request-announcement.json`, `pdf-analyze-response-needs-review.json`, `error-announcement-confirmation-required.json` |
+| 챗봇 질문 | `chatbot-request-question.json`, `chatbot-response-answer.json` |
