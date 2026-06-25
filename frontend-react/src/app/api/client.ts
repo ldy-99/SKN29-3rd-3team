@@ -1,6 +1,7 @@
 import profileFixture from "../fixtures/profile-basic-p0.json";
 import strategyFixture from "../fixtures/strategy-response-partial.json";
 import pdfFixture from "../fixtures/pdf-analyze-response-needs-review.json";
+import chatbotFixture from "../fixtures/chatbot-response-answer.json";
 
 export type ApiEnvelope<T> = {
   data: T | null;
@@ -73,7 +74,7 @@ export const api = {
     return request<{ user_id: string; email: string; name: string }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: { user_id: "mock-user", email: input.email, name: "홍길동" },
+      mockData: { user_id: "mock-user", email: input.email, name: "Mock User" },
     });
   },
 
@@ -81,7 +82,7 @@ export const api = {
     return request<{ user_id: string; email: string; name: string }>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: { user_id: "mock-user", email: input.email, name: "홍길동" },
+      mockData: { user_id: "mock-user", email: input.email, name: "Mock User" },
     });
   },
 
@@ -144,18 +145,11 @@ export const api = {
     });
   },
 
-  askChatbot(input: { message: string; strategy_id?: string }) {
-    return request<{ answer: string; sources: string[] }>("/api/chatbot", {
+  askChatbot(input: { question: string; session_id?: string | null }) {
+    return request<{ answer: string; sources: string[]; session_id: string }>("/api/chatbot", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: {
-        data: {
-          answer:
-            "현재 입력된 프로필과 전략 결과 기준으로 답변합니다. 소득 정보가 비어 있어 일부 특별공급 판단은 제한될 수 있습니다.",
-          sources: ["청약 가점 기준", "모집공고 주요 조건"],
-        },
-        error: null,
-      },
+      mockData: chatbotFixture,
     });
   },
 

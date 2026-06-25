@@ -13,6 +13,7 @@ export function ChatbotPanel() {
   const location = useLocation();
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const getContextMessage = () => {
@@ -75,7 +76,8 @@ export function ChatbotPanel() {
     setIsTyping(true);
 
     try {
-      const response = await api.askChatbot({ message: text, strategy_id: "33333333-3333-3333-3333-333333333333" });
+      const response = await api.askChatbot({ question: text, session_id: chatSessionId });
+      setChatSessionId(response.session_id);
       setIsTyping(false);
       const botResponse: Message = {
         id: Date.now() + 1,

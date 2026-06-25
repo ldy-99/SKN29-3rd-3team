@@ -22,7 +22,7 @@
 | 개인 맞춤형 진단 | 저장된 프로필과 공고 입력을 기반으로 추천 공급유형, 누락 항목, 판단 근거를 제공합니다. |
 | 결과 저장과 재조회 | 사용자가 이전 진단 결과를 다시 확인할 수 있도록 전략 결과를 저장합니다. |
 | FAQ 챗봇 연결 | 기존 RAG 챗봇을 React 화면에서 사용할 수 있도록 Django proxy를 둡니다. |
-| 배포 가능한 웹 구조 | React, Django DRF, FastAPI/AI 모듈을 연결하고 최소 CI·배포 흐름을 갖춥니다. |
+| 배포 가능한 웹 구조 | React, Django DRF, FastAPI/AI 모듈을 연결하고 Docker/Compose 기반 재현 흐름을 갖춥니다. |
 
 ## 3. P0 MVP 범위
 
@@ -36,7 +36,7 @@ P0는 10영업일 안에 반드시 완료해야 하는 최소 기능입니다. �
 | 전략 결과 목록·상세 조회 | `GET /api/strategy/me`, `GET /api/strategy/{strategy_id}`가 동작합니다. |
 | FAQ 챗봇 | React에서 질문을 보내고 Django를 통해 기존 FastAPI/RAG 챗봇 응답을 받습니다. |
 | PDF 공고 분석 및 수동 fallback | `POST /api/pdf/analyze`를 P0로 포함하고, PDF가 없거나 분석이 실패하면 수동 공고 입력 fallback을 유지합니다. |
-| 최소 배포·CI | 새 clone 기준 실행 방법과 최소 CI 통과 기록을 확보합니다. |
+| 최소 배포·검증 | 새 clone 기준 Docker/Compose 실행 방법과 수동 검증 기록을 확보합니다. |
 
 ## 4. P0.5 및 P1 범위
 
@@ -78,14 +78,19 @@ P0는 10영업일 안에 반드시 완료해야 하는 최소 기능입니다. �
 | 동윤: Django                  | 세션 인증, PostgreSQL, 공개 API, 사용자 소유권          | Django 공개 API·DB 구현 |
 | 지훈: AI/FastAPI              | 기존 LangGraph/RAG 재사용, 내부 AI API, adapter 검증 | AI 실행 방식·계산 로직      |
 
-## 8. 미결정 사항
+## 8. 킥오프 확정 사항
 
-| 항목 | 현재 기준 | 결정 필요 |
-|---|---|---|
-| API 버전 | MVP는 `/api/...` 사용 | 이후 `/api/v1/...` 도입 여부 |
-| 계정 삭제 정책 | `DELETE /api/auth`는 계정 삭제 용도 | 소프트 삭제/하드 삭제 결정 |
-| PDF 확정 API | `POST /api/pdf/analyze`만 우선 정의 | `POST /api/pdf/{id}/confirm` 추가 여부 |
-| ChromaDB 준비 방식 | 챗봇 P0를 위해 필요 | 재빌드 방식 또는 artifact 방식 선택 |
+| 항목 | 확정 기준 |
+|---|---|
+| P0 범위 | 가입 → 프로필 저장 → PDF 분석 또는 수동 공고 입력 → 진단 실행 → 결과 저장/조회 → 챗봇 질문 흐름을 유지합니다. |
+| 제외 범위 | 대규모 크롤링, 완전 자동 공고 수집, 모든 특공 예외 완전 반영은 제외합니다. |
+| API 버전 | MVP에서는 `/api/...`를 사용합니다. |
+| 계정 삭제 정책 | `DELETE /api/auth`는 소프트 삭제로 구현합니다. |
+| PDF fallback | PDF 분석 실패 또는 PDF 미보유 시 수동 공고 입력을 유지합니다. |
+| 챗봇 연결 | React는 Django proxy만 호출하고, Django가 FastAPI/RAG를 내부 호출합니다. |
+| 결과 저장 단위 | 진단 실행마다 전체 strategy result와 입력 snapshot을 저장합니다. |
+| ChromaDB 준비 방식 | Git에는 포함하지 않고 재빌드 방식으로 준비합니다. |
+| 배포 재현 기준 | Docker/Compose 기준으로 새 clone 실행 흐름을 확보합니다. |
 
 ## 9. 최종 기준
 

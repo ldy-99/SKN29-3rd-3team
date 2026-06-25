@@ -21,7 +21,7 @@ AI/FastAPI/RAG 담당자는 3차 프로젝트에서 만든 LangGraph, RAG, 계�
 | 항목 | 결정해야 할 것 |
 |---|---|
 | FastAPI 실행 방식 | HTTP 호출로 갈지, local import wrapper로 갈지 결정 |
-| ChromaDB 준비 방식 | 재빌드, artifact, smoke test 축소 중 선택 |
+| ChromaDB 준비 방식 | Git에 포함하지 않고 재빌드 방식으로 준비 |
 | adapter 기준 | null 보존, enum alias, 3차 필드명 변환 방식 확정 |
 | fixture 진단 | 정상/누락/부분 진단 fixture가 실행되는지 확인 |
 | 챗봇 smoke test | 고정 질문 1~3개에 대해 답변과 출처가 나오는지 확인 |

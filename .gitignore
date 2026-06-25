@@ -7,3 +7,4 @@ __pycache__/
 Backend/src/preprocessing/chroma_db/
 *.pyc
 .pnpm-store/
+docs/4th_project_vault/

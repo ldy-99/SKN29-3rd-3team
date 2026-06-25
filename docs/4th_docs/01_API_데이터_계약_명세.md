@@ -178,7 +178,7 @@ P0에서는 PDF 분석을 기본 흐름으로 두고, PDF가 없거나 분석이
 | `POST` | `/api/auth/login` | 로그인 |
 | `POST` | `/api/auth/logout` | 로그아웃 |
 | `GET` | `/api/auth/me` | 현재 사용자 조회 |
-| `DELETE` | `/api/auth` | 계정 삭제 |
+| `DELETE` | `/api/auth` | 계정 소프트 삭제 |
 | `GET` | `/api/user/profile` | 내 프로필 조회 |
 | `PUT` | `/api/user/profile` | 내 프로필 전체 저장/수정 |
 | `PATCH` | `/api/user/profile` | 내 프로필 일부 수정 |
@@ -187,6 +187,67 @@ P0에서는 PDF 분석을 기본 흐름으로 두고, PDF가 없거나 분석이
 | `GET` | `/api/strategy/{strategy_id}` | 전략 상세 조회 |
 | `POST` | `/api/chatbot` | 챗봇 질문 |
 | `POST` | `/api/pdf/analyze` | PDF 공고 분석 |
+
+### 8.1 계정 삭제 계약
+
+`DELETE /api/auth`는 MVP에서 소프트 삭제로 처리합니다. 서버는 계정을 즉시 물리 삭제하지 않고 비활성 상태로 전환하며, 이후 로그인과 보호 API 접근을 차단합니다.
+
+| 항목 | 기준 |
+|---|---|
+| 삭제 방식 | 소프트 삭제 |
+| 세션 처리 | 삭제 요청 성공 후 현재 세션 무효화 |
+| 재가입/복구 | P0 범위 밖. 필요 시 후속 정책으로 결정 |
+
+### 8.2 전략 결과 저장 계약
+
+`POST /api/strategy`는 진단 실행마다 전체 strategy result를 저장합니다. 결과 재조회 안정성을 위해 입력 snapshot도 함께 저장합니다.
+
+| 저장 항목 | 기준 |
+|---|---|
+| 프로필 입력 snapshot | 진단 실행 시점의 공개 프로필 필드 |
+| 공고 입력 snapshot | PDF 분석 확정값 또는 수동 공고 입력값 |
+| 전략 결과 payload | 공급유형별 상태, 누락 필드, 경고, 설명 |
+| 저장 단위 | 최근 결과만 덮어쓰지 않고 실행마다 저장 |
+
+### 8.3 챗봇 질문 계약
+
+`POST /api/chatbot`은 React가 호출하는 공개 API입니다. React는 FastAPI/RAG를 직접 호출하지 않고, Django가 사용자 인증과 권한을 확인한 뒤 내부 FastAPI/RAG 챗봇으로 전달합니다.
+
+#### 요청
+
+```json
+{
+  "question": "청약통장 가입일은 왜 필요한가요?",
+  "session_id": null
+}
+```
+
+| 필드 | 타입 | 조건 |
+|---|---|---|
+| `question` | string | 필수, trim 후 빈 문자열 불가 |
+| `session_id` | uuid string/null | 선택. 기존 챗봇 대화 thread를 이어갈 때 사용하며, 없으면 서버가 새 값을 발급 |
+
+P0에서는 챗봇 대화 이력을 DB에 저장하지 않습니다. 단, RAG 대화 thread 유지를 위해 `session_id`는 응답에 포함할 수 있습니다.
+
+#### 응답
+
+```json
+{
+  "data": {
+    "answer": "청약통장 가입일은 가입기간과 순위 판단에 사용됩니다.",
+    "sources": ["주택청약 FAQ"],
+    "session_id": "77777777-7777-7777-7777-777777777777"
+  },
+  "error": null,
+  "request_id": "88888888-8888-8888-8888-888888888888"
+}
+```
+
+| 필드 | 타입 | 조건 |
+|---|---|---|
+| `answer` | string | 필수 |
+| `sources` | string[] | 필수, 출처가 없으면 빈 배열 |
+| `session_id` | uuid string | 필수 |
 
 ## 9. 공통 응답 형식
 
