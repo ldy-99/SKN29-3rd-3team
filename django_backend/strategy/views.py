@@ -54,6 +54,7 @@ class StrategyRunAPIView(APIView):
         req_serializer.is_valid(raise_exception=True)
         
         announcement_data = req_serializer.validated_data.get('announcement')
+        top_level_announcement_text = req_serializer.validated_data.get('announcement_text')
         announcement_instance = None
         if announcement_data:
             announcement_serializer = AnnouncementInputSerializer(data=announcement_data)
@@ -69,7 +70,11 @@ class StrategyRunAPIView(APIView):
         # 5. 입력값 스냅샷 딕셔너리 생성
         input_snapshot = {
             "profile": profile_serializer.data,
-            "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else None
+            "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else {
+                "announcement_text": top_level_announcement_text,
+                "pdf_analysis_id": req_serializer.validated_data.get('pdf_analysis_id'),
+                "profile_only": req_serializer.validated_data.get('profile_only', False),
+            }
         }
         strategy_run.input_snapshot = input_snapshot
         strategy_run.save()
@@ -81,6 +86,8 @@ class StrategyRunAPIView(APIView):
         announcement_text = None
         if announcement_instance:
             announcement_text = announcement_instance.announcement_text or announcement_instance.announcement_name or announcement_instance.area_text
+        elif top_level_announcement_text:
+            announcement_text = top_level_announcement_text
 
         # 7. FastAPI 호출
         client = FastAPIClient()

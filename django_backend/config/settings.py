@@ -134,7 +134,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 # CORS configuration
-CORS_ALLOW_ALL_ORIGINS = True
+# React dev server calls Django with credentials: "include" for session cookies.
+# Browsers reject wildcard CORS origins when credentials are included, so list
+# local frontend origins explicitly.
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+]
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+]
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {

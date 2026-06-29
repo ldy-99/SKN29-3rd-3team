@@ -67,19 +67,16 @@ class FastAPIClient:
         """
         프로필 전송 ➡️ (필요 시) 공고문 전송 ➡️ 진단 실행(simulate) 일괄 수행
         """
-        # 1. 프로필 전송
-        self.send_profile(profile_3rd)
+        # 1. 프로필 전송. FastAPI/LangGraph가 발급한 session_id를 이후 호출에 사용합니다.
+        profile_result = self.send_profile(profile_3rd)
+        fastapi_session_id = profile_result.get("session_id") or session_id
         
-        # 2. 공고문이 있을 경우 공고문 전송
+        # 2. 공고문이 있으면 상세 진단 분기로 먼저 이동한 뒤 공고문을 전달합니다.
         if announcement_text:
-            self.send_announcement(session_id, announcement_text)
-            simulate_flag = True
+            self.trigger_simulate(fastapi_session_id, simulate=True)
+            return self.send_announcement(fastapi_session_id, announcement_text)
         else:
-            simulate_flag = False
-
-        # 3. 진단 실행
-        result = self.trigger_simulate(session_id, simulate=simulate_flag)
-        return result
+            return self.trigger_simulate(fastapi_session_id, simulate=False)
 
     def proxy_pdf_analysis(self, file_name: str, file_content: bytes) -> dict:
         """

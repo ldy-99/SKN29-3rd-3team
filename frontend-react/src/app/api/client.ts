@@ -20,6 +20,20 @@ type RequestOptions = RequestInit & {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== "false";
 
+export class ApiRequestError extends Error {
+  status: number;
+  code?: string;
+  fieldErrors?: Record<string, unknown>;
+
+  constructor(message: string, status: number, code?: string, fieldErrors?: Record<string, unknown>) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.code = code;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { mockData, headers, ...fetchOptions } = options;
 
@@ -44,12 +58,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(payload?.error?.message ?? `API request failed: ${response.status}`);
+      throw new ApiRequestError(
+        payload?.error?.message ?? `API request failed: ${response.status}`,
+        response.status,
+        payload?.error?.code,
+        payload?.error?.field_errors,
+      );
     }
 
     return unwrapMock<T>(payload);
   } catch (error) {
-    if (mockData !== undefined) {
+    if (USE_MOCK_API && mockData !== undefined) {
       console.warn(`[mock fallback] ${endpoint}`, error);
       await delay(250);
       return unwrapMock<T>(mockData);

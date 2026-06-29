@@ -44,6 +44,21 @@ class Profile(models.Model):
     # 13. 맞벌이 여부 (조건부 필수/null 허용)
     is_dual_income = models.BooleanField(null=True, blank=True)
 
+    # 4차 계약의 조건부/추가 진단 필드. 비워둔 값은 null로 보존합니다.
+    residence_period_years = models.IntegerField(null=True, blank=True)
+    homeless_period_years = models.IntegerField(null=True, blank=True)
+    marriage_period_years = models.IntegerField(null=True, blank=True)
+    monthly_household_income_krw = models.BigIntegerField(null=True, blank=True)
+    total_assets_krw = models.BigIntegerField(null=True, blank=True)
+    dependent_family_count = models.IntegerField(null=True, blank=True)
+    young_child_count = models.IntegerField(null=True, blank=True)
+    youngest_child_age_group = models.CharField(max_length=50, null=True, blank=True)
+    has_income_tax_5_years = models.BooleanField(null=True, blank=True)
+    elderly_support_status = models.CharField(max_length=50, null=True, blank=True)
+    elderly_dependent_is_homeless = models.BooleanField(null=True, blank=True)
+    real_estate_assets_krw = models.BigIntegerField(null=True, blank=True)
+    vehicle_value_krw = models.BigIntegerField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

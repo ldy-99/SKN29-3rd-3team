@@ -21,7 +21,20 @@ class ProfileSerializer(serializers.ModelSerializer):
             'marital_status',
             'minor_child_count',
             'has_household_property_ownership_history',
-            'is_dual_income'
+            'is_dual_income',
+            'residence_period_years',
+            'homeless_period_years',
+            'marriage_period_years',
+            'monthly_household_income_krw',
+            'total_assets_krw',
+            'dependent_family_count',
+            'young_child_count',
+            'youngest_child_age_group',
+            'has_income_tax_5_years',
+            'elderly_support_status',
+            'elderly_dependent_is_homeless',
+            'real_estate_assets_krw',
+            'vehicle_value_krw',
         ]
         # partial=True가 아닐 때 Serializer 레벨에서 기본 필수 에러를 띄우기 위해
         # extra_kwargs를 통해 에러 메시지를 커스텀할 수도 있습니다.
@@ -93,6 +106,7 @@ class UserSerializer(serializers.ModelSerializer):
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     email = serializers.EmailField(required=True)
+    username = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -109,23 +123,36 @@ class SignUpSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        email = validated_data['email']
+        username = validated_data.get('username') or email
         user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
+            username=username,
+            email=email,
             password=validated_data['password']
         )
         return user
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)
+    username = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
     def validate(self, attrs):
         username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
 
         from django.contrib.auth import authenticate
+        if not username and email:
+            try:
+                username = User.objects.get(email=email).get_username()
+            except User.DoesNotExist:
+                username = None
+
+        if not username:
+            raise ValidationError("이메일 또는 사용자 이름을 입력해주세요.")
+
         user = authenticate(username=username, password=password)
 
         if not user:

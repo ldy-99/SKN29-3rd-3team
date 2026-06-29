@@ -61,14 +61,27 @@ class AnnouncementInputSerializer(serializers.ModelSerializer):
 
 
 class StrategyRunSerializer(serializers.ModelSerializer):
+    strategy_id = serializers.UUIDField(source='id', read_only=True)
+
     class Meta:
         model = StrategyRun
-        fields = ['id', 'status', 'input_snapshot', 'result_payload', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'status', 'input_snapshot', 'result_payload', 'created_at', 'updated_at']
+        fields = ['id', 'strategy_id', 'status', 'input_snapshot', 'result_payload', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'strategy_id', 'status', 'input_snapshot', 'result_payload', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        result_payload = data.get('result_payload')
+        if isinstance(result_payload, dict):
+            for key, value in result_payload.items():
+                data.setdefault(key, value)
+        return data
 
 
 class StrategyRequestSerializer(serializers.Serializer):
     announcement = AnnouncementInputSerializer(required=False, allow_null=True)
+    announcement_text = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+    pdf_analysis_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    profile_only = serializers.BooleanField(required=False)
 
 
 class ChatbotRequestSerializer(serializers.Serializer):

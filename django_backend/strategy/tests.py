@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.core.cache import cache
 from accounts.models import Profile
 from strategy.models import StrategyRun
+from strategy.services import FastAPIClient
 
 User = get_user_model()
 
@@ -264,3 +265,62 @@ class StrategyAPITests(APITestCase):
         # 61번째 요청 시 Throttling 걸림 (429)
         response_throttled = self.client.post(url, {"question": "Hi"}, format='json')
         self.assertEqual(response_throttled.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class FastAPIClientFlowTests(APITestCase):
+    def test_run_diagnosis_uses_fastapi_session_and_expected_order_with_announcement(self):
+        client = FastAPIClient()
+        calls = []
+
+        def fake_send_profile(profile_data):
+            calls.append(("profile", profile_data))
+            return {"session_id": "fastapi-session"}
+
+        def fake_trigger_simulate(session_id, simulate=True):
+            calls.append(("simulate", session_id, simulate))
+            return {"status": "waiting"}
+
+        def fake_send_announcement(session_id, announcement_text):
+            calls.append(("announcement", session_id, announcement_text))
+            return {"status": "success", "session_id": session_id}
+
+        client.send_profile = fake_send_profile
+        client.trigger_simulate = fake_trigger_simulate
+        client.send_announcement = fake_send_announcement
+
+        result = client.run_diagnosis(
+            session_id="django-run-id",
+            profile_3rd={"region": "SEOUL"},
+            announcement_text="announcement",
+        )
+
+        self.assertEqual(result["session_id"], "fastapi-session")
+        self.assertEqual(
+            calls,
+            [
+                ("profile", {"region": "SEOUL"}),
+                ("simulate", "fastapi-session", True),
+                ("announcement", "fastapi-session", "announcement"),
+            ],
+        )
+
+    def test_run_diagnosis_profile_only_uses_fastapi_session(self):
+        client = FastAPIClient()
+        calls = []
+
+        client.send_profile = lambda profile_data: {"session_id": "fastapi-session"}
+
+        def fake_trigger_simulate(session_id, simulate=True):
+            calls.append(("simulate", session_id, simulate))
+            return {"status": "success", "session_id": session_id}
+
+        client.trigger_simulate = fake_trigger_simulate
+
+        result = client.run_diagnosis(
+            session_id="django-run-id",
+            profile_3rd={"region": "SEOUL"},
+            announcement_text=None,
+        )
+
+        self.assertEqual(result["session_id"], "fastapi-session")
+        self.assertEqual(calls, [("simulate", "fastapi-session", False)])
