@@ -1,0 +1,150 @@
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
+import { ArrowRight, User } from "lucide-react";
+import { api } from "../api/client";
+
+export function StrategyRun() {
+  const [noticeText, setNoticeText] = useState("");
+  const [isBasicOnly, setIsBasicOnly] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleRun = async () => {
+    setIsRunning(true);
+    setError("");
+
+    try {
+      const result = await api.runStrategy({
+        announcement_text: isBasicOnly ? null : noticeText,
+        profile_only: isBasicOnly,
+      });
+      navigate(`/results/${result.strategy_id}`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "전략 진단 요청에 실패했습니다.");
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <div className="pb-20">
+      <ApiBadge method="POST" endpoint="/api/strategy" />
+      
+      <PageTitle 
+        title="전략 진단" 
+        description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다." 
+      />
+
+      {error && (
+        <WarningBox type="error" title="API 연결 오류">
+          {error}
+        </WarningBox>
+      )}
+
+      <div className="space-y-8">
+        <Card className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-[17px] flex items-center gap-2">
+              <User className="w-5 h-5 text-[#007aff]" />
+              현재 기준 프로필
+            </h3>
+            <button onClick={() => navigate("/profile")} className="text-[14px] text-[#007aff] hover:underline">
+              수정하기
+            </button>
+          </div>
+          
+          <div className="bg-[#f5f5f7] rounded-[16px] p-5 flex flex-wrap gap-x-8 gap-y-4 text-[14px]">
+            <div>
+              <div className="text-[#6e6e73] mb-1">통장 유형</div>
+              <div className="font-medium">종합저축 (4년, 600만)</div>
+            </div>
+            <div>
+              <div className="text-[#6e6e73] mb-1">주거 요건</div>
+              <div className="font-medium">서울특별시 / 세대주</div>
+            </div>
+            <div>
+              <div className="text-[#6e6e73] mb-1">주택 소유</div>
+              <div className="font-medium">무주택 (생애최초)</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-8">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-[17px] mb-1">관심 공고문 텍스트 (선택)</h3>
+              <p className="text-[14px] text-[#6e6e73]">모집공고문의 주요 내용을 복사해서 붙여넣어주세요.</p>
+            </div>
+            <Button variant="outline" className="text-[13px] py-2 px-4 h-auto shrink-0" onClick={() => navigate("/pdf")}>
+              PDF 파일로 분석하기
+            </Button>
+          </div>
+
+          <textarea
+            className="w-full h-[200px] bg-[#f5f5f7] border border-transparent rounded-[16px] p-5 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] resize-none transition-colors mb-6 disabled:opacity-50"
+            placeholder="여기에 모집공고문을 붙여넣으세요..."
+            value={noticeText}
+            onChange={(e) => setNoticeText(e.target.value)}
+            disabled={isBasicOnly || isRunning}
+          ></textarea>
+
+          <label className="flex items-center gap-3 mb-8 cursor-pointer group">
+            <div className="relative flex items-center">
+              <input 
+                type="checkbox" 
+                className="peer sr-only"
+                checked={isBasicOnly}
+                onChange={(e) => {
+                  setIsBasicOnly(e.target.checked);
+                  if (e.target.checked) setNoticeText("");
+                }}
+                disabled={isRunning}
+              />
+              <div className="w-6 h-6 rounded-[8px] border-2 border-[#e5e5e7] peer-checked:bg-[#007aff] peer-checked:border-[#007aff] transition-colors flex items-center justify-center group-hover:border-[#007aff]/50">
+                <CheckIcon className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
+              </div>
+            </div>
+            <span className="text-[15px] font-medium select-none">공고 없이 기본 자격만 확인하기</span>
+          </label>
+
+          <Button 
+            className="w-full py-4 text-[17px]"
+            onClick={handleRun}
+            disabled={isRunning || (!isBasicOnly && noticeText.trim() === "")}
+          >
+            {isRunning ? (
+              <span className="flex items-center justify-center gap-2">
+                <SpinnerIcon className="w-5 h-5 animate-spin" />
+                분석 중...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                진단 실행
+                <ArrowRight className="w-5 h-5" />
+              </span>
+            )}
+          </Button>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  );
+}

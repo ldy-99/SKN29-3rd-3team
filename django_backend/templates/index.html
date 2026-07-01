@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKN 3rd 3Team API Server</title>
+    <meta name="description" content="SKN 29기 3기 3팀의 Django 백엔드 API 서비스 대시보드입니다. API 엔드포인트와 관리자 도구를 탐색해 보세요.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary: #6366f1;
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --accent: #10b981;
+            --accent-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'Space Grotesk', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            color: var(--accent);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 14px var(--accent); }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        main {
+            max-width: 1200px;
+            width: 100%;
+            margin: 4rem auto;
+            padding: 0 2rem;
+            flex-grow: 1;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+            letter-spacing: -1px;
+        }
+
+        .gradient-text {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.6;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .section-title {
+            font-family: var(--font-mono);
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex-grow: 1;
+            height: 1px;
+            background: var(--card-border);
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .api-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .api-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: transparent;
+            transition: background 0.3s ease;
+        }
+
+        .api-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .api-card:hover::before {
+            background: var(--primary-gradient);
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .method-get {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .method-post {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .api-path {
+            font-family: var(--font-mono);
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .api-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        footer {
+            padding: 2.5rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--card-border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 1.5rem;
+            }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .cta-buttons {
+                flex-direction: column;
+                padding: 0 2rem;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">SKN3_3TEAM.dev</div>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            Server Operational
+        </div>
+    </header>
+
+    <main>
+        <div class="hero">
+            <h1>Django API <span class="gradient-text">Backend Hub</span></h1>
+            <p>SKN 29기 3기 3팀의 견고하고 유연한 RESTful API 백엔드 플랫폼에 오신 것을 환영합니다.</p>
+            <div class="cta-buttons">
+                <a href="/admin/" class="btn btn-primary">관리자 패널 진입</a>
+                <a href="#endpoints" class="btn btn-secondary">API 엔드포인트 보기</a>
+            </div>
+        </div>
+
+        <h2 id="endpoints" class="section-title">API Endpoints</h2>
+        <div class="api-grid">
+            <div class="api-card">
+                <span class="method-badge method-get">GET</span>
+                <div class="api-path">/api/profile/</div>
+                <div class="api-desc">현재 로그인한 유저의 프로필 정보를 조회합니다. 임시 더미 미들웨어가 켜져 있을 시 테스트 유저 프로필이 자동으로 매핑됩니다.</div>
+            </div>
+
+            <div class="api-card">
+                <span class="method-badge method-post">POST</span>
+                <div class="api-path">/api/profile/</div>
+                <div class="api-desc">신규 프로필을 작성하거나 기존 프로필 정보를 업데이트합니다. 미혼/기혼 여부 등 비즈니스 요구사항 유효성 검증을 거칩니다.</div>
+            </div>
+
+            <div class="api-card">
+                <span class="method-badge method-post">POST</span>
+                <div class="api-path">/api/register/</div>
+                <div class="api-desc">신규 서비스 가입자를 등록하고 계정을 생성합니다. (향후 제공 예정)</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 SKN 29th 3rd 3Team. Built with Django &amp; Django REST Framework. Developed with Antigravity AI.</p>
+    </footer>
+</body>
+</html>
