@@ -12,7 +12,7 @@
 graph LR
     React[React Frontend] <-->|Django Session / Session Cookie| Django[Django Backend]
     Django <-->|SQLite DB| DB[(Database)]
-    Django <-->|HTTP / Timeout 45s / API Proxy| FastAPI[FastAPI AI Server]
+    Django <-->|HTTP / Timeout 90s / API Proxy| FastAPI[FastAPI AI Server]
 ```
 
 ---
@@ -36,7 +36,7 @@ graph LR
 ### 4. 💬 AI 챗봇 Proxy 및 보호막
 * **챗봇 API 프록시**: RAG/LLM 연산을 Django 백엔드 내에 직접 작성하지 않고, FastAPI `/api/chat` 응답을 프론트엔드로 안전하게 포워딩합니다.
 * **호출 제한 (Throttling)**: API 오남용 및 무분별한 과금을 방지하기 위해 회원 계정별 **분당 최대 60회 (`60/min`)** 호출 제약을 설정하여 안전을 확보합니다.
-* **타임아웃 (45초) 보호**: AI 연산 지연으로 응답 대기가 길어질 때 커넥션 점유 마비를 예외 차단하기 위해 **최대 45초 타임아웃** 정책을 적용하고, 장애 발생 시 `FASTAPI_CONNECTION_FAILED` 에러 코드를 제공합니다.
+* **타임아웃 (기본 90초) 보호**: AI 연산 지연으로 응답 대기가 길어질 때 커넥션 점유 마비를 예외 차단하기 위해 `FASTAPI_REQUEST_TIMEOUT_SECONDS` 제한을 적용하고, 장애 발생 시 `FASTAPI_CONNECTION_FAILED` 에러 코드를 제공합니다.
 
 ---
 
@@ -106,7 +106,7 @@ python test_send.py
 * **`PROFILE_REQUIRED`**: 자가진단을 진행하기 전 프로필 등록이 선행되지 않은 경우
 * **`PROFILE_REQUIRED_FIELDS_MISSING`**: 진단 실행 시점에 프로필에 누락된 필수 필드가 있는 경우
 * **`PDF_INVALID_TYPE`**: PDF 확장자 또는 application/pdf 형식이 아닌 파일을 업로드한 경우
-* **`FASTAPI_CONNECTION_FAILED`**: 내부 FastAPI AI 서버 연결 실패, 타임아웃(45초 초과), 또는 5xx 응답 수신 시
+* **`FASTAPI_CONNECTION_FAILED`**: 내부 FastAPI AI 서버 연결 실패, 설정된 timeout 초과, 또는 5xx 응답 수신 시
 ```json
 {
   "data": null,
