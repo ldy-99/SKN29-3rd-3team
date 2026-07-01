@@ -1,10 +1,37 @@
+# Secrets and local environment overrides
 .env
+.env.*
+!.env.example
+!**/.env.example
+
+# Python
 .venv/
 venv/
 env/
 __pycache__/
 *.py[cod]
-Backend/src/preprocessing/chroma_db/
-*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Vite
+node_modules/
+dist/
 .pnpm-store/
+
+# Runtime output
+*.log
+*.pid
+
+# Local editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated project workspace
 docs/4th_project_vault/
+
+# ChromaDB is intentionally retained locally as RAG runtime data.
+# Rebuild it with backend/src/preprocessing/build_all.py when needed.
+backend/src/preprocessing/chroma_db/

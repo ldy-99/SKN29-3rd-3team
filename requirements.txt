@@ -1,17 +1,17 @@
-chromadb
-streamlit
-fastapi
-uvicorn
-pydantic
-python-dotenv
-openai
-langchain-core
-langchain-openai
-langchain-community
-langchain-chroma
-langchain-text-splitters
-langgraph
-duckduckgo-search
-ddgs
-pypdf
-pytest
+# FastAPI / RAG service
+# Verified with Python 3.10 on 2026-07-02.
+chromadb==1.5.9
+fastapi==0.136.3
+uvicorn==0.48.0
+pydantic==2.13.4
+python-dotenv==1.2.1
+openai==2.37.0
+langchain-core==1.4.0
+langchain-openai==1.2.2
+langchain-community==0.4.2
+langchain-chroma==1.1.0
+langchain-text-splitters==1.1.2
+langgraph==1.2.2
+ddgs==9.14.4
+pypdf==6.12.2
+pytest==9.0.3

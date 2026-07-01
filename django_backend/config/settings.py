@@ -10,22 +10,37 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
+
+
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def env_list(name, default):
+    value = os.getenv(name)
+    if not value:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-a%vzdd*7tl97irzhiw)ozcq67o4b8x4_ef_^++c%3gmp#q19$g'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-local-development-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
 
 # Application definition
@@ -138,14 +153,14 @@ AUTH_USER_MODEL = 'accounts.User'
 # Browsers reject wildcard CORS origins when credentials are included, so list
 # local frontend origins explicitly.
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-]
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-]
+CORS_ALLOWED_ORIGINS = env_list(
+    'DJANGO_CORS_ALLOWED_ORIGINS',
+    ['http://127.0.0.1:5173', 'http://localhost:5173'],
+)
+CSRF_TRUSTED_ORIGINS = env_list(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    ['http://127.0.0.1:5173', 'http://localhost:5173'],
+)
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
@@ -170,4 +185,7 @@ REST_FRAMEWORK = {
 }
 
 # FastAPI Internal API Config
-FASTAPI_API_URL = 'http://127.0.0.1:8080'
+FASTAPI_API_URL = os.getenv('FASTAPI_API_URL', 'http://127.0.0.1:8080').rstrip('/')
+FASTAPI_REQUEST_TIMEOUT_SECONDS = int(
+    os.getenv('FASTAPI_REQUEST_TIMEOUT_SECONDS', '90')
+)

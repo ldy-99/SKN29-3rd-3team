@@ -14,6 +14,7 @@ class FastAPIConnectionError(APIException):
 class FastAPIClient:
     def __init__(self):
         self.base_url = getattr(settings, 'FASTAPI_API_URL', 'http://127.0.0.1:8080')
+        self.timeout = getattr(settings, 'FASTAPI_REQUEST_TIMEOUT_SECONDS', 90)
 
     def send_profile(self, profile_data: dict) -> dict:
         """
@@ -22,7 +23,7 @@ class FastAPIClient:
         url = f"{self.base_url}/api/profile"
         payload = {"profile": profile_data}
         try:
-            response = requests.post(url, json=payload, timeout=90)
+            response = requests.post(url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -39,7 +40,7 @@ class FastAPIClient:
             "announcement_text": announcement_text
         }
         try:
-            response = requests.post(url, json=payload, timeout=90)
+            response = requests.post(url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -56,7 +57,7 @@ class FastAPIClient:
             "simulate": simulate
         }
         try:
-            response = requests.post(url, json=payload, timeout=90)
+            response = requests.post(url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -85,7 +86,7 @@ class FastAPIClient:
         url = f"{self.base_url}/api/pdf/analyze"
         files = {'file': (file_name, file_content, 'application/pdf')}
         try:
-            response = requests.post(url, files=files, timeout=90)
+            response = requests.post(url, files=files, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -102,7 +103,7 @@ class FastAPIClient:
             "session_id": session_id
         }
         try:
-            response = requests.post(url, json=payload, timeout=90)
+            response = requests.post(url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:

@@ -1,4 +1,7 @@
-django>=5.0,<7.0
-djangorestframework>=3.14.0
-django-cors-headers>=4.0.0
-requests>=2.31.0
+# Django public API service
+# Verified with Python 3.10 on 2026-07-02.
+Django==5.2.15
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+requests==2.33.1
+python-dotenv==1.2.1
