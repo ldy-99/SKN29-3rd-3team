@@ -256,7 +256,7 @@ scrollToBottom()
 - React 프로토타입은 `frontend-react/` 안에서만 작업합니다.
 - API 경로가 바뀌면 우선 `src/app/api/client.ts`만 수정합니다.
 - 화면이 필요로 하는 fixture는 `src/app/fixtures/`에 추가합니다.
-- 기존 Streamlit `frontend/` 폴더는 건드리지 않습니다.
+- 기존 Streamlit UI는 4차 React 통합 후 제거되었으며 `frontend-react/`만 사용합니다.
 
 ## 9. 다음 구현 후보
 
