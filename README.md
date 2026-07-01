@@ -37,7 +37,7 @@ Copy-Item .env.example .env
 Copy-Item frontend-react\.env.example frontend-react\.env.local
 ```
 
-루트 `.env`의 `OPENAI_API_KEY`를 설정합니다. 전체 변수 설명은 [환경변수 명세](docs/operations/ENVIRONMENT_VARIABLES.md)를 확인합니다.
+루트 `.env`의 `OPENAI_API_KEY`를 설정합니다. 전체 변수 설명은 [로컬 실행 가이드](docs/LOCAL_SETUP.md#3-환경-파일)를 확인합니다.
 
 ### 2. Python 의존성
 
@@ -83,7 +83,7 @@ cd frontend-react
 pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 ```
 
-브라우저에서 `http://127.0.0.1:5173`에 접속합니다. 더 자세한 설치·오류 대응은 [통합 실행 가이드](docs/operations/LOCAL_SETUP.md)를 따릅니다.
+브라우저에서 `http://127.0.0.1:5173`에 접속합니다. 더 자세한 설치·오류 대응은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)를 따릅니다.
 
 ## 검증 명령
 
@@ -108,8 +108,7 @@ backend/                 FastAPI, LangGraph, 계산기, RAG 및 원천 데이터
 django_backend/          인증, 프로필, 진단 이력, FastAPI 프록시
 frontend-react/          React/Vite 사용자 화면
 fixture_examples/        API 계약 예시
-docs/4th_docs/           4차 범위·API·아키텍처 명세
-docs/operations/         실행·환경변수·정리 산출물
+docs/                    프로젝트·API·실행·협업 기준 문서
 docs/reports/            기존 AI/RAG 분석 보고서
 ```
 
@@ -127,9 +126,9 @@ docs/reports/            기존 AI/RAG 분석 보고서
 
 ## 상세 문서
 
-- [통합 실행 가이드](docs/operations/LOCAL_SETUP.md)
-- [환경변수 명세](docs/operations/ENVIRONMENT_VARIABLES.md)
-- [3차 파일 정리 내역](docs/operations/CLEANUP_4TH_INTEGRATION.md)
-- [4차 프로젝트 범위와 MVP 명세](docs/4th_docs/00_프로젝트_범위와_MVP_명세.md)
-- [API 데이터 계약](docs/4th_docs/01_API_데이터_계약_명세.md)
-- [시스템 아키텍처 명세](docs/4th_docs/02_시스템_아키텍처_인증_AI연동_명세.md)
+- [문서 색인](docs/README.md)
+- [프로젝트 명세](docs/PROJECT_SPEC.md)
+- [API 계약](docs/API_CONTRACT.md)
+- [로컬 실행 가이드](docs/LOCAL_SETUP.md)
+- [팀 작업 가이드](docs/TEAM_GUIDE.md)
+- [변경 이력](docs/CHANGELOG.md)

@@ -1,11 +1,27 @@
+# React Frontend
 
-  # 청약 진단 서비스 UI (복사)
+Vite, React, TypeScript 기반 사용자 화면입니다.
 
-  This is a code bundle for 청약 진단 서비스 UI (복사). The original project is available at https://www.figma.com/design/qAaKfi0GtM0zuce9WU4M2x/%EC%B2%AD%EC%95%BD-%EC%A7%84%EB%8B%A8-%EC%84%9C%EB%B9%84%EC%8A%A4-UI--%EB%B3%B5%EC%82%AC-.
+```text
+src/app/api/          Django API client
+src/app/components/   공통 UI와 챗봇
+src/app/pages/        프로필, 전략 실행, 결과, PDF, 로그인
+src/app/fixtures/     mock API 응답
+```
 
-  ## Running the code
+개발 명령:
 
-  Run `npm i` to install the dependencies.
+```powershell
+pnpm.cmd install --frozen-lockfile
+pnpm.cmd dev -- --host 127.0.0.1 --port 5173
+pnpm.cmd run build
+```
 
-  Run `npm run dev` to start the development server.
-  
+실제 Django 연결:
+
+```dotenv
+VITE_USE_MOCK_API=false
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+전체 실행 순서는 [로컬 실행 가이드](../docs/LOCAL_SETUP.md), 공개 요청·응답은 [API 계약](../docs/API_CONTRACT.md)을 기준으로 합니다.

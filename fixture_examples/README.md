@@ -14,7 +14,7 @@
 
 ## enum 기준
 
-fixture의 enum 값은 `docs/4th_docs/01_API_데이터_계약_명세.md` 기준으로 고정한다. enum 추가·삭제·이름 변경은 계약 변경 절차를 거친다.
+fixture의 필드와 값은 `docs/API_CONTRACT.md` 기준으로 관리한다. 계약 변경 시 코드, fixture, 문서를 함께 수정한다.
 
 - `BankbookType`
 - `MaritalStatus`
