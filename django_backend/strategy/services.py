@@ -22,7 +22,7 @@ class FastAPIClient:
         url = f"{self.base_url}/api/profile"
         payload = {"profile": profile_data}
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(url, json=payload, timeout=90)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -39,7 +39,7 @@ class FastAPIClient:
             "announcement_text": announcement_text
         }
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(url, json=payload, timeout=90)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -56,7 +56,7 @@ class FastAPIClient:
             "simulate": simulate
         }
         try:
-            response = requests.post(url, json=payload, timeout=60)
+            response = requests.post(url, json=payload, timeout=90)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -94,7 +94,7 @@ class FastAPIClient:
 
     def call_chatbot(self, question: str, session_id: str = None) -> dict:
         """
-        FastAPI의 POST /api/chat 엔드포인트로 질문 및 세션 전송 (타임아웃 45초)
+        FastAPI의 POST /api/chat 엔드포인트로 질문 및 세션 전송 (타임아웃 90초)
         """
         url = f"{self.base_url}/api/chat"
         payload = {
@@ -102,7 +102,7 @@ class FastAPIClient:
             "session_id": session_id
         }
         try:
-            response = requests.post(url, json=payload, timeout=45)
+            response = requests.post(url, json=payload, timeout=90)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
