@@ -1,29 +1,68 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
 import { ArrowRight, User } from "lucide-react";
-import { api } from "../api/client";
+import { ApiRequestError, api } from "../api/client";
+import { useEffect, useState } from "react";
 
 export function StrategyRun() {
   const [noticeText, setNoticeText] = useState("");
   const [isBasicOnly, setIsBasicOnly] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isRunning]);
+
   const handleRun = async () => {
+    if (isRunning) return;
+
+    setElapsedSeconds(0);
     setIsRunning(true);
     setError("");
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, 95_000);
+
     try {
-      const result = await api.runStrategy({
-        announcement_text: isBasicOnly ? null : noticeText,
-        profile_only: isBasicOnly,
-      });
+      const result = await api.runStrategy(
+        {
+          announcement_text: isBasicOnly ? null : noticeText,
+          profile_only: isBasicOnly,
+        },
+        controller.signal,
+      );
       navigate(`/results/${result.strategy_id}`);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "전략 진단 요청에 실패했습니다.");
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setError("분석 시간이 90초를 초과했습니다. 잠시 후 다시 시도해주세요.");
+      } else if (error instanceof ApiRequestError && error.status === 502) {
+        setError("AI 분석 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.");
+      } else if (
+        error instanceof ApiRequestError &&
+        (error.code === "PROFILE_REQUIRED" ||
+          error.code === "PROFILE_REQUIRED_FIELDS_MISSING")
+      ) {
+        setError("전략 진단 전에 프로필 정보를 확인하고 저장해주세요.");
+      } else {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "전략 진단 요청에 실패했습니다.",
+        );
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setIsRunning(false);
     }
   };
@@ -43,6 +82,19 @@ export function StrategyRun() {
         </WarningBox>
       )}
 
+      {isRunning && (
+        <WarningBox type="info" title="전략을 분석하고 있습니다">
+          <p>
+            {elapsedSeconds < 30
+              ? "프로필과 공고문을 분석하고 있습니다."
+              : "AI가 최종 전략을 생성하고 있습니다. 조금만 더 기다려주세요."}
+          </p>
+          <p className="mt-1">
+            보통 30~40초 정도 걸립니다. 경과 시간: {elapsedSeconds}초
+          </p>
+        </WarningBox>
+      )}
+
       <div className="space-y-8">
         <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
@@ -50,7 +102,11 @@ export function StrategyRun() {
               <User className="w-5 h-5 text-[#007aff]" />
               현재 기준 프로필
             </h3>
-            <button onClick={() => navigate("/profile")} className="text-[14px] text-[#007aff] hover:underline">
+            <button
+              onClick={() => navigate("/profile")}
+              disabled={isRunning}
+              className="text-[14px] text-[#007aff] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+            >
               수정하기
             </button>
           </div>
@@ -77,7 +133,7 @@ export function StrategyRun() {
               <h3 className="font-semibold text-[17px] mb-1">관심 공고문 텍스트 (선택)</h3>
               <p className="text-[14px] text-[#6e6e73]">모집공고문의 주요 내용을 복사해서 붙여넣어주세요.</p>
             </div>
-            <Button variant="outline" className="text-[13px] py-2 px-4 h-auto shrink-0" onClick={() => navigate("/pdf")}>
+            <Button variant="outline" className="text-[13px] py-2 px-4 h-auto shrink-0" onClick={() => navigate("/pdf")} disabled={isRunning}>
               PDF 파일로 분석하기
             </Button>
           </div>

@@ -142,10 +142,17 @@ export const api = {
     });
   },
 
-  runStrategy(input: { announcement_text?: string | null; profile_only?: boolean }) {
+  runStrategy(
+    input: {
+      announcement_text?: string | null;
+      profile_only?: boolean;
+    },
+    signal?: AbortSignal,
+  ) {
     return request<typeof strategyFixture.data>("/api/strategy", {
       method: "POST",
       body: JSON.stringify(input),
+      signal,
       mockData: strategyFixture,
     });
   },
