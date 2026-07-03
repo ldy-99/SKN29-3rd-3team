@@ -122,16 +122,16 @@ export function ChatbotPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border border-[#e5e5e7] rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden relative">
+    <div className="flex flex-col h-full bg-[#fffefa] border border-[#e5dfd4] rounded-[22px] shadow-[0_12px_34px_rgba(35,45,60,0.05)] overflow-hidden relative">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-[#e5e5e7] bg-white/90 backdrop-blur-md flex items-center justify-between shrink-0 z-10">
+      <div className="px-6 py-5 border-b border-[#eee9df] bg-[#fffefa]/95 backdrop-blur-md flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#007aff]/10 flex items-center justify-center text-[#007aff]">
+          <div className="w-10 h-10 rounded-full bg-[#f3eee4] flex items-center justify-center text-[#102e5a]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-[17px] text-[#1d1d1f]">청약 도우미</h3>
-            <p className="text-[12px] text-[#6e6e73] flex items-center gap-1.5 mt-0.5">
+            <h3 className="font-bold text-[17px] text-[#152846]">청약 도우미</h3>
+            <p className="text-[12px] text-[#747c87] flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-[#34c759]"></span>
               현재 화면 맥락 참조 중
             </p>
@@ -142,10 +142,10 @@ export function ChatbotPanel() {
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-6 space-y-5 bg-[#f7f8fa]"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-4 bg-[#fbfaf7]"
       >
         <div className="text-center">
-          <p className="text-[11px] text-[#6e6e73] bg-[#f5f5f7] inline-block px-3 py-1 rounded-full">
+          <p className="text-[11px] text-[#7b828d] bg-[#f3f0e9] inline-block px-3 py-1 rounded-full">
             이 대화는 DB에 저장되지 않으며 새로고침 시 사라집니다.
           </p>
         </div>
@@ -159,12 +159,12 @@ export function ChatbotPanel() {
             <div className={`${msg.type === 'user' ? 'max-w-[82%]' : 'w-full'}`}>
               <div className={`text-[15px] ${
                 msg.type === 'user' 
-                  ? 'bg-[#007aff] text-white rounded-[18px] rounded-br-md px-4 py-3 leading-relaxed'
+                  ? 'bg-[#102e5a] text-white rounded-[18px] rounded-br-md px-4 py-3 leading-relaxed'
                   : msg.variant === "greeting"
-                    ? 'bg-[#eef6ff] text-[#1d1d1f] rounded-[16px] border border-[#d9e8ff] px-4 py-3.5'
+                    ? 'bg-[#fffaf1] text-[#26364e] rounded-[16px] border border-[#eadfca] px-4 py-4'
                     : msg.variant === "error"
                       ? 'bg-[#fff2f1] text-[#1d1d1f] rounded-[16px] border border-[#ffd4d0] px-4 py-4'
-                      : 'bg-white text-[#1d1d1f] rounded-[20px] border border-[#d9e8ff] shadow-[0_4px_18px_rgba(0,0,0,0.03)] px-5 py-5'
+                      : 'bg-white text-[#26364e] rounded-[20px] border border-[#ddd7cb] shadow-[0_4px_18px_rgba(35,45,60,0.03)] px-5 py-5'
               }`}>
                 {msg.type === "bot" ? (
                   <BotMessageContent
@@ -180,9 +180,34 @@ export function ChatbotPanel() {
           </div>
         ))}
 
+        {messages.length < 5 && (
+          <div className="grid gap-2 pt-1">
+            {getRecommendedQuestions().map((q, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(q)}
+                disabled={isTyping}
+                className="group flex items-center justify-between gap-3 text-[13px] px-4 py-3.5 rounded-[14px] border border-[#d9e0e9] text-[#0b5bd3] bg-white hover:bg-[#f4f7fb] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left"
+              >
+                <span>{q}</span>
+                <span aria-hidden="true" className="text-[18px] leading-none transition-transform group-hover:translate-x-0.5">›</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {messages.length < 5 && (
+          <div className="flex gap-3 rounded-[16px] border border-[#dfe4eb] bg-[#f5f7fa] px-4 py-4 text-[#657080]">
+            <BookOpen className="w-5 h-5 shrink-0 mt-0.5 text-[#49627e]" />
+            <p className="text-[13px] leading-relaxed">
+              진단 결과가 생성되면 결과를 기준으로 이어서 질문할 수 있어요.
+            </p>
+          </div>
+        )}
+
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-white border border-[#e5e5e7] px-4 py-3 rounded-[18px] flex gap-1 items-center h-10">
+            <div className="bg-white border border-[#e5dfd4] px-4 py-3 rounded-[18px] flex gap-1 items-center h-10">
               <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce"></div>
               <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
@@ -192,23 +217,7 @@ export function ChatbotPanel() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white border-t border-[#e5e5e7] shrink-0">
-        {/* Recommended Questions */}
-        {messages.length < 5 && (
-          <div className="grid gap-2 mb-4">
-            {getRecommendedQuestions().map((q, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSend(q)}
-                disabled={isTyping}
-                className="text-[13px] px-4 py-2.5 rounded-[14px] border border-[#007aff]/25 text-[#007aff] bg-white hover:bg-[#007aff]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-        
+      <div className="p-4 bg-[#fffefa] border-t border-[#eee9df] shrink-0">
         <div className="relative flex items-center">
           <input
             type="text"
@@ -221,13 +230,13 @@ export function ChatbotPanel() {
               }
             }}
             placeholder="청약 도우미에게 질문하세요"
-            className="w-full bg-white border border-[#d1d1d6] rounded-[18px] pl-4 pr-12 py-3 text-[14px] placeholder:text-[#8e8e93] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20 focus:border-[#007aff] transition-colors"
+            className="w-full bg-white border border-[#d8d2c7] rounded-[16px] pl-4 pr-12 py-3.5 text-[14px] text-[#26364e] placeholder:text-[#8e939b] focus:outline-none focus:ring-2 focus:ring-[#245ea8]/15 focus:border-[#245ea8] transition-colors"
             disabled={isTyping}
           />
           <button
             onClick={() => handleSend(input)}
             disabled={!input.trim() || isTyping}
-            className="absolute right-1.5 w-9 h-9 bg-[#007aff] text-white rounded-full flex items-center justify-center disabled:opacity-30 disabled:bg-[#8e8e93] transition-colors"
+            className="absolute right-1.5 w-9 h-9 bg-[#102e5a] text-white rounded-full flex items-center justify-center disabled:opacity-30 disabled:bg-[#8e8e93] transition-colors"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
@@ -251,7 +260,7 @@ function BotMessageContent({
   if (variant === "greeting") {
     return (
       <div className="flex gap-2.5 leading-[1.65]">
-        <Sparkles className="w-4 h-4 text-[#007aff] mt-1 shrink-0" />
+        <Sparkles className="w-4 h-4 text-[#b86a12] mt-1 shrink-0" />
         <p>{content}</p>
       </div>
     );
@@ -271,7 +280,7 @@ function BotMessageContent({
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-4 text-[#007aff]">
+      <div className="flex items-center gap-2 mb-4 text-[#0b5bd3]">
         <Bot className="w-4 h-4" />
         <span className="text-[12px] font-semibold">청약 도우미 답변</span>
       </div>
@@ -279,12 +288,12 @@ function BotMessageContent({
       <StructuredAnswer content={content} />
 
       {!!sources?.length && (
-        <div className="mt-5 pt-4 border-t border-[#e5e5e7]">
+        <div className="mt-5 pt-4 border-t border-[#eee9df]">
           <button
             type="button"
             onClick={() => setShowSources((current) => !current)}
             aria-expanded={showSources}
-            className="w-full flex items-center gap-2 rounded-[12px] bg-[#f7f8fa] px-3 py-2.5 text-[13px] font-medium text-[#6e6e73] hover:bg-[#f0f1f3] transition-colors"
+            className="w-full flex items-center gap-2 rounded-[12px] bg-[#f5f3ee] px-3 py-2.5 text-[13px] font-medium text-[#68717d] hover:bg-[#eeebe4] transition-colors"
           >
             <BookOpen className="w-4 h-4 shrink-0" />
             <span>참고 출처 {sources.length}개 보기</span>

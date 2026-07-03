@@ -5,17 +5,18 @@ import {
   CheckSquare, 
   FileText, 
   LogOut,
-  Command,
-  LayoutDashboard
+  House,
+  History,
+  Landmark
 } from "lucide-react";
 import { ChatbotPanel } from "./ChatbotPanel";
 import { api } from "../api/client";
 
 const navItems = [
-  { path: "/", label: "대시보드", icon: <LayoutDashboard className="w-5 h-5" />, exact: true },
-  { path: "/profile", label: "프로필", icon: <User className="w-5 h-5" /> },
+  { path: "/", label: "홈", icon: <House className="w-5 h-5" />, exact: true },
+  { path: "/profile", label: "내 청약 조건", icon: <User className="w-5 h-5" /> },
   { path: "/strategy", label: "전략 진단", icon: <CheckSquare className="w-5 h-5" /> },
-  { path: "/pdf", label: "PDF 분석", icon: <FileText className="w-5 h-5" /> },
+  { path: "/results", label: "진단 기록", icon: <History className="w-5 h-5" /> },
 ];
 
 export function Layout() {
@@ -35,17 +36,16 @@ export function Layout() {
   const initial = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : "?";
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] flex font-sans text-[#1d1d1f]">
-      {/* Slim Sidebar (Top Nav in desktop can also work, but let's do a very clean left sidebar) */}
-      <aside className="w-[240px] bg-[#f5f5f7] border-r border-[#e5e5e7] flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
-        <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#007aff] rounded-[12px] flex items-center justify-center text-white shadow-sm">
-            <Command className="w-5 h-5" />
+    <div className="min-h-screen bg-[#fbfaf7] flex font-sans text-[#10284b]">
+      <aside className="w-[240px] bg-[#fffefa] border-r border-[#e9e4da] flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
+        <div className="h-[94px] px-7 flex items-center gap-3 border-b border-[#eee9df]">
+          <div className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[#102e5a]">
+            <Landmark className="w-7 h-7" strokeWidth={1.8} />
           </div>
-          <span className="font-semibold text-[17px] tracking-tight">청약 준비</span>
+          <span className="font-bold text-[19px] tracking-[-0.02em]">청약 가이드</span>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 mt-4">
+        <nav className="flex-1 px-3.5 space-y-2 mt-7">
           {navItems.map((item) => {
             const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
             return (
@@ -53,10 +53,10 @@ export function Layout() {
                 key={item.path}
                 to={item.path}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-[14px] font-medium text-[15px] transition-colors
+                  flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] font-semibold text-[15px] transition-colors
                   ${isActive 
-                    ? "bg-[#e5e5e7]/50 text-[#1d1d1f]" 
-                    : "text-[#6e6e73] hover:bg-[#e5e5e7]/30 hover:text-[#1d1d1f]"}
+                    ? "bg-[#edf2f8] text-[#0b4ea2]"
+                    : "text-[#455268] hover:bg-[#f5f2eb] hover:text-[#102e5a]"}
                 `}
               >
                 {item.icon}
@@ -64,6 +64,11 @@ export function Layout() {
               </NavLink>
             );
           })}
+
+          <div className="flex items-center gap-3.5 px-4 py-3.5 text-[14px] font-medium text-[#9aa1aa]">
+            <FileText className="w-5 h-5" />
+            <span>PDF 분석 · 준비 중</span>
+          </div>
         </nav>
 
         <div className="p-4 mb-4">
@@ -75,30 +80,28 @@ export function Layout() {
               <p className="text-[14px] font-semibold truncate">{currentUser?.username ?? "로딩 중..."}</p>
               <p className="text-[12px] text-[#6e6e73] truncate">{currentUser?.email ?? ""}</p>
             </div>
+            <NavLink
+              to="/login"
+              onClick={() => void api.logout()}
+              className="flex items-center gap-3 px-4 py-3.5 border-t border-[#eee9df] text-[14px] font-medium text-[#596273] hover:bg-[#faf8f3] transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              로그아웃
+            </NavLink>
           </div>
-          <NavLink
-            to="/login"
-            onClick={() => void api.logout()}
-            className="flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium text-[#6e6e73] hover:bg-[#e5e5e7]/30 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            로그아웃
-          </NavLink>
         </div>
       </aside>
 
-      {/* Main Content Area (2/3 roughly) */}
-      <main className="flex-1 w-full max-w-[1440px] flex flex-col min-h-screen relative overflow-y-auto">
-        <div className="flex-1 p-6 md:p-10 xl:p-12 w-full mx-auto">
-          <div className="max-w-[760px] w-full">
+      <main className="flex-1 min-w-0 flex flex-col min-h-screen relative overflow-y-auto bg-[#fbfaf7]">
+        <div className="flex-1 px-6 py-9 md:px-10 xl:px-12 xl:py-12 w-full">
+          <div className="max-w-[760px] w-full mx-auto">
             <Outlet />
           </div>
         </div>
       </main>
 
-      {/* Right Chatbot Panel (1/3) */}
-      <aside className="w-[460px] 2xl:w-[500px] shrink-0 border-l border-[#e5e5e7] bg-white/60 backdrop-blur-2xl hidden md:block sticky top-0 h-screen">
-        <div className="p-6 h-full">
+      <aside className="w-[420px] 2xl:w-[460px] shrink-0 border-l border-[#e9e4da] bg-[#fffefa] hidden md:block sticky top-0 h-screen">
+        <div className="p-5 h-full">
           <ChatbotPanel />
         </div>
       </aside>
