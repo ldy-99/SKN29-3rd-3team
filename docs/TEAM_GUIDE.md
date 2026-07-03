@@ -61,11 +61,11 @@
 
 ## 4. Git 작업 규칙
 
-공유 기준 브랜치는 `final`입니다.
+새 환경 실행 검증은 `final-debug-share` 브랜치에서 먼저 맞춥니다. 검증이 끝난 뒤 일반 개발 브랜치는 팀 합의에 따라 `final` 또는 합의된 기준 브랜치에서 분기합니다.
 
 ```powershell
-git switch final
-git pull --ff-only origin final
+git switch final-debug-share
+git pull --ff-only origin final-debug-share
 git switch -c <type>/<short-description>
 ```
 
