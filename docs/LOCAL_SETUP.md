@@ -18,7 +18,7 @@ Python 3.13은 ChromaDB와 일부 AI 패키지 호환 문제가 생길 수 있�
 ```powershell
 git clone <repository-url>
 cd SKN29-3rd-3team
-git switch final
+git switch final-debug-share
 ```
 
 Python:
@@ -31,6 +31,14 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -r django_backend\requirements.txt
 ```
+
+정상적으로 가상환경에 들어가면 PowerShell 프롬프트 앞에 `(.venv)`가 표시됩니다.
+
+```text
+(.venv) PS C:\...\SKN29-3rd-3team>
+```
+
+표시되지 않으면 `where python`으로 `.venv\Scripts\python.exe`가 먼저 잡히는지 확인합니다.
 
 로컬 개발 편의용으로 두 Python 서비스를 한 번에 설치하려면 아래 파일을 사용할 수 있습니다.
 이 파일은 개발자 PC용이며 배포/컨테이너 기준 파일은 아닙니다.
@@ -107,7 +115,32 @@ Pop-Location
 
 저장소에 SQLite 파일이 있어도 migration은 항상 실행합니다.
 
-## 5. 서버 실행
+## 5. ChromaDB 구축
+
+RAG 챗봇과 전략 진단 검색을 확인하려면 서버 실행 전에 ChromaDB를 만들어야 합니다. 이 단계는 OpenAI embedding API를 사용하므로 루트 `.env`에 `OPENAI_API_KEY`가 먼저 설정되어 있어야 합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
+```
+
+정상 완료 기준은 아래 6개 collection입니다.
+
+```text
+law_chunks
+faq_chunks
+manual_chunks
+lh_guide_chunks
+web_faq_chunks
+guide_chunks
+```
+
+개수까지 확인하려면 아래 명령을 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
+```
+
+## 6. 서버 실행
 
 세 개의 PowerShell을 사용합니다.
 
@@ -144,7 +177,7 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 
 브라우저에서 `http://127.0.0.1:5173`에 접속합니다.
 
-## 6. 정상 QA 순서
+## 7. 정상 QA 순서
 
 1. 회원가입
 2. 프로필 작성·저장
@@ -157,7 +190,7 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 
 PDF는 FastAPI endpoint가 없어 현재 정상 QA 경로에서 제외합니다.
 
-## 7. 자동 검증
+## 8. 자동 검증
 
 개발 환경 빠른 점검:
 
@@ -190,7 +223,7 @@ pnpm.cmd run build
 Pop-Location
 ```
 
-## 8. 오류 대응
+## 9. 오류 대응
 
 ### 포트 중복 `[Errno 10048]`
 
@@ -232,12 +265,12 @@ Invoke-RestMethod http://127.0.0.1:8080/health
 로컬 ChromaDB가 없거나 collection이 깨졌다면 재생성합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe Backend\src\preprocessing\build_all.py
+.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
 ```
 
 OpenAI embedding 비용이 발생할 수 있으므로 키와 실행 범위를 먼저 확인합니다.
 
-## 9. 운영 주의사항
+## 10. 운영 주의사항
 
 - 운영에서 `DJANGO_DEBUG=false`를 사용합니다.
 - 운영용 `DJANGO_SECRET_KEY`를 별도로 생성합니다.

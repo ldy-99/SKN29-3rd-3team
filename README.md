@@ -55,13 +55,25 @@ python manage.py migrate
 Pop-Location
 ```
 
+정상적으로 가상환경에 들어가면 PowerShell 프롬프트 앞에 `(.venv)`가 표시됩니다. 표시되지 않으면 `where python`으로 `.venv\Scripts\python.exe`가 먼저 잡히는지 확인합니다.
+
 로컬 개발 편의용으로만 한 번에 설치하려면 아래 파일을 사용할 수 있습니다. 배포나 컨테이너 구성에서는 서비스별 requirements를 직접 사용합니다.
 
 ```powershell
 python -m pip install -r requirements-dev.txt
 ```
 
-### 3. React 의존성
+### 3. ChromaDB 구축
+
+RAG 챗봇과 전략 진단 검색을 확인하려면 서버 실행 전에 ChromaDB를 한 번 만들어야 합니다. 이 단계는 OpenAI embedding API를 사용하므로 루트 `.env`의 `OPENAI_API_KEY`가 먼저 필요합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
+```
+
+정상 기준은 `law_chunks`, `faq_chunks`, `manual_chunks`, `lh_guide_chunks`, `web_faq_chunks`, `guide_chunks` 총 6개 collection입니다.
+
+### 4. React 의존성
 
 ```powershell
 cd frontend-react
@@ -71,7 +83,7 @@ cd ..
 
 `pnpm` PowerShell 스크립트 실행이 차단되면 `pnpm` 대신 `pnpm.cmd`를 사용합니다.
 
-### 4. 서버 실행
+### 5. 서버 실행
 
 각 명령을 루트 디렉터리의 별도 PowerShell에서 실행합니다.
 

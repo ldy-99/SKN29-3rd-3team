@@ -14,11 +14,25 @@
 - 위 파일과 폴더는 공유하거나 커밋하지 않습니다.
 - `requirements-dev.txt`와 `scripts/dev-doctor.ps1`은 로컬 개발 편의용입니다. 운영 배포 기준이나 health check가 아닙니다.
 
+## 왜 이 순서로 실행하나요?
+
+처음 받은 환경에서는 Python 패키지, React 패키지, Django DB, ChromaDB가 모두 비어 있을 수 있습니다.
+
+따라서 먼저 Python 버전과 가상환경을 맞춘 뒤 Python 패키지를 설치합니다. 그 다음 `.env`를 만들어 OpenAI 키와 Django/FastAPI 연결 주소를 준비합니다. 이후 Django migration으로 로컬 DB 스키마를 맞추고, OpenAI embedding API를 사용해 ChromaDB를 재구축합니다. 마지막으로 React 의존성을 설치하고 FastAPI, Django, React 서버를 순서대로 켜면 화면에서 전체 흐름을 확인할 수 있습니다.
+
+이 순서를 지키면 오류가 났을 때 어느 구간에서 막혔는지 분리해서 볼 수 있습니다.
+
 ## 1. 브랜치 받기
 
 ```powershell
 git fetch origin
 git switch final-debug-share
+```
+
+위 명령이 실패하면 아직 로컬 브랜치가 없는 상태일 수 있으므로 아래처럼 원격 브랜치를 추적해서 만듭니다.
+
+```powershell
+git switch --track origin/final-debug-share
 ```
 
 처음 clone하는 경우:
@@ -56,6 +70,21 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 ```
+
+정상적으로 가상환경에 들어가면 PowerShell 프롬프트 앞에 `(.venv)`가 표시됩니다.
+
+```text
+(.venv) PS C:\...\SKN29-3rd-3team>
+```
+
+프롬프트에 `(.venv)`가 보이지 않으면 아래 명령으로 현재 Python 위치를 확인합니다.
+
+```powershell
+where python
+python --version
+```
+
+정상이라면 현재 프로젝트의 `.venv\Scripts\python.exe`가 먼저 보여야 합니다. 헷갈릴 때는 이 문서처럼 `.\.venv\Scripts\python.exe`를 직접 지정하면 됩니다.
 
 Python 서비스 의존성을 각각 설치합니다.
 
@@ -125,6 +154,7 @@ FASTAPI_REQUEST_TIMEOUT_SECONDS=90
 ## 6. ChromaDB 재구축
 
 ChromaDB 구축은 OpenAI embedding API를 호출합니다. API 키, 네트워크, 사용량 제한을 먼저 확인합니다.
+이 단계가 끝나야 RAG 챗봇과 전략 진단의 검색 기반 답변을 정상 확인할 수 있습니다.
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
