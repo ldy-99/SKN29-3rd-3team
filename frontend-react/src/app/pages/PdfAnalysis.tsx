@@ -30,6 +30,7 @@ export function PdfAnalysis() {
   const navigate = useNavigate();
 
   const handleFileChange = async (file?: File | null) => {
+    // 선택 즉시 Django proxy를 통해 FastAPI PDF 추출 endpoint까지 왕복합니다.
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
       setError("PDF 파일만 업로드할 수 있습니다.");
@@ -54,6 +55,7 @@ export function PdfAnalysis() {
   const handleUseForStrategy = () => {
     if (!result?.combined_text) return;
 
+    // PDF 원본이 아니라 추출된 진단용 텍스트만 StrategyRun 화면 state로 넘깁니다.
     navigate("/strategy", {
       state: {
         announcementText: result.combined_text,

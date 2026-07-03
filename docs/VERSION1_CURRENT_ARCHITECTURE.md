@@ -231,6 +231,21 @@ python django_backend\manage.py test accounts strategy
 python -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print('fastapi import ok')"
 ```
 
+ChromaDB 재구축:
+
+```cmd
+python -X utf8 Backend\src\preprocessing\build_all.py
+python -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
+```
+
+기대 collection:
+
+```text
+faq_chunks, guide_chunks, law_chunks, lh_guide_chunks, manual_chunks, web_faq_chunks
+```
+
+주의: ChromaDB 구축은 OpenAI embedding API를 호출하므로 `.env`의 `OPENAI_API_KEY`, 네트워크, 사용량 제한이 모두 필요하다. `Backend/src/preprocessing/chroma_db/`는 로컬 산출물이므로 Git에 포함하지 않는다.
+
 FastAPI:
 
 ```cmd
@@ -268,6 +283,8 @@ Django accounts + strategy tests: 25 passed
 FastAPI app import: OK
 React pnpm install: OK
 React pnpm run build: OK
+ChromaDB build script/data path check: OK
+ChromaDB local rebuild in this worktree: NOT RUN
 ```
 
 React build 검증 환경:
@@ -276,6 +293,14 @@ React build 검증 환경:
 - npm `10.9.8`
 - pnpm `11.9.0`
 - Vite production build 성공
+
+ChromaDB 확인:
+
+- `Backend/data` 원본 문서 존재 확인
+- `Backend/src/preprocessing/build_all.py`가 `Backend/data`에서 원본 문서를 읽도록 경로 확인
+- 현재 worktree의 `chroma_db`는 Git ignored 로컬 산출물이며, collection은 빌드 전 `[]` 상태였다
+- Codex 환경에서는 OpenAI embedding API 네트워크 실행이 사용량 제한으로 승인되지 않아 재구축을 완료하지 못했다
+- 팀원/PM 전달 시에는 위 ChromaDB 재구축 명령을 실행해 6개 collection count를 확인해야 한다
 
 ## 9. 남은 과제
 

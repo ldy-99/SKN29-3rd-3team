@@ -19,6 +19,7 @@ export function StrategyRun() {
   const location = useLocation();
 
   useEffect(() => {
+    // PdfAnalysis에서 전달한 combined_text를 기존 수동 공고문 입력 흐름에 태웁니다.
     const state = location.state as
       | { announcementText?: string; sourceFilename?: string; inputMethod?: string }
       | null;
@@ -55,6 +56,7 @@ export function StrategyRun() {
     }, 95_000);
 
     try {
+      // Django는 이 요청을 profile -> simulate -> announcement 순서로 FastAPI에 proxy합니다.
       const result = await api.runStrategy(
         {
           announcement_text: isBasicOnly ? null : noticeText,

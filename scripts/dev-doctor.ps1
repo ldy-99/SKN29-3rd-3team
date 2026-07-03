@@ -54,6 +54,12 @@ if ($pythonReady) {
     Write-Host ""
     Write-Host "FastAPI import:"
     & $pythonPath -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print(app.title)"
+
+    Write-Host ""
+    Write-Host "ChromaDB collections:"
+    # Count check is intentionally read-only. Query checks need OpenAI embeddings and may cost API usage.
+    & $pythonPath -c "import chromadb; expected={'faq_chunks','guide_chunks','law_chunks','lh_guide_chunks','manual_chunks','web_faq_chunks'}; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); cols=sorted((x.name, x.count()) for x in c.list_collections()); print(cols); names={x[0] for x in cols}; raise SystemExit(0 if names == expected else 1)"
+    Write-Check "ChromaDB expected collections" ($LASTEXITCODE -eq 0) "run build_all.py and confirm faq/guide/law/lh_guide/manual/web_faq chunks"
 }
 
 Write-Host ""

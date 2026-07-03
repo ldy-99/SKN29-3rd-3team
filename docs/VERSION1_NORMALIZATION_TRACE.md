@@ -61,7 +61,7 @@
 ```text
 python django_backend\manage.py test accounts strategy
 Found 25 test(s).
-Ran 25 tests in 4.346s
+Ran 25 tests successfully
 OK
 ```
 
@@ -82,6 +82,41 @@ OK
 - `VERSION1_CURRENT_ARCHITECTURE.md`에 변경 요약, 서비스 구조, API 흐름, 주요 파일 구조, 실행 체크포인트, 남은 과제를 정리했다.
 - `docs/README.md`에서 해당 문서를 바로 찾을 수 있게 링크를 추가했다.
 
+### 2.4 ChromaDB 구축 점검 보강
+
+변경 파일:
+
+- `Backend/src/preprocessing/build_all.py`
+- `scripts/dev-doctor.ps1`
+- `docs/VERSION1_CURRENT_ARCHITECTURE.md`
+
+바뀐 이유:
+
+- ChromaDB는 Git에 올리지 않는 로컬 산출물이므로, `version-1` 브랜치를 받는 팀원은 직접 재구축해야 한다.
+- 기존 `dev-doctor.ps1`은 `chroma.sqlite3` 파일 존재만 확인해 collection이 실제로 만들어졌는지 알 수 없었다.
+- `build_all.py` 설명의 `data/` 경로가 팀원에게 루트 `data/`처럼 보일 수 있어 `Backend/data` 기준임을 명확히 할 필요가 있었다.
+
+어떻게 바뀌었는가:
+
+- `build_all.py` 주석을 `Backend/data` 원본 문서 기준으로 정리했다.
+- `build_all.py`의 `main()`에 `.env`/`OPENAI_API_KEY` 필요성을 설명하는 docstring을 추가했다.
+- `dev-doctor.ps1`이 ChromaDB collection count를 읽어 6개 collection 여부를 확인하도록 보강했다.
+- `VERSION1_CURRENT_ARCHITECTURE.md`에 ChromaDB 재구축 명령과 기대 collection 목록을 추가했다.
+
+검증:
+
+- `Backend/data` 원본 문서 존재 확인.
+- `version-1_check`의 ChromaDB collection은 빌드 전 `[]` 상태임을 확인.
+- 실제 `build_all.py` 실행은 OpenAI embedding API 호출이 필요하나, Codex 환경의 네트워크 실행이 사용량 제한으로 승인되지 않아 완료하지 못했다.
+- 따라서 ChromaDB는 팀원이 로컬에서 아래 명령으로 재구축 후 count 확인해야 한다.
+
+```cmd
+python -X utf8 Backend\src\preprocessing\build_all.py
+python -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
+```
+
+기대 collection은 `faq_chunks`, `guide_chunks`, `law_chunks`, `lh_guide_chunks`, `manual_chunks`, `web_faq_chunks` 총 6개다.
+
 ## 3. 검증 상태
 
 완료:
@@ -91,12 +126,21 @@ OK
 - FastAPI app import 확인
 - React `pnpm install` 통과
 - React `pnpm run build` 통과
+- ChromaDB 원본 데이터와 build script 경로 확인
+- ChromaDB collection count 확인 로직 추가
 
 React 검증 환경:
 
 - Node `v22.23.1`
 - npm `10.9.8`
 - pnpm `11.9.0`
+
+ChromaDB 상태:
+
+- DB 파일 자체는 Git에 포함하지 않는다.
+- `version-1_check`에서는 재구축 전 collection이 비어 있었다.
+- OpenAI embedding API 호출 제한 때문에 Codex가 직접 재구축을 완료하지 못했다.
+- 팀원은 `build_all.py` 실행 후 6개 collection count를 반드시 확인해야 한다.
 
 ## 4. 남은 주의사항
 
