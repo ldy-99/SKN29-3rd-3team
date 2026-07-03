@@ -266,15 +266,16 @@ pnpm run dev --host 127.0.0.1
 Django manage.py check: OK
 Django accounts + strategy tests: 25 passed
 FastAPI app import: OK
+React pnpm install: OK
+React pnpm run build: OK
 ```
 
-React build는 Codex PowerShell 환경에서 다음 이유로 완료하지 못했다.
+React build 검증 환경:
 
-- worktree에 `node_modules`가 없음
-- 현재 PATH의 Node가 `v16.20.2`
-- 팀 공통 실행 기준은 Node 20 이상
-
-따라서 React는 Node 20 이상 환경에서 `pnpm install` 후 `pnpm run build` 또는 `pnpm run dev`로 재검증해야 한다.
+- Node `v22.23.1`
+- npm `10.9.8`
+- pnpm `11.9.0`
+- Vite production build 성공
 
 ## 9. 남은 과제
 
@@ -285,4 +286,3 @@ React build는 Codex PowerShell 환경에서 다음 이유로 완료하지 못�
 - PostgreSQL/RDS 전환 계획
 - 배포용 Nginx/Gunicorn/FastAPI 구성
 - 발표/평가 문서용 시스템 구성도 정리
-

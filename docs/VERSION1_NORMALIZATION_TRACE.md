@@ -89,15 +89,17 @@ OK
 - Django `manage.py check`
 - Django `accounts`, `strategy` 테스트 25개 통과
 - FastAPI app import 확인
+- React `pnpm install` 통과
+- React `pnpm run build` 통과
 
-보류:
+React 검증 환경:
 
-- React build는 현재 Codex PowerShell worktree에 `node_modules`가 없고 PATH의 Node가 `v16.20.2`라 완료하지 못했다.
-- React는 Node 20 이상 환경에서 `pnpm install` 후 `pnpm run build` 또는 `pnpm run dev`로 재검증해야 한다.
+- Node `v22.23.1`
+- npm `10.9.8`
+- pnpm `11.9.0`
 
 ## 4. 남은 주의사항
 
-- `version-1`의 React UI는 정상화했지만, 실제 화면 QA는 Node 20 이상 환경에서 필요하다.
+- `version-1`의 React build는 통과했지만, 실제 브라우저 화면 QA는 3개 서버를 켠 상태에서 추가 확인하는 것이 좋다.
 - PDF 추출 결과가 최종 리포트에 충분히 드러나는지는 다음 고도화 과제로 남아 있다.
 - FastAPI 응답 구조를 더 정리하면 Django serializer와 React 결과 화면도 함께 조정해야 한다.
-
