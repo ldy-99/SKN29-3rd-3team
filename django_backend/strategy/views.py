@@ -92,8 +92,7 @@ class StrategyRunAPIView(APIView):
         # 7. FastAPI 호출
         client = FastAPIClient()
         try:
-            strategy_run.status = 'RUNNING'
-            strategy_run.save()
+            strategy_run.transition_to('RUNNING')
             
             result = client.run_diagnosis(
                 session_id=session_id,
@@ -102,14 +101,14 @@ class StrategyRunAPIView(APIView):
             )
             
             # 성공 시 결과 적재 및 상태 갱신
-            strategy_run.status = 'SUCCEEDED'
+            strategy_run.transition_to('SUCCEEDED', save=False)
             strategy_run.result_payload = result
             strategy_run.save()
             
             return Response(StrategyRunSerializer(strategy_run).data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            strategy_run.status = 'FAILED'
+            strategy_run.transition_to('FAILED', save=False)
             strategy_run.result_payload = {"error": str(e)}
             strategy_run.save()
             
@@ -140,6 +139,7 @@ class StrategyDetailAPIView(APIView):
 class PDFAnalyzeAPIView(APIView):
     """
     모집공고문 PDF 파일 수신 및 내부 FastAPI AI 분석 프록시 API.
+    (현재 버전에서는 FastAPI endpoint 미지원으로 명확한 미지원 에러를 즉시 반환합니다.)
     """
     parser_classes = [MultiPartParser]
     permission_classes = [IsAuthenticated]
@@ -156,16 +156,11 @@ class PDFAnalyzeAPIView(APIView):
             exc.message = "PDF 파일 형식이 유효하지 않습니다."
             raise exc
 
-        # 2. FastAPI 프록시 전송
-        client = FastAPIClient()
-        try:
-            result = client.proxy_pdf_analysis(file_obj.name, file_obj.read())
-            
-            # FastAPI 응답을 받아 그대로 반환
-            return Response(result, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"PDF Analysis proxy failed: {e}")
-            raise e
+        # 2. 현재 버전 미지원 예외 즉시 반환
+        exc = ValidationError("현재 AI 분석 서버에서 PDF 분석 기능을 지원하지 않습니다. 수동 입력을 진행해 주세요.")
+        exc.code = "PDF_ANALYSIS_UNSUPPORTED"
+        exc.message = "PDF 분석 기능은 현재 개발 중이며 지원되지 않습니다. 공고 요약 수동 입력을 사용해 주세요."
+        raise exc
 
 
 class AnnouncementInputAPIView(APIView):
