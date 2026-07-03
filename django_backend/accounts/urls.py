@@ -1,3 +1,7 @@
+"""
+역할: 인증과 프로필 관련 공개 API 경로를 accounts view에 연결합니다.
+흐름: config.urls /api/* -> accounts.urls -> SignUp/Login/Profile views.
+"""
 from django.urls import path
 from accounts.views import (
     SignUpAPIView, LoginAPIView, LogoutAPIView, MeAPIView, DeleteAuthAPIView, ProfileDetailAPIView

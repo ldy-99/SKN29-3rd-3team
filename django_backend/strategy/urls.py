@@ -1,3 +1,7 @@
+"""
+역할: 전략 진단, 공고, PDF, 챗봇 API 경로를 strategy view에 연결합니다.
+흐름: config.urls /api/* -> strategy.urls -> Strategy/PDF/Chatbot views.
+"""
 from django.urls import path
 from strategy.views import (
     StrategyRunAPIView, StrategyDetailAPIView, PDFAnalyzeAPIView, AnnouncementInputAPIView, ChatbotAPIView

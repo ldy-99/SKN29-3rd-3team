@@ -1,3 +1,7 @@
+"""
+역할: /api/profile 요청을 LangGraph 파이프라인 시작 함수에 연결합니다.
+흐름: profile router -> process_profile -> run_pipeline_until_node2.
+"""
 from app.schemas.profile_schema import UserInput
 from src.pipeline import run_pipeline_until_node2
 

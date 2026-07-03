@@ -1,8 +1,10 @@
+// 역할: 화면 공통 네비게이션과 페이지 틀을 제공합니다.
+// 흐름: App.tsx -> Layout.tsx -> 현재 route page + ChatbotPanel.
 import { NavLink, Outlet, useLocation } from "react-router";
-import { 
-  User, 
-  CheckSquare, 
-  FileText, 
+import {
+  User,
+  CheckSquare,
+  FileText,
   LogOut,
   Command,
   LayoutDashboard
@@ -40,8 +42,8 @@ export function Layout() {
                 to={item.path}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-[14px] font-medium text-[15px] transition-colors
-                  ${isActive 
-                    ? "bg-[#e5e5e7]/50 text-[#1d1d1f]" 
+                  ${isActive
+                    ? "bg-[#e5e5e7]/50 text-[#1d1d1f]"
                     : "text-[#6e6e73] hover:bg-[#e5e5e7]/30 hover:text-[#1d1d1f]"}
                 `}
               >

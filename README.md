@@ -26,6 +26,8 @@ React (:5173)
 
 PDF 업로드 화면과 Django 프록시는 존재하지만 FastAPI의 `/api/pdf/analyze`가 아직 구현되지 않아 MVP의 정상 경로는 수동 공고문 입력입니다.
 
+`final-debug-share` 브랜치에서 처음부터 환경을 맞추는 팀원은 [final-debug-share 실행 가이드](docs/FINAL_DEBUG_SHARE_GUIDE.md)를 먼저 확인합니다.
+
 ## 빠른 실행
 
 권장 환경은 Python 3.10과 Node.js 20 이상입니다.
@@ -53,6 +55,12 @@ python manage.py migrate
 Pop-Location
 ```
 
+로컬 개발 편의용으로만 한 번에 설치하려면 아래 파일을 사용할 수 있습니다. 배포나 컨테이너 구성에서는 서비스별 requirements를 직접 사용합니다.
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
 ### 3. React 의존성
 
 ```powershell
@@ -69,7 +77,7 @@ cd ..
 
 ```powershell
 # Terminal 1: FastAPI
-.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir backend --reload --host 127.0.0.1 --port 8080
+.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
 ```
 
 ```powershell
@@ -87,6 +95,12 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 
 ## 검증 명령
 
+개발 환경을 빠르게 점검하려면 아래 스크립트를 사용할 수 있습니다. 이 스크립트는 로컬 개발 편의용이며 운영 health check가 아닙니다.
+
+```powershell
+.\scripts\dev-doctor.ps1
+```
+
 ```powershell
 # Django
 Push-Location django_backend
@@ -94,7 +108,7 @@ Push-Location django_backend
 Pop-Location
 
 # FastAPI import
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from main import app; print(app.title)"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print(app.title)"
 
 # React
 cd frontend-react
@@ -104,7 +118,7 @@ pnpm.cmd run build
 ## 주요 디렉터리
 
 ```text
-backend/                 FastAPI, LangGraph, 계산기, RAG 및 원천 데이터
+Backend/                 FastAPI, LangGraph, 계산기, RAG 및 원천 데이터
 django_backend/          인증, 프로필, 진단 이력, FastAPI 프록시
 frontend-react/          React/Vite 사용자 화면
 fixture_examples/        API 계약 예시
@@ -118,6 +132,7 @@ docs/reports/            기존 AI/RAG 분석 보고서
 |---|---|
 | `.env.example` | FastAPI와 Django 공용 환경변수 예시 |
 | `frontend-react/.env.example` | Vite 환경변수 예시 |
+| `requirements-dev.txt` | 로컬 개발 편의용 통합 설치 파일 |
 | `requirements.txt` | FastAPI/RAG 의존성 |
 | `django_backend/requirements.txt` | Django API 의존성 |
 | `frontend-react/pnpm-lock.yaml` | React 의존성 잠금 파일 |

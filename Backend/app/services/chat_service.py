@@ -1,3 +1,7 @@
+"""
+역할: /api/chat 요청을 RAG chat graph에 연결하고 답변/출처/session_id를 반환합니다.
+흐름: chat router -> get_chat_answer -> src/rag/chat_graph.py.
+"""
 import uuid
 import sys
 from pathlib import Path

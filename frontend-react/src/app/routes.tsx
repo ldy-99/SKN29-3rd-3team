@@ -1,3 +1,5 @@
+// 역할: URL 경로와 React page component를 매핑합니다.
+// 흐름: App.tsx -> routes.tsx -> Login/Profile/StrategyRun/ResultDetail/PdfAnalysis.
 import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";

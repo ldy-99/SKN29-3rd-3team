@@ -104,7 +104,7 @@ def retrieve(state: ChatRAGState) -> ChatRAGState:
     search_query = _condense_chain.invoke({"messages": state["messages"]}).strip()
 
     # 디버깅용 터미널 출력
-    print(f"\n🔄 [시스템] 메모리 기반 검색어 변환 완료: '{search_query}'")
+    print(f"\n[system] memory-based search query: '{search_query}'")
 
     # 💡 2. 변환된 고품질 키워드 쿼리로 로컬 ChromaDB 검색 실행!
     result = search(search_query)
@@ -194,13 +194,13 @@ def web_search(state: ChatRAGState) -> ChatRAGState:
     user_messages = [m for m in state["messages"] if isinstance(m, HumanMessage)]
     question = user_messages[-1].content if user_messages else ""
 
-    print(f"\n🔍 [시스템] 내부 DB 검색 실패 (유사도 임계값 미달). DuckDuckGo 실시간 웹 검색을 가동합니다: '{question}'")
+    print(f"\n[system] internal DB search missed; running web search: '{question}'")
 
     try:
         # DuckDuckGo 웹 검색 실행
         web_results = web_search_tool.invoke(question)
     except Exception as e:
-        print(f"❌ [시스템] 웹 검색 중 요류 발생: {e}")
+        print(f"[system] web search failed: {e}")
         web_results = "실시간 웹 검색 결과가 일시적으로 제한되었습니다."
 
     # 검색된 웹 컨텍스트 주입 후 LLM 답변 빌드

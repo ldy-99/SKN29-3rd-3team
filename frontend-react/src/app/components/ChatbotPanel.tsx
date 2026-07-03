@@ -1,3 +1,6 @@
+// 역할: 어느 화면에서든 RAG 챗봇 질문을 보낼 수 있는 패널입니다.
+// 흐름: ChatbotPanel -> api.askChatbot -> Django ChatbotAPIView -> FastAPI /api/chat -> RAG graph.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useState, useRef, useEffect } from "react";
 import { Bot, ArrowUp, BookOpen, ChevronDown, Sparkles, AlertCircle } from "lucide-react";
 import { useLocation } from "react-router";
@@ -158,7 +161,7 @@ export function ChatbotPanel() {
           >
             <div className={`${msg.type === 'user' ? 'max-w-[82%]' : 'w-full'}`}>
               <div className={`text-[15px] ${
-                msg.type === 'user' 
+                msg.type === 'user'
                   ? 'bg-[#007aff] text-white rounded-[18px] rounded-br-md px-4 py-3 leading-relaxed'
                   : msg.variant === "greeting"
                     ? 'bg-[#eef6ff] text-[#1d1d1f] rounded-[16px] border border-[#d9e8ff] px-4 py-3.5'
@@ -208,7 +211,7 @@ export function ChatbotPanel() {
             ))}
           </div>
         )}
-        
+
         <div className="relative flex items-center">
           <input
             type="text"

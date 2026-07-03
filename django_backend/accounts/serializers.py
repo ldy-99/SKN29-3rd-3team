@@ -1,3 +1,8 @@
+"""
+역할: 회원가입/로그인/프로필 요청 데이터를 검증하고 모델과 JSON 사이를 변환합니다.
+흐름: accounts.views -> serializers -> accounts.models.Profile/User.
+다음 파일: django_backend/accounts/views.py 또는 django_backend/strategy/adapters.py.
+"""
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
@@ -72,7 +77,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'is_household_head', 'household_member_count', 'birth_year',
             'marital_status', 'minor_child_count', 'has_household_property_ownership_history'
         ]
-        
+
         errors = {}
         for field in required_fields:
             # partial 검증이 아닐 때만 필수 필드로 검사하도록 처리
@@ -157,6 +162,6 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise ValidationError("아이디 또는 비밀번호가 올바르지 않습니다.")
-        
+
         attrs['user'] = user
         return attrs

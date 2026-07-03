@@ -1,3 +1,8 @@
+"""
+역할: 전략 진단, 공고 저장, 챗봇 요청/응답의 공개 API 계약을 검증합니다.
+흐름: strategy.views -> serializers -> models/services.
+다음 파일: django_backend/strategy/views.py, django_backend/strategy/services.py.
+"""
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from strategy.models import AnnouncementInput, StrategyRun

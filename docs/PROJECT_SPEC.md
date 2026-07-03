@@ -123,11 +123,11 @@ React POST /api/chatbot
 
 다음 항목은 기존 AI 핵심 자산으로 유지합니다.
 
-- `backend/data/`: 원천 문서와 구조화 계산 데이터
-- `backend/src/engine/`: LangGraph node, tool, calculator
-- `backend/src/rag/`: retriever와 chat graph
-- `backend/src/preprocessing/`: 문서 전처리와 ChromaDB 생성
-- `backend/src/preprocessing/chroma_db/`: 로컬 생성 Vector DB
+- `Backend/data/`: 원천 문서와 구조화 계산 데이터
+- `Backend/src/engine/`: LangGraph node, tool, calculator
+- `Backend/src/rag/`: retriever와 chat graph
+- `Backend/src/preprocessing/`: 문서 전처리와 ChromaDB 생성
+- `Backend/src/preprocessing/chroma_db/`: 로컬 생성 Vector DB
 
 ChromaDB는 Git에 포함하지 않습니다. 새 환경에서는 필요할 때 전처리 스크립트로 재생성합니다.
 

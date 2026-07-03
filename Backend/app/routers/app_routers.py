@@ -1,3 +1,7 @@
+"""
+역할: FastAPI 하위 router를 하나의 router로 묶습니다.
+흐름: Backend/main.py -> app_routers -> health/profile/simulate/announcement/chat.
+"""
 from fastapi import APIRouter
 from app.routers import health, profile, chat_router, simulate_router, announcement_router
 

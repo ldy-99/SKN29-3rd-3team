@@ -1,3 +1,7 @@
+"""
+역할: /api/simulate 요청을 파이프라인 재개 함수에 연결합니다.
+흐름: simulate router -> process_simulate -> resume_pipeline.
+"""
 from src.pipeline import resume_pipeline
 
 

@@ -6,6 +6,7 @@
 
 # Python
 .venv/
+.venv_*/
 venv/
 env/
 __pycache__/
@@ -33,5 +34,5 @@ Thumbs.db
 docs/4th_project_vault/
 
 # ChromaDB is intentionally retained locally as RAG runtime data.
-# Rebuild it with backend/src/preprocessing/build_all.py when needed.
-backend/src/preprocessing/chroma_db/
+# Rebuild it with Backend/src/preprocessing/build_all.py when needed.
+Backend/src/preprocessing/chroma_db/

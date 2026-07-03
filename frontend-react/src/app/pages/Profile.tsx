@@ -1,3 +1,6 @@
+// 역할: 청약 자가진단에 필요한 사용자 프로필을 입력/수정하는 화면입니다.
+// 흐름: Profile.tsx -> api.getProfile/saveProfile -> Django ProfileAPIView -> accounts.models.Profile.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/accounts/serializers.py.
 import { useEffect, useState } from "react";
 import { PageTitle, ApiBadge, FormGroup, SettingsList, Button, WarningBox } from "../components/UI";
 import { Check } from "lucide-react";

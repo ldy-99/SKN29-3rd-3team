@@ -1,3 +1,6 @@
+// 역할: 기본 프로필 진단 또는 수동 공고문 기반 전략 진단을 실행하는 화면입니다.
+// 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useNavigate } from "react-router";
 import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
 import { ArrowRight, User } from "lucide-react";
@@ -70,10 +73,10 @@ export function StrategyRun() {
   return (
     <div className="pb-20">
       <ApiBadge method="POST" endpoint="/api/strategy" />
-      
-      <PageTitle 
-        title="전략 진단" 
-        description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다." 
+
+      <PageTitle
+        title="전략 진단"
+        description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다."
       />
 
       {error && (
@@ -110,7 +113,7 @@ export function StrategyRun() {
               수정하기
             </button>
           </div>
-          
+
           <div className="bg-[#f5f5f7] rounded-[16px] p-5 flex flex-wrap gap-x-8 gap-y-4 text-[14px]">
             <div>
               <div className="text-[#6e6e73] mb-1">통장 유형</div>
@@ -148,8 +151,8 @@ export function StrategyRun() {
 
           <label className="flex items-center gap-3 mb-8 cursor-pointer group">
             <div className="relative flex items-center">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 className="peer sr-only"
                 checked={isBasicOnly}
                 onChange={(e) => {
@@ -165,7 +168,7 @@ export function StrategyRun() {
             <span className="text-[15px] font-medium select-none">공고 없이 기본 자격만 확인하기</span>
           </label>
 
-          <Button 
+          <Button
             className="w-full py-4 text-[17px]"
             onClick={handleRun}
             disabled={isRunning || (!isBasicOnly && noticeText.trim() === "")}

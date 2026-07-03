@@ -117,7 +117,7 @@ pnpm.cmd run build
 Pop-Location
 
 # FastAPI import
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from main import app; print(app.title)"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print(app.title)"
 ```
 
 ## 7. 통합 QA

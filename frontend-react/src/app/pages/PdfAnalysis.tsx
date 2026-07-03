@@ -1,3 +1,6 @@
+// 역할: 모집공고 PDF 업로드 화면입니다.
+// 흐름: PdfAnalysis.tsx -> api.analyzePdf -> Django PDFAnalyzeAPIView -> FastAPI /api/pdf/analyze.
+// 주의: 현재 FastAPI PDF endpoint가 없어 end-to-end 완료 경로가 아닙니다.
 import { useState } from "react";
 import { Card, PageTitle, ApiBadge, Button, SettingsList, WarningBox } from "../components/UI";
 import { Upload } from "lucide-react";
@@ -25,10 +28,10 @@ export function PdfAnalysis() {
   return (
     <div className="pb-20">
       <ApiBadge method="POST" endpoint="/api/pdf/analyze" />
-      
-      <PageTitle 
-        title="PDF 공고문 분석" 
-        description="모집공고문 파일을 업로드하면 핵심 정보를 깔끔하게 정리해 드립니다." 
+
+      <PageTitle
+        title="PDF 공고문 분석"
+        description="모집공고문 파일을 업로드하면 핵심 정보를 깔끔하게 정리해 드립니다."
       />
 
       <div className="mb-6 text-[13px] text-[#6e6e73] bg-[#f5f5f7] p-4 rounded-[16px]">
@@ -76,7 +79,7 @@ export function PdfAnalysis() {
                 </div>
               )}
             </div>
-            
+
             <SettingsList>
               <div className="py-3 flex justify-between border-b border-[#e5e5e7]">
                 <span className="text-[#6e6e73] text-[15px]">공급 위치</span>

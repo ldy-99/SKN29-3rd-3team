@@ -32,6 +32,13 @@ python -m pip install -r requirements.txt
 python -m pip install -r django_backend\requirements.txt
 ```
 
+로컬 개발 편의용으로 두 Python 서비스를 한 번에 설치하려면 아래 파일을 사용할 수 있습니다.
+이 파일은 개발자 PC용이며 배포/컨테이너 기준 파일은 아닙니다.
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
 React:
 
 ```powershell
@@ -107,7 +114,7 @@ Pop-Location
 ### Terminal 1 — FastAPI
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir backend --reload --host 127.0.0.1 --port 8080
+.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
 ```
 
 확인:
@@ -152,6 +159,14 @@ PDF는 FastAPI endpoint가 없어 현재 정상 QA 경로에서 제외합니다.
 
 ## 7. 자동 검증
 
+개발 환경 빠른 점검:
+
+```powershell
+.\scripts\dev-doctor.ps1
+```
+
+`scripts/dev-doctor.ps1`은 로컬 개발 편의용 점검 스크립트입니다. 운영 health check나 배포 gate로 사용하지 않습니다.
+
 Django:
 
 ```powershell
@@ -164,7 +179,7 @@ Pop-Location
 FastAPI import:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from main import app; print(app.title)"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print(app.title)"
 ```
 
 React:
@@ -217,7 +232,7 @@ Invoke-RestMethod http://127.0.0.1:8080/health
 로컬 ChromaDB가 없거나 collection이 깨졌다면 재생성합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe backend\src\preprocessing\build_all.py
+.\.venv\Scripts\python.exe Backend\src\preprocessing\build_all.py
 ```
 
 OpenAI embedding 비용이 발생할 수 있으므로 키와 실행 범위를 먼저 확인합니다.
