@@ -16,7 +16,7 @@
 ────────────────────────────────────────────────────────────────
 프로젝트 구조:
 
-    프로젝트/
+    Backend/
     ├── data/                          ← 원본 문서 전부 여기
     │   ├── *.hwp
     │   ├── *.pdf
@@ -49,8 +49,8 @@ load_dotenv()
 
 # ── 경로 설정 ──────────────────────────────────────────────────
 
-BASE_DIR    = os.path.dirname(os.path.abspath(__file__))      # .../src/preprocessing
-DATA_DIR    = os.path.join(BASE_DIR, "..", "..", "data")        # .../data
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))      # .../Backend/src/preprocessing
+DATA_DIR    = os.path.join(BASE_DIR, "..", "..", "data")        # .../Backend/data
 CHUNKER_DIR = os.path.join(BASE_DIR, "chunker")
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
 
@@ -262,6 +262,10 @@ BUILDERS = {
 
 
 def main():
+    """
+    루트에서 실행해도 Backend/data 원본 문서를 읽어 ChromaDB를 재생성합니다.
+    OPENAI_API_KEY는 실행 위치의 .env 또는 OS 환경변수에 있어야 합니다.
+    """
     targets = sys.argv[1:] or list(BUILDERS.keys())
 
     invalid = [t for t in targets if t not in BUILDERS]

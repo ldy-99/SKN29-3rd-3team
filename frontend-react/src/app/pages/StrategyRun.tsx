@@ -3,7 +3,7 @@
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
 import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
-import { ArrowRight, FileText, User } from "lucide-react";
+import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, User } from "lucide-react";
 import { ApiRequestError, api } from "../api/client";
 import { useEffect, useState } from "react";
 
@@ -19,6 +19,7 @@ export function StrategyRun() {
   const location = useLocation();
 
   useEffect(() => {
+    // PdfAnalysis에서 전달한 combined_text를 기존 수동 공고문 입력 흐름에 태웁니다.
     const state = location.state as
       | { announcementText?: string; sourceFilename?: string; inputMethod?: string }
       | null;
@@ -55,6 +56,7 @@ export function StrategyRun() {
     }, 95_000);
 
     try {
+      // Django는 이 요청을 profile -> simulate -> announcement 순서로 FastAPI에 proxy합니다.
       const result = await api.runStrategy(
         {
           announcement_text: isBasicOnly ? null : noticeText,
@@ -161,11 +163,19 @@ export function StrategyRun() {
         </Card>
 
         <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
-          <div className="mb-6">
+          <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">관심 모집공고 입력</h3>
               <p className="text-[14px] text-[#69717d]">모집공고문의 주요 내용을 복사해서 붙여넣어 주세요.</p>
             </div>
+            <Button
+              variant="outline"
+              className="text-[13px] py-2 px-4 h-auto shrink-0"
+              onClick={() => navigate("/pdf")}
+              disabled={isRunning}
+            >
+              PDF 파일로 분석하기
+            </Button>
           </div>
 
           {noticeText && !isBasicOnly && (
@@ -188,7 +198,7 @@ export function StrategyRun() {
           ></textarea>
 
           <label className="flex items-center gap-3 mb-8 cursor-pointer group">
-            <div className="relative flex items-center">
+            <span className="relative flex items-center">
               <input
                 type="checkbox"
                 className="peer sr-only"
@@ -203,9 +213,12 @@ export function StrategyRun() {
                 }}
                 disabled={isRunning}
               />
-              <span className="text-[14px] font-semibold">공고 없이 기본 조건만 확인</span>
-            </label>
-          </div>
+              <span className="w-6 h-6 rounded-[8px] border-2 border-[#dcd6ca] peer-checked:bg-[#102e5a] peer-checked:border-[#102e5a] transition-colors flex items-center justify-center group-hover:border-[#102e5a]/60">
+                <Check className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
+              </span>
+            </span>
+            <span className="text-[14px] font-semibold select-none">공고 없이 기본 조건만 확인</span>
+          </label>
 
           <div className="flex items-center gap-2 mb-4 px-1 text-[13px] text-[#737b87]">
             <Timer className="w-4 h-4" />
