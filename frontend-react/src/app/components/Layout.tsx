@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import { 
   User, 
   CheckSquare, 
@@ -20,6 +21,21 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<{ username: string; email: string } | null>(null);
+
+  useEffect(() => {
+    api.getMe()
+      .then((user) => setCurrentUser(user))
+      .catch((error) => {
+        console.error("Not authenticated", error);
+        navigate("/login");
+      });
+  }, [navigate]);
+
+  const initial = currentUser?.username
+    ? currentUser.username.charAt(0).toUpperCase()
+    : "?";
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] flex font-sans text-[#10284b]">
@@ -61,11 +77,11 @@ export function Layout() {
           <div className="bg-white rounded-[18px] border border-[#e5dfd4] overflow-hidden shadow-[0_8px_24px_rgba(35,45,60,0.04)]">
             <div className="px-4 py-4 flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#f1eee7] flex items-center justify-center text-[#526070] font-semibold text-[13px]">
-              홍
+              {initial}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold truncate">홍길동</p>
-              <p className="text-[12px] text-[#7d8490] truncate">user@example.com</p>
+              <p className="text-[14px] font-semibold truncate">{currentUser?.username ?? "로딩 중..."}</p>
+              <p className="text-[12px] text-[#7d8490] truncate">{currentUser?.email ?? ""}</p>
             </div>
             </div>
             <NavLink

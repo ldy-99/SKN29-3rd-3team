@@ -113,6 +113,13 @@ export const api = {
     });
   },
 
+  getMe() {
+    return request<{ id: number; username: string; email: string }>("/api/auth/me", {
+      method: "GET",
+      mockData: { id: 1, username: "dummy_user", email: "dummy@example.com" },
+    });
+  },
+
   getProfile() {
     return request<typeof profileFixture>("/api/user/profile", {
       method: "GET",
