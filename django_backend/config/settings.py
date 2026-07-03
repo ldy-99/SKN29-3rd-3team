@@ -73,7 +73,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'common.middleware.RequestIdMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'accounts.middleware.DummyLoginMiddleware',
+    #'accounts.middleware.DummyLoginMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -170,7 +170,8 @@ CSRF_TRUSTED_ORIGINS = env_list(
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'common.authentication.CsrfExemptSessionAuthentication',
+        'common.authentication.CsrfExemptSessionAuthentication' if DEBUG 
+        else 'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'common.renderers.EnvelopeJSONRenderer',
@@ -189,8 +190,18 @@ REST_FRAMEWORK = {
     }
 }
 
+# Session & CSRF Cookie settings for Production
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+
 # FastAPI Internal API Config
 FASTAPI_API_URL = os.getenv('FASTAPI_API_URL', 'http://127.0.0.1:8080').rstrip('/')
-FASTAPI_REQUEST_TIMEOUT_SECONDS = int(
-    os.getenv('FASTAPI_REQUEST_TIMEOUT_SECONDS', '90')
-)
+FASTAPI_PROFILE_TIMEOUT = int(os.getenv('FASTAPI_PROFILE_TIMEOUT', '10'))
+FASTAPI_SIMULATE_TIMEOUT = int(os.getenv('FASTAPI_SIMULATE_TIMEOUT', '30'))
+FASTAPI_CHATBOT_TIMEOUT = int(os.getenv('FASTAPI_CHATBOT_TIMEOUT', '30'))
+FASTAPI_ANNOUNCEMENT_TIMEOUT = int(os.getenv('FASTAPI_ANNOUNCEMENT_TIMEOUT', '90'))
+FASTAPI_PDF_TIMEOUT = int(os.getenv('FASTAPI_PDF_TIMEOUT', '90'))
+

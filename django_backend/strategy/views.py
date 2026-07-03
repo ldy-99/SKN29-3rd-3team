@@ -109,14 +109,14 @@ class StrategyRunAPIView(APIView):
             )
 
             # 성공 시 결과 적재 및 상태 갱신
-            strategy_run.status = 'SUCCEEDED'
+            strategy_run.transition_to('SUCCEEDED', save=False)
             strategy_run.result_payload = result
             strategy_run.save()
 
             return Response(StrategyRunSerializer(strategy_run).data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            strategy_run.status = 'FAILED'
+            strategy_run.transition_to('FAILED', save=False)
             strategy_run.result_payload = {"error": str(e)}
             strategy_run.save()
 

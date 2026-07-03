@@ -17,12 +17,19 @@ from accounts.permissions import IsOwner
 
 User = get_user_model()
 
+from rest_framework.throttling import AnonRateThrottle
+
+class SignUpRateThrottle(AnonRateThrottle):
+    rate = '10/min'  # IP당 분당 최대 10회 가입 시도 제한
+
+
 class SignUpAPIView(APIView):
     """
     회원가입 API.
     성공 시 즉시 자동 로그인(세션 쿠키 발급) 처리됩니다.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [SignUpRateThrottle]
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)

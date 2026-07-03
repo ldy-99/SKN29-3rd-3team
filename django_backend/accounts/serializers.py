@@ -108,6 +108,9 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
+
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     email = serializers.EmailField(required=True)
@@ -123,9 +126,26 @@ class SignUpSerializer(serializers.ModelSerializer):
         return value
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        # 이메일 양 끝 공백 제거 및 소문자 정규화
+        normalized_email = value.strip().lower()
+        if User.objects.filter(email=normalized_email).exists():
             raise ValidationError("이미 사용 중인 이메일입니다.")
-        return value
+        return normalized_email
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        email = attrs.get('email')
+        username = attrs.get('username') or email
+
+        # Django 내장 비밀번호 강도 검사기 실행
+        try:
+            temp_user = User(username=username, email=email)
+            validate_password(password, user=temp_user)
+        except DjangoValidationError as e:
+            # 검증 실패 시 DRF ValidationError 형태로 에러 반환
+            raise ValidationError({"password": list(e.messages)})
+
+        return attrs
 
     def create(self, validated_data):
         email = validated_data['email']

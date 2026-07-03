@@ -117,18 +117,19 @@ export function StrategyRun() {
         </WarningBox>
       )}
 
-      <div className="space-y-8">
-        <Card className="p-8">
+      <div className="space-y-6">
+        <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-[17px] flex items-center gap-2">
-              <User className="w-5 h-5 text-[#007aff]" />
+            <h3 className="font-bold text-[18px] flex items-center gap-2 text-[#152846]">
+              <User className="w-5 h-5 text-[#b86a12]" />
               현재 기준 프로필
             </h3>
             <button
               onClick={() => navigate("/profile")}
               disabled={isRunning}
-              className="text-[14px] text-[#007aff] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+              className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#0b5bd3] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
             >
+              <Pencil className="w-4 h-4" />
               수정하기
             </button>
           </div>
@@ -138,26 +139,33 @@ export function StrategyRun() {
               <div className="text-[#6e6e73] mb-1">통장 유형</div>
               <div className="font-medium">종합저축 (4년, 600만)</div>
             </div>
-            <div>
-              <div className="text-[#6e6e73] mb-1">주거 요건</div>
-              <div className="font-medium">서울특별시 / 세대주</div>
+            <div className="flex items-center gap-3 px-3 py-2 sm:border-r border-[#eee9df]">
+              <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
+                <MapPin className="w-5 h-5" />
+              </span>
+              <div>
+                <div className="text-[#7a818c] text-[12px] mb-0.5">거주·세대</div>
+                <div className="font-semibold text-[14px] text-[#26364e]">서울 · 세대주</div>
+              </div>
             </div>
-            <div>
-              <div className="text-[#6e6e73] mb-1">주택 소유</div>
-              <div className="font-medium">무주택 (생애최초)</div>
+            <div className="flex items-center gap-3 px-3 py-2">
+              <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
+                <Home className="w-5 h-5" />
+              </span>
+              <div>
+                <div className="text-[#7a818c] text-[12px] mb-0.5">주택 소유</div>
+                <div className="font-semibold text-[14px] text-[#26364e]">무주택 · 5년</div>
+              </div>
             </div>
           </div>
         </Card>
 
-        <Card className="p-8">
-          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
+          <div className="mb-6">
             <div>
-              <h3 className="font-semibold text-[17px] mb-1">관심 공고문 텍스트 (선택)</h3>
-              <p className="text-[14px] text-[#6e6e73]">모집공고문의 주요 내용을 복사해서 붙여넣어주세요.</p>
+              <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">관심 모집공고 입력</h3>
+              <p className="text-[14px] text-[#69717d]">모집공고문의 주요 내용을 복사해서 붙여넣어 주세요.</p>
             </div>
-            <Button variant="outline" className="text-[13px] py-2 px-4 h-auto shrink-0" onClick={() => navigate("/pdf")} disabled={isRunning}>
-              PDF 파일로 분석하기
-            </Button>
           </div>
 
           {noticeText && !isBasicOnly && (
@@ -172,7 +180,7 @@ export function StrategyRun() {
           )}
 
           <textarea
-            className="w-full h-[200px] bg-[#f5f5f7] border border-transparent rounded-[16px] p-5 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] resize-none transition-colors mb-6 disabled:opacity-50"
+            className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
             placeholder="여기에 모집공고문을 붙여넣으세요..."
             value={noticeText}
             onChange={(e) => setNoticeText(e.target.value)}
@@ -195,12 +203,14 @@ export function StrategyRun() {
                 }}
                 disabled={isRunning}
               />
-              <div className="w-6 h-6 rounded-[8px] border-2 border-[#e5e5e7] peer-checked:bg-[#007aff] peer-checked:border-[#007aff] transition-colors flex items-center justify-center group-hover:border-[#007aff]/50">
-                <CheckIcon className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
-              </div>
-            </div>
-            <span className="text-[15px] font-medium select-none">공고 없이 기본 자격만 확인하기</span>
-          </label>
+              <span className="text-[14px] font-semibold">공고 없이 기본 조건만 확인</span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4 px-1 text-[13px] text-[#737b87]">
+            <Timer className="w-4 h-4" />
+            <span>분석에는 보통 30~40초가 걸립니다.</span>
+          </div>
 
           <Button
             className="w-full py-4 text-[17px]"
@@ -222,14 +232,6 @@ export function StrategyRun() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
   );
 }
 

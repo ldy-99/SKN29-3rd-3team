@@ -54,5 +54,21 @@ class StrategyRun(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def transition_to(self, new_status, save=True):
+        """
+        자가진단 실행 상태를 안전하게 검증하고 전이합니다.
+        """
+        valid_transitions = {
+            'PENDING': {'RUNNING', 'FAILED'},
+            'RUNNING': {'SUCCEEDED', 'FAILED'},
+            'SUCCEEDED': set(),
+            'FAILED': set(),
+        }
+        if self.status != new_status and new_status not in valid_transitions.get(self.status, set()):
+            raise ValueError(f"Cannot transition status from '{self.status}' to '{new_status}'")
+        self.status = new_status
+        if save:
+            self.save(update_fields=['status', 'updated_at'])
+
     def __str__(self):
         return f"StrategyRun {self.id} ({self.status})"
