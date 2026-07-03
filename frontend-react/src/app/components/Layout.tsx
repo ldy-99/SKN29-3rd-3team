@@ -1,9 +1,10 @@
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { useEffect, useState } from "react";
-import { 
-  User, 
-  CheckSquare, 
-  FileText, 
+// 역할: 화면 공통 네비게이션과 페이지 틀을 제공합니다.
+// 흐름: App.tsx -> Layout.tsx -> 현재 route page + ChatbotPanel.
+import { NavLink, Outlet, useLocation } from "react-router";
+import {
+  User,
+  CheckSquare,
+  FileText,
   LogOut,
   House,
   History,
@@ -53,10 +54,10 @@ export function Layout() {
                 key={item.path}
                 to={item.path}
                 className={`
-                  flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] font-semibold text-[15px] transition-colors
-                  ${isActive 
-                    ? "bg-[#edf2f8] text-[#0b4ea2]"
-                    : "text-[#455268] hover:bg-[#f5f2eb] hover:text-[#102e5a]"}
+                  flex items-center gap-3 px-4 py-3 rounded-[14px] font-medium text-[15px] transition-colors
+                  ${isActive
+                    ? "bg-[#e5e5e7]/50 text-[#1d1d1f]"
+                    : "text-[#6e6e73] hover:bg-[#e5e5e7]/30 hover:text-[#1d1d1f]"}
                 `}
               >
                 {item.icon}

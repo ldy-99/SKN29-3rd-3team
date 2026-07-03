@@ -1,3 +1,6 @@
+// 역할: 어느 화면에서든 RAG 챗봇 질문을 보낼 수 있는 패널입니다.
+// 흐름: ChatbotPanel -> api.askChatbot -> Django ChatbotAPIView -> FastAPI /api/chat -> RAG graph.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useState, useRef, useEffect } from "react";
 import { Bot, ArrowUp, BookOpen, ChevronDown, Sparkles, AlertCircle } from "lucide-react";
 import { useLocation } from "react-router";
@@ -158,8 +161,8 @@ export function ChatbotPanel() {
           >
             <div className={`${msg.type === 'user' ? 'max-w-[82%]' : 'w-full'}`}>
               <div className={`text-[15px] ${
-                msg.type === 'user' 
-                  ? 'bg-[#102e5a] text-white rounded-[18px] rounded-br-md px-4 py-3 leading-relaxed'
+                msg.type === 'user'
+                  ? 'bg-[#007aff] text-white rounded-[18px] rounded-br-md px-4 py-3 leading-relaxed'
                   : msg.variant === "greeting"
                     ? 'bg-[#fffaf1] text-[#26364e] rounded-[16px] border border-[#eadfca] px-4 py-4'
                     : msg.variant === "error"
@@ -196,28 +199,6 @@ export function ChatbotPanel() {
           </div>
         )}
 
-        {messages.length < 5 && (
-          <div className="flex gap-3 rounded-[16px] border border-[#dfe4eb] bg-[#f5f7fa] px-4 py-4 text-[#657080]">
-            <BookOpen className="w-5 h-5 shrink-0 mt-0.5 text-[#49627e]" />
-            <p className="text-[13px] leading-relaxed">
-              진단 결과가 생성되면 결과를 기준으로 이어서 질문할 수 있어요.
-            </p>
-          </div>
-        )}
-
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-[#e5dfd4] px-4 py-3 rounded-[18px] flex gap-1 items-center h-10">
-              <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce"></div>
-              <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-1.5 h-1.5 bg-[#6e6e73] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input Area */}
-      <div className="p-4 bg-[#fffefa] border-t border-[#eee9df] shrink-0">
         <div className="relative flex items-center">
           <input
             type="text"

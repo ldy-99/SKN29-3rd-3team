@@ -1,3 +1,8 @@
+"""
+역할: React에서 호출하는 인증과 프로필 공개 API를 처리합니다.
+흐름: React client.ts -> accounts.views -> serializers/models -> 공통 envelope 응답.
+다음 파일: django_backend/accounts/serializers.py, django_backend/accounts/models.py.
+"""
 from django.contrib.auth import login, logout, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -30,10 +35,10 @@ class SignUpAPIView(APIView):
         serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
+
         # 즉시 자동 로그인 처리
         login(request, user)
-        
+
         user_serializer = UserSerializer(user)
         return Response(user_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -49,9 +54,9 @@ class LoginAPIView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        
+
         login(request, user)
-        
+
         user_serializer = UserSerializer(user)
         return Response(user_serializer.data, status=status.HTTP_200_OK)
 

@@ -1,3 +1,8 @@
+"""
+역할: 전략 진단, 공고 저장, 챗봇 요청/응답의 공개 API 계약을 검증합니다.
+흐름: strategy.views -> serializers -> models/services.
+다음 파일: django_backend/strategy/views.py, django_backend/strategy/services.py.
+"""
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from strategy.models import AnnouncementInput, StrategyRun
@@ -217,6 +222,8 @@ class StrategyRequestSerializer(serializers.Serializer):
     announcement = AnnouncementInputSerializer(required=False, allow_null=True)
     announcement_text = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
     pdf_analysis_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    input_method = serializers.ChoiceField(choices=["manual", "pdf"], required=False, allow_null=True)
+    source_filename = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
     profile_only = serializers.BooleanField(required=False)
 
 

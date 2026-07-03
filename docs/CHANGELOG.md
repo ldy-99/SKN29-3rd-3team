@@ -2,6 +2,27 @@
 
 세부 파일별 작업 일지 대신 통합 상태에 영향을 주는 변경만 기록합니다.
 
+## 2026-07-03 — PDF 텍스트 추출 MVP
+
+- FastAPI `/api/pdf/analyze` endpoint 추가
+- `pdfplumber.dedupe_chars()` 기반 PDF 텍스트 추출 추가
+- PDF 표 추출 결과를 `combined_text`에 병합
+- PyMuPDF fallback 추가
+- Django PDF proxy에 15MB 크기 제한 추가
+- React PDF 화면을 실제 파일 선택/업로드/미리보기 흐름으로 연결
+- 추출된 `combined_text`를 기존 전략 진단 `announcement_text` 입력으로 전달
+- PDF 원본 파일은 저장하지 않고 사용자 진단 이력에는 입력 방식과 파일명만 snapshot으로 보존
+- ChromaDB HNSW query 오류가 FastAPI `/api/announcement` 500으로 전파되지 않도록 RAG 검색 실패 방어 처리 추가
+
+검증:
+
+- 청약홈 실제 모집공고 PDF 샘플 추출 성공
+- 마이홈 실제 모집공고 PDF 샘플 추출 성공
+- Django `manage.py check` 통과
+- Django `strategy` 테스트 13개 통과
+- RAG retriever 예외 시 `found=False` 반환 확인
+- React build는 Node v24.14.0 + pnpm 환경에서 통과
+
 ## 2026-07-02 — 문서·환경 정리
 
 - 기존 Streamlit `Frontend/` 제거
@@ -82,7 +103,6 @@ b86b62c Improve strategy diagnosis loading UX
 
 ## 현재 미완료
 
-- FastAPI `/api/pdf/analyze`
 - Result 응답 adapter 최종 단일화
 - 표준 CSRF 적용
 - LLM 초기화와 FastAPI app import 분리

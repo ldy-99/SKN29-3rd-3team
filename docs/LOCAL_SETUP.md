@@ -18,7 +18,7 @@ Python 3.13은 ChromaDB와 일부 AI 패키지 호환 문제가 생길 수 있�
 ```powershell
 git clone <repository-url>
 cd SKN29-3rd-3team
-git switch final
+git switch final-debug-share
 ```
 
 Python:
@@ -30,6 +30,21 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -r django_backend\requirements.txt
+```
+
+정상적으로 가상환경에 들어가면 PowerShell 프롬프트 앞에 `(.venv)`가 표시됩니다.
+
+```text
+(.venv) PS C:\...\SKN29-3rd-3team>
+```
+
+표시되지 않으면 `where python`으로 `.venv\Scripts\python.exe`가 먼저 잡히는지 확인합니다.
+
+로컬 개발 편의용으로 두 Python 서비스를 한 번에 설치하려면 아래 파일을 사용할 수 있습니다.
+이 파일은 개발자 PC용이며 배포/컨테이너 기준 파일은 아닙니다.
+
+```powershell
+python -m pip install -r requirements-dev.txt
 ```
 
 React:
@@ -100,14 +115,39 @@ Pop-Location
 
 저장소에 SQLite 파일이 있어도 migration은 항상 실행합니다.
 
-## 5. 서버 실행
+## 5. ChromaDB 구축
+
+RAG 챗봇과 전략 진단 검색을 확인하려면 서버 실행 전에 ChromaDB를 만들어야 합니다. 이 단계는 OpenAI embedding API를 사용하므로 루트 `.env`에 `OPENAI_API_KEY`가 먼저 설정되어 있어야 합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
+```
+
+정상 완료 기준은 아래 6개 collection입니다.
+
+```text
+law_chunks
+faq_chunks
+manual_chunks
+lh_guide_chunks
+web_faq_chunks
+guide_chunks
+```
+
+개수까지 확인하려면 아래 명령을 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
+```
+
+## 6. 서버 실행
 
 세 개의 PowerShell을 사용합니다.
 
 ### Terminal 1 — FastAPI
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir backend --reload --host 127.0.0.1 --port 8080
+.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
 ```
 
 확인:
@@ -137,20 +177,28 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 
 브라우저에서 `http://127.0.0.1:5173`에 접속합니다.
 
-## 6. 정상 QA 순서
+## 7. 정상 QA 순서
 
 1. 회원가입
 2. 프로필 작성·저장
-3. 수동 공고문 입력 또는 기본 진단
+3. 수동 공고문 입력, PDF 추출 또는 기본 진단
 4. 전략 진단 실행
 5. 결과 조회
 6. 챗봇 질문
 
 전략 진단은 약 30~40초가 걸릴 수 있습니다. Django의 FastAPI timeout은 기본 90초이고 React는 약 95초 후 요청을 취소합니다.
 
-PDF는 FastAPI endpoint가 없어 현재 정상 QA 경로에서 제외합니다.
+PDF 경로를 확인하려면 PDF 분석 화면에서 모집공고 PDF를 업로드한 뒤, 미리보기를 확인하고 `전략 진단에 사용`으로 이동합니다. 원본 PDF는 저장하지 않고 추출 텍스트만 진단 입력으로 전달합니다.
 
-## 7. 자동 검증
+## 8. 자동 검증
+
+개발 환경 빠른 점검:
+
+```powershell
+.\scripts\dev-doctor.ps1
+```
+
+`scripts/dev-doctor.ps1`은 로컬 개발 편의용 점검 스크립트입니다. 운영 health check나 배포 gate로 사용하지 않습니다.
 
 Django:
 
@@ -164,7 +212,7 @@ Pop-Location
 FastAPI import:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from main import app; print(app.title)"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print(app.title)"
 ```
 
 React:
@@ -175,7 +223,7 @@ pnpm.cmd run build
 Pop-Location
 ```
 
-## 8. 오류 대응
+## 9. 오류 대응
 
 ### 포트 중복 `[Errno 10048]`
 
@@ -217,12 +265,12 @@ Invoke-RestMethod http://127.0.0.1:8080/health
 로컬 ChromaDB가 없거나 collection이 깨졌다면 재생성합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe backend\src\preprocessing\build_all.py
+.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
 ```
 
 OpenAI embedding 비용이 발생할 수 있으므로 키와 실행 범위를 먼저 확인합니다.
 
-## 9. 운영 주의사항
+## 10. 운영 주의사항
 
 - 운영에서 `DJANGO_DEBUG=false`를 사용합니다.
 - 운영용 `DJANGO_SECRET_KEY`를 별도로 생성합니다.

@@ -6,6 +6,7 @@
 
 # Python
 .venv/
+.venv_*/
 venv/
 env/
 __pycache__/
@@ -22,6 +23,7 @@ dist/
 # Runtime output
 *.log
 *.pid
+db.sqlite3
 
 # Local editor / OS files
 .vscode/

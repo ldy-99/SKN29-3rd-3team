@@ -1,3 +1,6 @@
+// 역할: 회원가입과 로그인을 처리하는 화면입니다.
+// 흐름: 사용자 입력 -> api.signup/api.login -> Django accounts API -> session cookie 발급.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/accounts/views.py.
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/UI";

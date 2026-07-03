@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:codex": "set PATH=C:\\Users\\Playdata\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin;%PATH%&& vite",
     "build": "vite build",
-    "build:codex": "set PATH=C:\\Users\\Playdata\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin;%PATH%&& vite build",
     "preview": "vite preview"
   },
   "dependencies": {

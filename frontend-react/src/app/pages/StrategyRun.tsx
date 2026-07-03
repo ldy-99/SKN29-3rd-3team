@@ -1,6 +1,9 @@
-import { useNavigate } from "react-router";
-import { Card, Button, WarningBox } from "../components/UI";
-import { ArrowRight, CreditCard, Home, MapPin, Pencil, Timer, User } from "lucide-react";
+// 역할: 기본 프로필 진단 또는 수동 공고문 기반 전략 진단을 실행하는 화면입니다.
+// 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
+import { useLocation, useNavigate } from "react-router";
+import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
+import { ArrowRight, FileText, User } from "lucide-react";
 import { ApiRequestError, api } from "../api/client";
 import { useEffect, useState } from "react";
 
@@ -10,7 +13,24 @@ export function StrategyRun() {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [inputMethod, setInputMethod] = useState<"manual" | "pdf">("manual");
+  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const state = location.state as
+      | { announcementText?: string; sourceFilename?: string; inputMethod?: string }
+      | null;
+
+    if (state?.announcementText) {
+      setNoticeText(state.announcementText);
+      setIsBasicOnly(false);
+      setInputMethod(state.inputMethod === "pdf" ? "pdf" : "manual");
+      setSourceFilename(state.sourceFilename ?? null);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -39,6 +59,8 @@ export function StrategyRun() {
         {
           announcement_text: isBasicOnly ? null : noticeText,
           profile_only: isBasicOnly,
+          input_method: isBasicOnly ? null : inputMethod,
+          source_filename: isBasicOnly ? null : sourceFilename,
         },
         controller.signal,
       );
@@ -69,17 +91,12 @@ export function StrategyRun() {
 
   return (
     <div className="pb-20">
-      <div className="mb-9">
-        <p className="mb-3 text-[13px] font-semibold tracking-[0.04em] text-[#b86a12]">
-          프로필과 공고를 한 번에 분석
-        </p>
-        <h1 className="text-[38px] md:text-[44px] font-bold tracking-[-0.035em] leading-tight text-[#102e5a]">
-          전략 진단
-        </h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-[#596273]">
-          프로필과 관심 공고를 바탕으로 청약 조건과 준비 전략을 확인합니다.
-        </p>
-      </div>
+      <ApiBadge method="POST" endpoint="/api/strategy" />
+
+      <PageTitle
+        title="전략 진단"
+        description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다."
+      />
 
       {error && (
         <WarningBox type="error" title="API 연결 오류">
@@ -116,16 +133,11 @@ export function StrategyRun() {
               수정하기
             </button>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-[#eee9df] pt-5">
-            <div className="flex items-center gap-3 px-3 py-2 sm:border-r border-[#eee9df]">
-              <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
-                <CreditCard className="w-5 h-5" />
-              </span>
-              <div>
-                <div className="text-[#7a818c] text-[12px] mb-0.5">청약통장</div>
-                <div className="font-semibold text-[14px] text-[#26364e]">종합저축 · 48회</div>
-              </div>
+
+          <div className="bg-[#f5f5f7] rounded-[16px] p-5 flex flex-wrap gap-x-8 gap-y-4 text-[14px]">
+            <div>
+              <div className="text-[#6e6e73] mb-1">통장 유형</div>
+              <div className="font-medium">종합저축 (4년, 600만)</div>
             </div>
             <div className="flex items-center gap-3 px-3 py-2 sm:border-r border-[#eee9df]">
               <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
@@ -156,6 +168,17 @@ export function StrategyRun() {
             </div>
           </div>
 
+          {noticeText && !isBasicOnly && (
+            <div className="mb-4 flex items-center gap-2 rounded-[14px] bg-[#007aff]/10 px-4 py-3 text-[13px] text-[#1d1d1f]">
+              <FileText className="w-4 h-4 text-[#007aff] shrink-0" />
+              <span>
+                {inputMethod === "pdf"
+                  ? `${sourceFilename ?? "PDF"} 추출 텍스트가 진단 입력에 준비되어 있습니다.`
+                  : "수동 입력 공고문이 진단 입력에 준비되어 있습니다."}
+              </span>
+            </div>
+          )}
+
           <textarea
             className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
             placeholder="여기에 모집공고문을 붙여넣으세요..."
@@ -164,27 +187,19 @@ export function StrategyRun() {
             disabled={isBasicOnly || isRunning}
           ></textarea>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 rounded-[15px] border border-[#e5dfd4] bg-[#fbfaf7] p-1.5 mb-5">
-            <label className={`flex items-center gap-3 px-4 py-3 rounded-[11px] cursor-pointer transition-colors ${!isBasicOnly ? "bg-white shadow-sm text-[#102e5a]" : "text-[#6e7682]"}`}>
+          <label className="flex items-center gap-3 mb-8 cursor-pointer group">
+            <div className="relative flex items-center">
               <input
-                type="radio"
-                name="diagnosis-mode"
-                className="accent-[#102e5a]"
-                checked={!isBasicOnly}
-                onChange={() => setIsBasicOnly(false)}
-                disabled={isRunning}
-              />
-              <span className="text-[14px] font-semibold">공고문과 함께 진단</span>
-            </label>
-            <label className={`flex items-center gap-3 px-4 py-3 rounded-[11px] cursor-pointer transition-colors ${isBasicOnly ? "bg-white shadow-sm text-[#102e5a]" : "text-[#6e7682]"}`}>
-              <input
-                type="radio"
-                name="diagnosis-mode"
-                className="accent-[#102e5a]"
+                type="checkbox"
+                className="peer sr-only"
                 checked={isBasicOnly}
-                onChange={() => {
-                  setIsBasicOnly(true);
-                  setNoticeText("");
+                onChange={(e) => {
+                  setIsBasicOnly(e.target.checked);
+                  if (e.target.checked) {
+                    setNoticeText("");
+                    setInputMethod("manual");
+                    setSourceFilename(null);
+                  }
                 }}
                 disabled={isRunning}
               />
@@ -197,8 +212,8 @@ export function StrategyRun() {
             <span>분석에는 보통 30~40초가 걸립니다.</span>
           </div>
 
-          <Button 
-            className="w-full py-4 text-[17px] !rounded-[13px] !bg-[#102e5a] hover:!bg-[#183f75] focus:!ring-[#102e5a]"
+          <Button
+            className="w-full py-4 text-[17px]"
             onClick={handleRun}
             disabled={isRunning || (!isBasicOnly && noticeText.trim() === "")}
           >

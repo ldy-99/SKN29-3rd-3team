@@ -1,0 +1,5 @@
+# Local development convenience only.
+# Production/container builds should install each service requirement file directly.
+
+-r requirements.txt
+-r django_backend/requirements.txt

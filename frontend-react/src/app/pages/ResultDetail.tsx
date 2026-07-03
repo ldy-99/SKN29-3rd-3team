@@ -1,3 +1,6 @@
+// 역할: 저장된 전략 진단 결과를 조회하고 사용자에게 요약/상세 결과를 보여주는 화면입니다.
+// 흐름: ResultDetail.tsx -> api.getStrategy -> Django StrategyDetailAPIView -> StrategyRun.result_payload.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Card, PageTitle, ApiBadge, StatusBadge, WarningBox, Button, SettingsList } from "../components/UI";

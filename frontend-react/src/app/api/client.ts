@@ -1,3 +1,6 @@
+// 역할: React 화면들이 Django 공개 API를 호출할 때 사용하는 공통 client입니다.
+// 흐름: 각 page/component -> client.ts -> Django /api/* -> FastAPI/RAG(필요 시).
+// 이전 파일: Login/Profile/StrategyRun/ResultDetail/PdfAnalysis/ChatbotPanel, 다음 파일: django_backend의 accounts/strategy views.
 import profileFixture from "../fixtures/profile-basic-p0.json";
 import strategyFixture from "../fixtures/strategy-response-partial.json";
 import pdfFixture from "../fixtures/pdf-analyze-response-needs-review.json";
@@ -153,6 +156,9 @@ export const api = {
     input: {
       announcement_text?: string | null;
       profile_only?: boolean;
+      input_method?: "manual" | "pdf" | null;
+      source_filename?: string | null;
+      pdf_analysis_id?: string | null;
     },
     signal?: AbortSignal,
   ) {
@@ -186,9 +192,9 @@ export const api = {
     });
   },
 
-  analyzePdf(file?: File) {
+  analyzePdf(file: File) {
     const body = new FormData();
-    if (file) body.append("file", file);
+    body.append("file", file);
 
     return request<typeof pdfFixture.data>("/api/pdf/analyze", {
       method: "POST",
