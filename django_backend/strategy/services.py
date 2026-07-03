@@ -1,7 +1,7 @@
 """
 역할: Django에서 내부 FastAPI AI API를 호출하는 HTTP client입니다.
 흐름: strategy.views -> FastAPIClient -> Backend /api/profile, /api/simulate, /api/announcement, /api/chat.
-주의: PDF proxy 메서드는 있으나 FastAPI /api/pdf/analyze endpoint가 아직 없습니다.
+주의: PDF proxy는 원본 파일을 저장하지 않고 FastAPI 추출 endpoint에 일회성으로 전달합니다.
 """
 import requests
 from django.conf import settings

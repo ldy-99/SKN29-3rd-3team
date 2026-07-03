@@ -1,6 +1,6 @@
 # API 계약
 
-기준일: 2026-07-02
+기준일: 2026-07-03
 공개 base URL: `http://127.0.0.1:8000/api`
 
 ## 1. 공통 규칙
@@ -64,7 +64,7 @@
 | `POST` | `/api/user/announcement` | 예 | 구조화 공고 저장 |
 | `GET` | `/api/user/announcement/{id}` | 예 | 내 공고 상세 |
 | `POST` | `/api/chatbot` | 예 | RAG 챗봇 질문 |
-| `POST` | `/api/pdf/analyze` | 예 | PDF 프록시, 현재 end-to-end 미완료 |
+| `POST` | `/api/pdf/analyze` | 예 | PDF 텍스트/표 추출 프록시 |
 
 ## 4. 인증 요청
 
@@ -211,9 +211,35 @@ special_supply_types_available
 
 ## 9. PDF
 
-React 업로드 화면과 Django `POST /api/pdf/analyze`는 존재합니다. Django는 PDF MIME/확장자를 검사한 뒤 FastAPI `/api/pdf/analyze`로 전달합니다.
+React 업로드 화면과 Django `POST /api/pdf/analyze`는 존재합니다. Django는 PDF MIME/확장자/크기를 검사한 뒤 FastAPI `/api/pdf/analyze`로 전달합니다.
 
-현재 FastAPI에는 해당 endpoint가 없습니다. 따라서 이 API는 end-to-end 완료 계약이 아니며 MVP에서는 수동 공고문 입력을 사용합니다.
+FastAPI는 PDF 원본을 저장하지 않고 요청 처리 중 메모리에서만 읽습니다. `pdfplumber.dedupe_chars()` 기반으로 텍스트와 표를 추출하고, 추출 텍스트가 너무 짧으면 PyMuPDF fallback을 사용합니다.
+
+응답:
+
+```json
+{
+  "pdf_analysis_id": "uuid",
+  "extraction_status": "EXTRACTED",
+  "filename": "notice.pdf",
+  "page_count": 52,
+  "text_length": 101550,
+  "combined_text_length": 15000,
+  "table_count": 101,
+  "truncated": true,
+  "preview": "미리보기 텍스트",
+  "combined_text": "전략 진단 입력용 텍스트",
+  "tables": [
+    {
+      "page": 1,
+      "rows": [["구분", "일정"], ["특별공급", "2026.07.13"]]
+    }
+  ],
+  "warnings": ["추출 텍스트가 길어 진단 입력용 본문은 일부만 사용합니다."]
+}
+```
+
+`combined_text`는 React에서 사용자가 확인한 뒤 기존 전략 진단의 `announcement_text`로 전달합니다. 원본 PDF 파일은 저장하지 않습니다.
 
 ## 10. 오류 코드
 
@@ -221,6 +247,7 @@ React 업로드 화면과 Django `POST /api/pdf/analyze`는 존재합니다. Dja
 |---:|---|---|
 | 400 | `PROFILE_REQUIRED_FIELDS_MISSING` | 프로필 필수값 누락 |
 | 400 | `PDF_INVALID_TYPE` | PDF가 아닌 파일 |
+| 400 | `PDF_TOO_LARGE` | 15MB 초과 PDF |
 | 401/403 | DRF 인증 코드 | 로그인 또는 권한 없음 |
 | 404 | `NOT_FOUND` 계열 | 프로필·결과·공고 없음 |
 | 429 | throttle 오류 | 사용자 요청 제한 초과 |
@@ -253,5 +280,6 @@ React 업로드 화면과 Django `POST /api/pdf/analyze`는 존재합니다. Dja
 | `POST` | `/api/simulate` | 기본·상세 진단 분기 |
 | `POST` | `/api/announcement` | 공고문 반영 및 상세 결과 |
 | `POST` | `/api/chat` | RAG 챗봇 |
+| `POST` | `/api/pdf/analyze` | PDF 텍스트/표 추출 |
 
 이 endpoint는 브라우저용 공개 API가 아닙니다.

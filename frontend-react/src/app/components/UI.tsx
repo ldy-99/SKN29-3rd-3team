@@ -1,9 +1,16 @@
 import React from "react";
 import { Info, AlertCircle, XCircle, CheckCircle } from "lucide-react";
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) {
   return (
-    <div className={`bg-white rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-[#e5e5e7] overflow-hidden ${className}`}>
+    <div
+      className={`bg-white rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-[#e5e5e7] overflow-hidden ${className}`}
+      {...props}
+    >
       {children}
     </div>
   );

@@ -86,6 +86,8 @@ class StrategyRequestSerializer(serializers.Serializer):
     announcement = AnnouncementInputSerializer(required=False, allow_null=True)
     announcement_text = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
     pdf_analysis_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    input_method = serializers.ChoiceField(choices=["manual", "pdf"], required=False, allow_null=True)
+    source_filename = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
     profile_only = serializers.BooleanField(required=False)
 
 

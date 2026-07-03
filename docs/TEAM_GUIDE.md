@@ -31,12 +31,12 @@
 - 90초 backend timeout, 95초 frontend abort, 502 메시지 구분
 - 실제 FastAPI result를 기준으로 Result component 정리
 - 챗봇 긴 답변, 문단, 번호 목록, 출처 toggle 가독성 검증
-- PDF가 미완료일 때 수동 공고문 fallback을 우선 노출
+- PDF 추출 결과를 사용자가 확인하고 전략 진단 입력으로 넘기는 흐름 검증
 
 ### B — Tech Lead·Integration
 
 - `API_CONTRACT.md`와 fixture를 단일 계약으로 관리
-- PDF를 MVP 제외로 유지할지 endpoint를 구현할지 결정
+- PDF 원본 미저장, 추출 텍스트 저장 범위, 구조화 고도화 범위 관리
 - Result payload를 `result_payload` 내부 또는 최상위 중 하나로 확정
 - 새 clone QA 시나리오와 통과 기준 관리
 - 변경 충돌, migration, 환경변수, rollback 영향 리뷰
@@ -55,7 +55,7 @@
 - 앱 import 시 LLM·embedding 객체 생성 지연 또는 분리
 - 외부 LLM 호출별 timeout과 fallback 정의
 - `/api/profile`, `/api/simulate`, `/api/announcement`, `/api/chat` 계약 고정
-- PDF 구현을 선택하면 `/api/pdf/analyze` schema·오류·테스트 추가
+- `/api/pdf/analyze` 추출 품질, 오류, 파일 크기 제한 회귀 테스트
 - RAG 답변의 answer, sources, session_id 구조 안정화
 - Node 6 장시간 정지와 예외 경로 회귀 테스트
 

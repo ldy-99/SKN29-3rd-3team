@@ -78,6 +78,8 @@ class StrategyRunAPIView(APIView):
             "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else {
                 "announcement_text": top_level_announcement_text,
                 "pdf_analysis_id": req_serializer.validated_data.get('pdf_analysis_id'),
+                "input_method": req_serializer.validated_data.get('input_method') or ("manual" if top_level_announcement_text else None),
+                "source_filename": req_serializer.validated_data.get('source_filename'),
                 "profile_only": req_serializer.validated_data.get('profile_only', False),
             }
         }
@@ -144,7 +146,7 @@ class StrategyDetailAPIView(APIView):
 
 class PDFAnalyzeAPIView(APIView):
     """
-    모집공고문 PDF 파일 수신 및 내부 FastAPI AI 분석 프록시 API.
+    모집공고문 PDF 파일 수신 및 내부 FastAPI 텍스트 추출 프록시 API.
     """
     parser_classes = [MultiPartParser]
     permission_classes = [IsAuthenticated]
@@ -160,8 +162,13 @@ class PDFAnalyzeAPIView(APIView):
             exc.code = "PDF_INVALID_TYPE"
             exc.message = "PDF 파일 형식이 유효하지 않습니다."
             raise exc
+        if file_obj.size > 15 * 1024 * 1024:
+            exc = ValidationError("PDF 파일은 15MB 이하만 업로드할 수 있습니다.")
+            exc.code = "PDF_TOO_LARGE"
+            exc.message = "PDF 파일 크기가 제한을 초과했습니다."
+            raise exc
 
-        # 2. FastAPI 프록시 전송
+        # 2. 원본 파일은 저장하지 않고 FastAPI에 일회성 추출 요청으로만 전달합니다.
         client = FastAPIClient()
         try:
             result = client.proxy_pdf_analysis(file_obj.name, file_obj.read())

@@ -1,10 +1,10 @@
 # 프로젝트 명세
 
-기준일: 2026-07-02
+기준일: 2026-07-03
 
 ## 1. 목표
 
-3차 프로젝트의 청약 계산·LangGraph·RAG 기능을 React와 Django 기반 웹 서비스로 통합합니다. 사용자는 회원가입 후 프로필을 저장하고, 수동 모집공고 또는 기본 프로필을 바탕으로 전략 진단 결과와 챗봇 답변을 확인할 수 있어야 합니다.
+3차 프로젝트의 청약 계산·LangGraph·RAG 기능을 React와 Django 기반 웹 서비스로 통합합니다. 사용자는 회원가입 후 프로필을 저장하고, 수동 모집공고·PDF 추출 공고문·기본 프로필을 바탕으로 전략 진단 결과와 챗봇 답변을 확인할 수 있어야 합니다.
 
 ## 2. 현재 MVP 범위
 
@@ -16,7 +16,7 @@
 | 수동 공고문 기반 진단 | 완료 | 공고 텍스트를 전략 진단에 반영 |
 | 결과 목록·상세 조회 | 완료 | 실행별 snapshot과 result payload 조회 |
 | RAG 챗봇 | 완료 | React → Django → FastAPI `/api/chat` |
-| PDF 업로드 기반 진단 | 미완료 | FastAPI `/api/pdf/analyze` 구현 필요 |
+| PDF 업로드 기반 진단 | 완료 | 원본 저장 없이 텍스트/표 추출 후 전략 진단 입력으로 연결 |
 | Docker·CI·배포 재현 | 미완료 | 새 clone 자동 실행 구조 필요 |
 
 MVP 정상 경로는 다음과 같습니다.
@@ -24,13 +24,13 @@ MVP 정상 경로는 다음과 같습니다.
 ```text
 회원가입
   → 프로필 저장
-  → 기본 진단 또는 수동 공고문 입력
+  → 기본 진단, 수동 공고문 입력 또는 PDF 추출
   → 전략 진단
   → 결과 조회
   → 챗봇 질문
 ```
 
-PDF 화면과 Django 프록시는 존재하지만 FastAPI endpoint가 없으므로 현재 완료 경로에 포함하지 않습니다.
+PDF는 공고문 텍스트와 표를 추출해 `announcement_text` 입력으로 연결합니다. 구조화 필드 자동 확정은 후속 고도화 범위입니다.
 
 ## 3. 시스템 구조
 
@@ -105,7 +105,7 @@ React POST /api/chatbot
 |---|---|
 | `User` | Django 사용자와 인증 정보 |
 | `Profile` | 청약통장, 거주, 무주택, 세대, 혼인·자녀, 소득·자산 |
-| `AnnouncementInput` | 수동 입력 또는 향후 PDF 분석 확정 공고 |
+| `AnnouncementInput` | 수동 입력 또는 PDF 추출 후 사용자가 확정한 공고 |
 | `StrategyRun` | 상태, 입력 snapshot, FastAPI result payload, 실행 시각 |
 
 현재 DB는 `django_backend/db.sqlite3`입니다. PostgreSQL 전환은 배포 단계의 후속 작업입니다.
@@ -135,7 +135,7 @@ ChromaDB는 Git에 포함하지 않습니다. 새 환경에서는 필요할 때 
 
 1. 응답 adapter를 한 계층으로 정리하고 Result 계약 고정
 2. LLM 초기화와 앱 import 분리, timeout·fallback 정리
-3. PDF를 MVP에서 계속 제외할지 FastAPI endpoint를 구현할지 확정
+3. PDF 추출 결과의 구조화 필드 자동 확정 여부 검토
 4. 표준 CSRF 적용
 5. Docker Compose, 배포 환경변수, CI 구성
 6. 새 clone 기준 전원 통합 QA

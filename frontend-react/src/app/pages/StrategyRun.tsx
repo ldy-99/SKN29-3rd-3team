@@ -1,9 +1,9 @@
 // 역할: 기본 프로필 진단 또는 수동 공고문 기반 전략 진단을 실행하는 화면입니다.
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
-import { ArrowRight, User } from "lucide-react";
+import { ArrowRight, FileText, User } from "lucide-react";
 import { ApiRequestError, api } from "../api/client";
 import { useEffect, useState } from "react";
 
@@ -13,7 +13,24 @@ export function StrategyRun() {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [inputMethod, setInputMethod] = useState<"manual" | "pdf">("manual");
+  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const state = location.state as
+      | { announcementText?: string; sourceFilename?: string; inputMethod?: string }
+      | null;
+
+    if (state?.announcementText) {
+      setNoticeText(state.announcementText);
+      setIsBasicOnly(false);
+      setInputMethod(state.inputMethod === "pdf" ? "pdf" : "manual");
+      setSourceFilename(state.sourceFilename ?? null);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -42,6 +59,8 @@ export function StrategyRun() {
         {
           announcement_text: isBasicOnly ? null : noticeText,
           profile_only: isBasicOnly,
+          input_method: isBasicOnly ? null : inputMethod,
+          source_filename: isBasicOnly ? null : sourceFilename,
         },
         controller.signal,
       );
@@ -141,6 +160,17 @@ export function StrategyRun() {
             </Button>
           </div>
 
+          {noticeText && !isBasicOnly && (
+            <div className="mb-4 flex items-center gap-2 rounded-[14px] bg-[#007aff]/10 px-4 py-3 text-[13px] text-[#1d1d1f]">
+              <FileText className="w-4 h-4 text-[#007aff] shrink-0" />
+              <span>
+                {inputMethod === "pdf"
+                  ? `${sourceFilename ?? "PDF"} 추출 텍스트가 진단 입력에 준비되어 있습니다.`
+                  : "수동 입력 공고문이 진단 입력에 준비되어 있습니다."}
+              </span>
+            </div>
+          )}
+
           <textarea
             className="w-full h-[200px] bg-[#f5f5f7] border border-transparent rounded-[16px] p-5 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] resize-none transition-colors mb-6 disabled:opacity-50"
             placeholder="여기에 모집공고문을 붙여넣으세요..."
@@ -157,7 +187,11 @@ export function StrategyRun() {
                 checked={isBasicOnly}
                 onChange={(e) => {
                   setIsBasicOnly(e.target.checked);
-                  if (e.target.checked) setNoticeText("");
+                  if (e.target.checked) {
+                    setNoticeText("");
+                    setInputMethod("manual");
+                    setSourceFilename(null);
+                  }
                 }}
                 disabled={isRunning}
               />

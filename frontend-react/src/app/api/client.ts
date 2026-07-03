@@ -149,6 +149,9 @@ export const api = {
     input: {
       announcement_text?: string | null;
       profile_only?: boolean;
+      input_method?: "manual" | "pdf" | null;
+      source_filename?: string | null;
+      pdf_analysis_id?: string | null;
     },
     signal?: AbortSignal,
   ) {
@@ -182,9 +185,9 @@ export const api = {
     });
   },
 
-  analyzePdf(file?: File) {
+  analyzePdf(file: File) {
     const body = new FormData();
-    if (file) body.append("file", file);
+    body.append("file", file);
 
     return request<typeof pdfFixture.data>("/api/pdf/analyze", {
       method: "POST",

@@ -177,7 +177,11 @@ def search_all(
             print(f"[retriever] collection '{name}' 조회 실패: {e}")
             continue
 
-        res = col.query(query_texts=[query], n_results=k_per_collection)
+        try:
+            res = col.query(query_texts=[query], n_results=k_per_collection)
+        except Exception as e:
+            print(f"[retriever] collection '{name}' 검색 실패: {e}")
+            continue
 
         # query_texts에 질문을 1개만 넣었으므로 항상 [0] 인덱스 사용
         docs  = res["documents"][0]
@@ -224,7 +228,11 @@ def search_weighted(
             print(f"[retriever] collection '{name}' 조회 실패: {e}")
             continue
 
-        res = col.query(query_texts=[query], n_results=k)
+        try:
+            res = col.query(query_texts=[query], n_results=k)
+        except Exception as e:
+            print(f"[retriever] collection '{name}' 검색 실패: {e}")
+            continue
 
         docs  = res["documents"][0]
         metas = res["metadatas"][0]

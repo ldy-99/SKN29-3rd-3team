@@ -26,8 +26,6 @@ RAG_DIR = os.path.join(
 )
 sys.path.insert(0, RAG_DIR)
 
-from retriever import search, format_source
-
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # ── 공통 RAG 답변 생성 함수 ───────────────────────────────────────
@@ -37,12 +35,18 @@ def _rag_answer(query: str, system_prompt: str) -> dict:
     retriever로 context를 검색하고 LLM으로 답변을 생성합니다.
     검색 결과가 없으면 found=False를 반환합니다.
     """
-
-    result = search(query)
-
     retriever = _load_retriever()
-    result = retriever.search(query)
 
+    try:
+        result = retriever.search(query)
+    except Exception as exc:
+        print(f"[rag_tools] RAG 검색 실패: {exc}")
+        return {
+            "found": False,
+            "answer": "RAG 검색 중 오류가 발생해 관련 근거를 확인하지 못했습니다.",
+            "sources": [],
+            "error": str(exc),
+        }
 
     if not result["found"]:
         return {
@@ -54,9 +58,6 @@ def _rag_answer(query: str, system_prompt: str) -> dict:
     context_parts = []
     sources = []
     for dist, doc, meta, col_name in result["results"]:
-
-        label = format_source(meta, col_name)
-
         label = retriever.format_source(meta, col_name)
 
         context_parts.append(f"[출처: {label}]\n{doc}")
@@ -82,8 +83,6 @@ Context에 없는 내용은 "제공된 자료에서는 확인할 수 없습니�
 
 
     chain = prompt | llm | StrOutputParser()
-
-    chain = prompt | ChatOpenAI(model="gpt-4o-mini", temperature=0) | StrOutputParser()
 
     answer = chain.invoke({
         "system_prompt": system_prompt,
