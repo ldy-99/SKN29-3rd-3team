@@ -23,6 +23,7 @@ dist/
 # Runtime output
 *.log
 *.pid
+db.sqlite3
 
 # Local editor / OS files
 .vscode/
