@@ -149,27 +149,20 @@ class StrategyAPITests(APITestCase):
         response_json = response.json()
         self.assertEqual(response_json['error']['code'], 'PDF_INVALID_TYPE')
 
-    @patch('strategy.views.FastAPIClient.proxy_pdf_analysis')
-    def test_pdf_upload_success(self, mock_proxy_pdf):
+    def test_pdf_upload_unsupported(self):
         """
-        정상 PDF 업로드 시 FastAPI 프록시를 통해 연산 결과를 안전하게 받아오는지 검증
+        정상 PDF 업로드 시 현재 버전에서는 미지원 에러(PDF_ANALYSIS_UNSUPPORTED)를 반환하는지 검증
         """
-        mock_proxy_pdf.return_value = {
-            "announcement_name": "힐스테이트 대시보드 공고",
-            "region": "SEOUL",
-            "supply_category": "PRIVATE"
-        }
-        
         from django.core.files.uploadedfile import SimpleUploadedFile
         fake_pdf = SimpleUploadedFile("announcement.pdf", b"%PDF-1.4 mock pdf body", content_type="application/pdf")
         
         url = reverse('pdf-analyze')
         response = self.client.post(url, {"file": fake_pdf}, format='multipart')
         
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         response_json = response.json()
-        self.assertIsNone(response_json['error'])
-        self.assertEqual(response_json['data']['announcement_name'], "힐스테이트 대시보드 공고")
+        self.assertEqual(response_json['error']['code'], 'PDF_ANALYSIS_UNSUPPORTED')
+        self.assertIn("지원되지 않습니다", response_json['error']['message'])
 
     def test_announcement_create_invalid(self):
         """
@@ -324,3 +317,21 @@ class FastAPIClientFlowTests(APITestCase):
 
         self.assertEqual(result["session_id"], "fastapi-session")
         self.assertEqual(calls, [("simulate", "fastapi-session", False)])
+
+    def test_strategy_run_invalid_transition(self):
+        user = User.objects.create_user(username="test_transition_user", password="pwd")
+        run = StrategyRun.objects.create(
+            user=user,
+            status='PENDING'
+        )
+        with self.assertRaises(ValueError):
+            run.transition_to('SUCCEEDED')
+        
+        run.transition_to('RUNNING')
+        self.assertEqual(run.status, 'RUNNING')
+        
+        run.transition_to('SUCCEEDED')
+        self.assertEqual(run.status, 'SUCCEEDED')
+        
+        with self.assertRaises(ValueError):
+            run.transition_to('RUNNING')

@@ -35,3 +35,7 @@ docs/4th_project_vault/
 # ChromaDB is intentionally retained locally as RAG runtime data.
 # Rebuild it with backend/src/preprocessing/build_all.py when needed.
 backend/src/preprocessing/chroma_db/
+
+# Django local database
+django_backend/db.sqlite3
+

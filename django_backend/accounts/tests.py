@@ -289,3 +289,36 @@ class ProfileAPITests(APITestCase):
         self.assertEqual(response_json['data']['household_member_count'], 3)
         # 패치하지 않은 다른 필드가 잘 유지되는지 검증
         self.assertEqual(response_json['data']['bankbook_payment_count'], 24)
+
+    def test_signup_email_normalization(self):
+        """
+        회원가입 시 이메일 소문자 및 공백 제거(정규화) 검증.
+        """
+        signup_data = {
+            "username": "norm_user",
+            "email": "  NormUser@Example.Com  ",
+            "password": "testpassword123"
+        }
+        url = reverse('signup')
+        response = self.client.post(url, signup_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # 실제 저장된 유저의 이메일 확인
+        user = User.objects.get(username="norm_user")
+        self.assertEqual(user.email, "normuser@example.com")
+
+    def test_signup_weak_password(self):
+        """
+        회원가입 시 너무 약한 비밀번호 입력 시 가입 거부(400 Bad Request) 검증.
+        """
+        signup_data = {
+            "username": "weak_user",
+            "email": "weak@example.com",
+            "password": "123"  # 너무 짧고 흔한 비밀번호
+        }
+        url = reverse('signup')
+        response = self.client.post(url, signup_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        response_json = response.json()
+        self.assertIn('password', response_json['error']['field_errors'])
