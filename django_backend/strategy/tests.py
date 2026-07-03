@@ -149,20 +149,35 @@ class StrategyAPITests(APITestCase):
         response_json = response.json()
         self.assertEqual(response_json['error']['code'], 'PDF_INVALID_TYPE')
 
-    def test_pdf_upload_unsupported(self):
+    @patch('strategy.views.FastAPIClient.proxy_pdf_analysis')
+    def test_pdf_upload_success(self, mock_proxy_pdf_analysis):
         """
-        정상 PDF 업로드 시 현재 버전에서는 미지원 에러(PDF_ANALYSIS_UNSUPPORTED)를 반환하는지 검증
+        정상 PDF 업로드 시 FastAPI PDF 분석 프록시가 호출되고 결과를 반환하는지 검증
         """
+        mock_proxy_pdf_analysis.return_value = {
+            "pdf_analysis_id": "test-pdf-analysis",
+            "extraction_status": "SUCCESS",
+            "filename": "announcement.pdf",
+            "page_count": 1,
+            "text_length": 120,
+            "combined_text_length": 120,
+            "table_count": 0,
+            "truncated": False,
+            "preview": "모집공고 미리보기",
+            "combined_text": "모집공고 전문",
+            "warnings": [],
+        }
         from django.core.files.uploadedfile import SimpleUploadedFile
         fake_pdf = SimpleUploadedFile("announcement.pdf", b"%PDF-1.4 mock pdf body", content_type="application/pdf")
         
         url = reverse('pdf-analyze')
         response = self.client.post(url, {"file": fake_pdf}, format='multipart')
         
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_json = response.json()
-        self.assertEqual(response_json['error']['code'], 'PDF_ANALYSIS_UNSUPPORTED')
-        self.assertIn("지원되지 않습니다", response_json['error']['message'])
+        self.assertIsNone(response_json['error'])
+        self.assertEqual(response_json['data']['pdf_analysis_id'], 'test-pdf-analysis')
+        mock_proxy_pdf_analysis.assert_called_once()
 
     def test_announcement_create_invalid(self):
         """
