@@ -3,7 +3,7 @@
 // 추출된 원본 PDF는 저장하지 않고 combined_text만 전략 진단 입력으로 넘깁니다.
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Card, PageTitle, ApiBadge, Button, SettingsList, WarningBox } from "../components/UI";
+import { Card, PageTitle, Button, ErrorNotice, SettingsList, WarningBox } from "../components/UI";
 import { ArrowRight, FileText, Upload } from "lucide-react";
 import { api } from "../api/client";
 
@@ -25,7 +25,7 @@ export function PdfAnalysis() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [result, setResult] = useState<PdfAnalysisResult | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
@@ -39,14 +39,14 @@ export function PdfAnalysis() {
 
     setSelectedFile(file);
     setIsUploading(true);
-    setError("");
+    setError(null);
     setResult(null);
 
     try {
       const data = await api.analyzePdf(file);
       setResult(data);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "PDF 분석 요청에 실패했습니다.");
+      setError(error);
     } finally {
       setIsUploading(false);
     }
@@ -67,8 +67,6 @@ export function PdfAnalysis() {
 
   return (
     <div className="pb-20">
-      <ApiBadge method="POST" endpoint="/api/pdf/analyze" />
-
       <PageTitle
         title="PDF 공고문 분석"
         description="모집공고문에서 텍스트와 표를 추출해 전략 진단 입력으로 사용합니다."
@@ -78,11 +76,7 @@ export function PdfAnalysis() {
         PDF 원본은 저장하지 않습니다. 추출된 텍스트를 확인한 뒤 전략 진단 입력으로 넘깁니다.
       </div>
 
-      {error && (
-        <WarningBox type="error" title="API 연결 오류">
-          {error}
-        </WarningBox>
-      )}
+      <ErrorNotice error={error} fallbackMessage="PDF 분석 요청에 실패했습니다." />
 
       <div className="space-y-8">
         <Card className={`p-10 border-2 border-dashed flex flex-col items-center justify-center text-center min-h-[300px] transition-colors cursor-pointer group ${

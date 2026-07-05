@@ -1,5 +1,4 @@
 // 역할: URL 경로와 React page component를 매핑합니다.
-// 흐름: App.tsx -> routes.tsx -> Login/Profile/StrategyRun/ResultDetail/PdfAnalysis.
 import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
@@ -8,6 +7,8 @@ import { Profile } from "./pages/Profile";
 import { StrategyRun } from "./pages/StrategyRun";
 import { ResultDetail } from "./pages/ResultDetail";
 import { PdfAnalysis } from "./pages/PdfAnalysis";
+import { MyPage } from "./pages/MyPage";
+import { ChatbotPage } from "./pages/ChatbotPage";
 
 export const router = createBrowserRouter([
   {
@@ -23,10 +24,11 @@ export const router = createBrowserRouter([
     children: [
       { path: "/profile", Component: Profile },
       { path: "/strategy", Component: StrategyRun },
-      // To simplify, results are navigated directly via mock IDs
-      { path: "/results", element: <Navigate to="/strategy" replace /> },
+      { path: "/mypage", Component: MyPage },
+      { path: "/results", element: <Navigate to="/mypage" replace /> },
       { path: "/results/:id", Component: ResultDetail },
       { path: "/pdf", Component: PdfAnalysis },
+      { path: "/chatbot", Component: ChatbotPage },
     ],
   },
 ]);

@@ -2,7 +2,7 @@
 // 흐름: Profile.tsx -> api.getProfile/saveProfile -> Django ProfileAPIView -> accounts.models.Profile.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/accounts/serializers.py.
 import { useEffect, useState } from "react";
-import { PageTitle, ApiBadge, FormGroup, SettingsList, Button, WarningBox } from "../components/UI";
+import { PageTitle, FormGroup, SettingsList, Button, ErrorNotice, WarningBox } from "../components/UI";
 import { Check } from "lucide-react";
 import { ApiRequestError, api } from "../api/client";
 
@@ -93,7 +93,7 @@ const booleanFields = new Set<keyof ProfileForm>([
 export function Profile() {
   const [isSaved, setIsSaved] = useState(false);
   const [profile, setProfile] = useState<ProfileForm>(defaultProfile);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -106,16 +106,16 @@ export function Profile() {
         setProfile(defaultProfile);
         if (error instanceof ApiRequestError && error.status === 404) {
           setNotice("저장된 프로필이 없어 새로 작성합니다.");
-          setError("");
+          setError(null);
           return;
         }
         setNotice("");
-        setError(error instanceof Error ? error.message : "프로필 조회에 실패했습니다.");
+        setError(error);
       });
   }, []);
 
   const saveProfile = async () => {
-    setError("");
+    setError(null);
     setNotice("");
 
     try {
@@ -124,7 +124,7 @@ export function Profile() {
       setNotice("프로필이 저장되었습니다.");
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "프로필 저장에 실패했습니다.");
+      setError(error);
     }
   };
 
@@ -134,34 +134,77 @@ export function Profile() {
   };
 
   const updateField = (field: keyof ProfileForm, value: string) => {
-    setProfile((current) => ({
-      ...current,
-      [field]: parseFieldValue(field, value),
-    }));
+    const parsedValue = parseFieldValue(field, value);
+
+    setProfile((current) => {
+      const next = {
+        ...current,
+        [field]: parsedValue,
+      };
+
+      if (field === "residence_region" && !parsedValue) {
+        next.residence_period_years = null;
+      }
+      if (field === "is_homeless" && parsedValue !== true) {
+        next.homeless_period_years = null;
+      }
+      if (field === "marital_status" && parsedValue !== "MARRIED") {
+        next.marriage_period_years = null;
+        next.is_dual_income = null;
+      }
+      if (
+        field === "household_member_count" &&
+        (typeof parsedValue !== "number" || parsedValue <= 1)
+      ) {
+        next.dependent_family_count = null;
+      }
+      if (
+        field === "minor_child_count" &&
+        (typeof parsedValue !== "number" || parsedValue <= 0)
+      ) {
+        next.young_child_count = null;
+        next.youngest_child_age_group = null;
+      }
+      if (
+        field === "elderly_support_status" &&
+        parsedValue !== "MEETS_65_AND_3Y"
+      ) {
+        next.elderly_dependent_is_homeless = null;
+      }
+
+      return next;
+    });
   };
 
   const inputClass = "w-full bg-[#f5f5f7] border border-transparent rounded-[12px] px-3 py-2 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] transition-colors appearance-none";
+  const showResidencePeriod = Boolean(profile.residence_region);
+  const showHomelessPeriod = profile.is_homeless === true;
+  const showMarriageDetails = profile.marital_status === "MARRIED";
+  const showDependentFamily = (profile.household_member_count ?? 0) > 1;
+  const showChildDetails = (profile.minor_child_count ?? 0) > 0;
+  const showElderlyHomeless =
+    profile.elderly_support_status === "MEETS_65_AND_3Y";
+  const showConditionalDetails =
+    showResidencePeriod ||
+    showHomelessPeriod ||
+    showMarriageDetails ||
+    showDependentFamily ||
+    showChildDetails;
 
   return (
     <div className="pb-20">
-      <ApiBadge method="GET/PUT/PATCH" endpoint="/api/user/profile" />
-
       <PageTitle
         title="내 청약 조건"
         description="모르는 항목은 비워둘 수 있어요. 비워둔 값은 진단 결과에서 따로 안내합니다."
         action={
           <Button type="button" onClick={saveProfile} className="gap-2 shrink-0">
-            {isSaved ? <Check className="w-4 h-4" /> : "저장"}
+            {isSaved && <Check className="w-4 h-4" />}
             {isSaved ? "저장됨" : "저장하기"}
           </Button>
         }
       />
 
-      {error && (
-        <WarningBox type="error" title="API 연결 오류">
-          {error}
-        </WarningBox>
-      )}
+      <ErrorNotice error={error} fallbackMessage="프로필 요청을 처리하지 못했습니다." />
 
       {notice && !error && (
         <WarningBox type="success" title="프로필 상태">
@@ -240,14 +283,11 @@ export function Profile() {
             </FormGroup>
 
             <FormGroup label="혼인 상태" required>
-              <select className={inputClass} value={selectValue(profile.marital_status)} onChange={(e) => updateField("marital_status", e.target.value)}>
+              <select className={inputClass} value={minimalMaritalStatusValue(profile.marital_status)} onChange={(e) => updateField("marital_status", e.target.value)}>
                 <option value="">선택 안 함</option>
                 <option value="SINGLE">미혼</option>
                 <option value="MARRIED">기혼</option>
-                <option value="ENGAGED">예비 신혼부부</option>
-                <option value="DIVORCED">이혼</option>
-                <option value="WIDOWED">사별</option>
-                <option value="UNKNOWN">모름</option>
+                <option value="UNKNOWN">기타</option>
               </select>
             </FormGroup>
 
@@ -265,32 +305,79 @@ export function Profile() {
           </SettingsList>
         </section>
 
+        {showConditionalDetails && (
+          <section>
+            <div className="mb-3 px-2">
+              <h2 className="text-[13px] font-semibold text-[#6e6e73] uppercase tracking-wider">
+                입력 조건에 따른 추가 정보
+              </h2>
+              <p className="mt-1 text-[13px] text-[#7b828d]">
+                위에서 선택한 항목과 관련된 정보만 표시됩니다.
+              </p>
+            </div>
+
+            <SettingsList>
+              {showResidencePeriod && (
+                <FormGroup label="현재 지역 거주 기간 (년)">
+                  <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.residence_period_years)} onChange={(e) => updateField("residence_period_years", e.target.value)} />
+                </FormGroup>
+              )}
+
+              {showHomelessPeriod && (
+                <FormGroup label="무주택 기간 (년)">
+                  <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.homeless_period_years)} onChange={(e) => updateField("homeless_period_years", e.target.value)} />
+                </FormGroup>
+              )}
+
+              {showMarriageDetails && (
+                <>
+                  <FormGroup label="혼인 기간 (년)">
+                    <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.marriage_period_years)} onChange={(e) => updateField("marriage_period_years", e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="맞벌이 여부" required helperText="기혼인 경우 필수 입력입니다.">
+                    <select required className={inputClass} value={booleanSelectValue(profile.is_dual_income)} onChange={(e) => updateField("is_dual_income", e.target.value)}>
+                      <option value="">선택 안 함</option>
+                      <option value="true">맞벌이</option>
+                      <option value="false">외벌이</option>
+                    </select>
+                  </FormGroup>
+                </>
+              )}
+
+              {showDependentFamily && (
+                <FormGroup label="부양가족 수">
+                  <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.dependent_family_count)} onChange={(e) => updateField("dependent_family_count", e.target.value)} />
+                </FormGroup>
+              )}
+
+              {showChildDetails && (
+                <>
+                  <FormGroup label="영유아 자녀 수">
+                    <input type="number" min="0" max={profile.minor_child_count ?? undefined} placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.young_child_count)} onChange={(e) => updateField("young_child_count", e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="가장 어린 자녀 연령대">
+                    <select className={inputClass} value={selectValue(profile.youngest_child_age_group)} onChange={(e) => updateField("youngest_child_age_group", e.target.value)}>
+                      <option value="">선택 안 함</option>
+                      <option value="UNDER_2">2세 미만</option>
+                      <option value="AGE_2_TO_6">2세 이상 6세 이하</option>
+                      <option value="AGE_7_TO_18">7세 이상 18세 이하</option>
+                      <option value="UNKNOWN">모름</option>
+                    </select>
+                  </FormGroup>
+                </>
+              )}
+            </SettingsList>
+          </section>
+        )}
+
         <section>
           <div className="mb-3 px-2">
-            <h2 className="text-[13px] font-semibold text-[#6e6e73] uppercase tracking-wider">추가 선택 정보</h2>
+            <h2 className="text-[13px] font-semibold text-[#6e6e73] uppercase tracking-wider">
+              재정 및 기타 선택 정보
+            </h2>
           </div>
 
           <SettingsList>
-            <FormGroup label="거주 기간 (년)">
-              <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.residence_period_years)} onChange={(e) => updateField("residence_period_years", e.target.value)} />
-            </FormGroup>
-
-            <FormGroup label="무주택 기간 (년)">
-              <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.homeless_period_years)} onChange={(e) => updateField("homeless_period_years", e.target.value)} />
-            </FormGroup>
-
-            <FormGroup label="혼인 기간 (년)">
-              <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.marriage_period_years)} onChange={(e) => updateField("marriage_period_years", e.target.value)} />
-            </FormGroup>
-
-            <FormGroup label="맞벌이 여부" helperText="기혼이면 Django 검증상 필수입니다.">
-              <select className={inputClass} value={booleanSelectValue(profile.is_dual_income)} onChange={(e) => updateField("is_dual_income", e.target.value)}>
-                <option value="">모름 / 비워둠</option>
-                <option value="true">맞벌이</option>
-                <option value="false">외벌이</option>
-              </select>
-            </FormGroup>
-
             <FormGroup label="월평균 가구소득 (원)">
               <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.monthly_household_income_krw)} onChange={(e) => updateField("monthly_household_income_krw", e.target.value)} />
             </FormGroup>
@@ -299,28 +386,9 @@ export function Profile() {
               <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.total_assets_krw)} onChange={(e) => updateField("total_assets_krw", e.target.value)} />
             </FormGroup>
 
-            <FormGroup label="부양가족 수">
-              <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.dependent_family_count)} onChange={(e) => updateField("dependent_family_count", e.target.value)} />
-            </FormGroup>
-
-            <FormGroup label="영유아 자녀 수">
-              <input type="number" min="0" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.young_child_count)} onChange={(e) => updateField("young_child_count", e.target.value)} />
-            </FormGroup>
-
-            <FormGroup label="가장 어린 자녀 연령대">
-              <select className={inputClass} value={selectValue(profile.youngest_child_age_group)} onChange={(e) => updateField("youngest_child_age_group", e.target.value)}>
-                <option value="">모름 / 비워둠</option>
-                <option value="UNDER_2">2세 미만</option>
-                <option value="AGE_2_TO_6">2세 이상 6세 이하</option>
-                <option value="AGE_7_TO_18">7세 이상 18세 이하</option>
-                <option value="ADULT_OR_NONE">성인 또는 자녀 없음</option>
-                <option value="UNKNOWN">모름</option>
-              </select>
-            </FormGroup>
-
             <FormGroup label="최근 5년 소득세 납부 이력">
               <select className={inputClass} value={booleanSelectValue(profile.has_income_tax_5_years)} onChange={(e) => updateField("has_income_tax_5_years", e.target.value)}>
-                <option value="">모름 / 비워둠</option>
+                <option value="">선택 안 함</option>
                 <option value="true">있음</option>
                 <option value="false">없음</option>
               </select>
@@ -328,20 +396,22 @@ export function Profile() {
 
             <FormGroup label="노부모 부양 상태">
               <select className={inputClass} value={selectValue(profile.elderly_support_status)} onChange={(e) => updateField("elderly_support_status", e.target.value)}>
-                <option value="">모름 / 비워둠</option>
+                <option value="">선택 안 함</option>
                 <option value="MEETS_65_AND_3Y">만 65세 이상 3년 이상 부양</option>
                 <option value="DOES_NOT_MEET">요건 미충족</option>
                 <option value="UNKNOWN">모름</option>
               </select>
             </FormGroup>
 
-            <FormGroup label="부양 노부모 무주택 여부">
-              <select className={inputClass} value={booleanSelectValue(profile.elderly_dependent_is_homeless)} onChange={(e) => updateField("elderly_dependent_is_homeless", e.target.value)}>
-                <option value="">모름 / 비워둠</option>
-                <option value="true">무주택</option>
-                <option value="false">유주택</option>
-              </select>
-            </FormGroup>
+            {showElderlyHomeless && (
+              <FormGroup label="부양 노부모 무주택 여부">
+                <select className={inputClass} value={booleanSelectValue(profile.elderly_dependent_is_homeless)} onChange={(e) => updateField("elderly_dependent_is_homeless", e.target.value)}>
+                  <option value="">선택 안 함</option>
+                  <option value="true">무주택</option>
+                  <option value="false">유주택</option>
+                </select>
+              </FormGroup>
+            )}
 
             <FormGroup label="부동산 자산 (원)">
               <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.real_estate_assets_krw)} onChange={(e) => updateField("real_estate_assets_krw", e.target.value)} />
@@ -399,6 +469,12 @@ function parseFieldValue(field: keyof ProfileForm, value: string) {
 
 function selectValue(value: string | null) {
   return value ?? "";
+}
+
+function minimalMaritalStatusValue(value: string | null) {
+  if (!value) return "";
+  if (value === "SINGLE" || value === "MARRIED") return value;
+  return "UNKNOWN";
 }
 
 function booleanSelectValue(value: boolean | null) {

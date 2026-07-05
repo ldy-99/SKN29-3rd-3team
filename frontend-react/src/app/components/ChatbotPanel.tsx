@@ -22,25 +22,44 @@ export function ChatbotPanel() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const getContextMessage = () => {
-    if (location.pathname.includes("/profile")) return "현재 프로필 정보를 기준으로 답변해 드릴 수 있어요.";
-    if (location.pathname.includes("/strategy")) return "입력하신 공고나 기본 전략에 대해 질문해 보세요.";
-    if (location.pathname.includes("/pdf")) return "추출된 정보에 대해 궁금한 점을 알려주세요.";
-    if (location.pathname.includes("/results")) return "이 결과에 대해 추가로 궁금한 점이 있으신가요?";
-    return "무엇이든 물어보세요.";
+    if (location.pathname.includes("/profile")) return "프로필 입력에 필요한 청약 기준을 물어보세요.";
+    if (location.pathname.includes("/strategy")) return "지원 자격과 공급 유형별 기준을 물어보세요.";
+    if (location.pathname.includes("/pdf")) return "공고문에 나오는 청약 용어와 기준을 물어보세요.";
+    if (location.pathname.includes("/results")) return "진단 결과에 나온 청약 제도와 기준을 물어보세요.";
+    if (location.pathname.includes("/mypage")) return "진단 기록을 검토할 때 필요한 청약 기준을 물어보세요.";
+    return "주택청약 제도와 자격 조건을 물어보세요.";
   };
 
   const getRecommendedQuestions = () => {
     if (location.pathname.includes("/profile")) {
-      return ["이 항목을 비워도 되나요?", "무주택 기간은 어떻게 계산하나요?"];
+      return [
+        "무주택 기간은 어떤 기준으로 계산하나요?",
+        "부양가족 수에 포함되는 가족 범위는 무엇인가요?",
+      ];
     }
     if (location.pathname.includes("/strategy")) {
-      return ["이 공고에 지원 가능할까요?", "기본 진단은 어떤 것을 확인하나요?"];
+      return [
+        "민영주택 일반공급 1순위 조건은 무엇인가요?",
+        "신혼부부 특별공급의 기본 자격은 무엇인가요?",
+      ];
     }
     if (location.pathname.includes("/pdf")) {
-      return ["추출이 잘못된 것 같으면 어떡하나요?", "분양가 기준이 어떻게 되나요?"];
+      return [
+        "입주자모집공고에서 꼭 확인할 항목은 무엇인가요?",
+        "공고문의 소득 기준은 어떻게 확인하나요?",
+      ];
     }
     if (location.pathname.includes("/results")) {
-      return ["부족한 정보는 무엇인가요?", "점수를 올리려면 어떻게 해야 하나요?"];
+      return [
+        "청약 가점은 어떤 항목으로 계산하나요?",
+        "특별공급 유형별 기본 자격 차이를 알려주세요.",
+      ];
+    }
+    if (location.pathname.includes("/mypage")) {
+      return [
+        "청약통장 가입기간은 언제부터 계산하나요?",
+        "재당첨 제한은 어떤 경우에 적용되나요?",
+      ];
     }
     return ["청약 1순위 조건이 무엇인가요?", "생애최초 특별공급이란?"];
   };
@@ -136,7 +155,7 @@ export function ChatbotPanel() {
             <h3 className="font-bold text-[17px] text-[#152846]">청약 도우미</h3>
             <p className="text-[12px] text-[#747c87] flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-[#34c759]"></span>
-              현재 화면 맥락 참조 중
+              청약 제도 자료 검색 가능
             </p>
           </div>
         </div>

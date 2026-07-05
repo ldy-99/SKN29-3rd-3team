@@ -6,7 +6,6 @@ Vite, React, TypeScript 기반 사용자 화면입니다.
 src/app/api/          Django API client
 src/app/components/   공통 UI와 챗봇
 src/app/pages/        프로필, 전략 실행, 결과, PDF, 로그인
-src/app/fixtures/     mock API 응답
 ```
 
 개발 명령:
@@ -17,10 +16,9 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 pnpm.cmd run build
 ```
 
-실제 Django 연결:
+Django 연결:
 
 ```dotenv
-VITE_USE_MOCK_API=false
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 

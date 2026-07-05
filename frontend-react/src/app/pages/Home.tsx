@@ -6,10 +6,11 @@ import {
   CheckCircle2,
   ClipboardList,
   FileSearch,
-  Landmark,
   LockKeyhole,
   UserRound,
 } from "lucide-react";
+import { SiteHeader } from "../components/SiteHeader";
+import { useAuth } from "../auth/AuthContext";
 
 const serviceSteps = [
   {
@@ -30,36 +31,12 @@ const serviceSteps = [
 ];
 
 export function Home() {
+  const { user, isLoading } = useAuth();
+  const diagnosisPath = isLoading ? "/" : user ? "/strategy" : "/login";
+
   return (
     <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
-      <header className="h-[94px] bg-[#fffefa]/95 backdrop-blur-md border-b border-[#e9e4da] sticky top-0 z-30">
-        <div className="max-w-[1440px] h-full mx-auto px-6 lg:px-10 flex items-center justify-between gap-8">
-          <Link to="/" className="flex items-center gap-3 shrink-0">
-            <Landmark className="w-8 h-8 text-[#102e5a]" strokeWidth={1.7} />
-            <span className="text-[21px] font-bold tracking-[-0.03em]">청약 가이드</span>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-10 text-[15px] font-semibold text-[#26364e]">
-            <a href="#service" className="hover:text-[#0b5bd3] transition-colors">서비스 소개</a>
-            <a href="#steps" className="hover:text-[#0b5bd3] transition-colors">이용 방법</a>
-            <a href="#preview" className="hover:text-[#0b5bd3] transition-colors">진단 예시</a>
-            <a href="#assistant" className="hover:text-[#0b5bd3] transition-colors">청약 도우미</a>
-          </nav>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <Link to="/login" className="hidden sm:inline-flex px-4 py-3 text-[14px] font-semibold text-[#26364e]">
-              로그인
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-[12px] bg-[#102e5a] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#183f75] transition-colors"
-            >
-              무료로 시작하기
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         <section
@@ -83,10 +60,13 @@ export function Home() {
               </p>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors"
+                  to={diagnosisPath}
+                  aria-disabled={isLoading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors ${
+                    isLoading ? "pointer-events-none opacity-70" : ""
+                  }`}
                 >
-                  내 조건 진단하기
+                  {isLoading ? "로그인 상태 확인 중" : user ? "전략 진단 계속하기" : "내 조건 진단하기"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <a

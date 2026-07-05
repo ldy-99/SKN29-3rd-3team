@@ -1,5 +1,6 @@
 import React from "react";
 import { Info, AlertCircle, XCircle, CheckCircle } from "lucide-react";
+import { getErrorPresentation } from "../api/errorPresentation";
 
 export function Card({
   children,
@@ -16,23 +17,17 @@ export function Card({
   );
 }
 
-export function ApiBadge({ method, endpoint }: { method: string; endpoint: string }) {
-  return (
-    <div className="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#6e6e73] bg-[#f5f5f7] border border-[#e5e5e7] rounded-full px-2.5 py-1 mb-4 opacity-70 hover:opacity-100 transition-opacity" title="Developer API Reference">
-      <span className="font-semibold text-[#1d1d1f]">{method}</span>
-      <span>{endpoint}</span>
-    </div>
-  );
-}
-
 export function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<string, { color: string; label: string }> = {
     CALCULATED: { color: "bg-[#34c759]/10 text-[#34c759]", label: "진단 완료" },
+    COMPLETE: { color: "bg-[#34c759]/10 text-[#34c759]", label: "분석 완료" },
     PARTIAL: { color: "bg-[#ff9f0a]/10 text-[#ff9f0a]", label: "제한적 진단" },
     SKIPPED_MISSING_INPUTS: { color: "bg-[#e5e5e7] text-[#6e6e73]", label: "진단 불가" },
     FAILED: { color: "bg-[#ff3b30]/10 text-[#ff3b30]", label: "진단 실패" },
     NEEDS_REVIEW: { color: "bg-[#ff9f0a]/10 text-[#ff9f0a]", label: "확인 필요" },
     SUCCEEDED: { color: "bg-[#007aff]/10 text-[#007aff]", label: "성공" },
+    PENDING: { color: "bg-[#e5e5e7] text-[#6e6e73]", label: "대기 중" },
+    RUNNING: { color: "bg-[#007aff]/10 text-[#007aff]", label: "분석 중" },
   };
 
   const config = statusConfig[status] || { color: "bg-[#f5f5f7] text-[#6e6e73]", label: status };
@@ -77,6 +72,36 @@ export function WarningBox({
         <div className="text-[14px] text-[#6e6e73] leading-relaxed">{children}</div>
       </div>
     </div>
+  );
+}
+
+export function ErrorNotice({
+  error,
+  fallbackMessage,
+}: {
+  error: unknown;
+  fallbackMessage?: string;
+}) {
+  if (!error) return null;
+
+  const presentation = getErrorPresentation(error, fallbackMessage);
+
+  return (
+    <WarningBox type="error" title={presentation.title}>
+      <p>{presentation.message}</p>
+      {presentation.details.length > 0 && (
+        <details className="mt-3 rounded-[12px] border border-[#ff3b30]/15 bg-white/60 px-3 py-2">
+          <summary className="cursor-pointer font-semibold text-[#8f2f2a]">
+            오류 상세 확인
+          </summary>
+          <ul className="mt-2 space-y-1 list-disc pl-5 text-[12px] text-[#785653]">
+            {presentation.details.map((detail) => (
+              <li key={detail}>{detail}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </WarningBox>
   );
 }
 

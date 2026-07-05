@@ -2,16 +2,16 @@
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
-import { Card, PageTitle, ApiBadge, Button, WarningBox } from "../components/UI";
+import { Card, PageTitle, Button, ErrorNotice, WarningBox } from "../components/UI";
 import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, User } from "lucide-react";
-import { ApiRequestError, api } from "../api/client";
+import { api } from "../api/client";
 import { useEffect, useState } from "react";
 
 export function StrategyRun() {
   const [noticeText, setNoticeText] = useState("");
   const [isBasicOnly, setIsBasicOnly] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [inputMethod, setInputMethod] = useState<"manual" | "pdf">("manual");
   const [sourceFilename, setSourceFilename] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function StrategyRun() {
 
     setElapsedSeconds(0);
     setIsRunning(true);
-    setError("");
+    setError(null);
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
@@ -70,20 +70,8 @@ export function StrategyRun() {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setError("분석 시간이 90초를 초과했습니다. 잠시 후 다시 시도해주세요.");
-      } else if (error instanceof ApiRequestError && error.status === 502) {
-        setError("AI 분석 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.");
-      } else if (
-        error instanceof ApiRequestError &&
-        (error.code === "PROFILE_REQUIRED" ||
-          error.code === "PROFILE_REQUIRED_FIELDS_MISSING")
-      ) {
-        setError("전략 진단 전에 프로필 정보를 확인하고 저장해주세요.");
       } else {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "전략 진단 요청에 실패했습니다.",
-        );
+        setError(error);
       }
     } finally {
       window.clearTimeout(timeoutId);
@@ -93,18 +81,12 @@ export function StrategyRun() {
 
   return (
     <div className="pb-20">
-      <ApiBadge method="POST" endpoint="/api/strategy" />
-
       <PageTitle
         title="전략 진단"
         description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다."
       />
 
-      {error && (
-        <WarningBox type="error" title="API 연결 오류">
-          {error}
-        </WarningBox>
-      )}
+      <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
 
       {isRunning && (
         <WarningBox type="info" title="전략을 분석하고 있습니다">
