@@ -19,6 +19,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from src.engine.llm_safety import LLMCallError, safe_llm_call
+
 # ── retriever.py 경로 설정 ────────────────────────────────────────
 RAG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),  # engine/tools/
@@ -84,11 +86,25 @@ Context에 없는 내용은 "제공된 자료에서는 확인할 수 없습니�
 
     chain = prompt | llm | StrOutputParser()
 
-    answer = chain.invoke({
-        "system_prompt": system_prompt,
-        "context": context,
-        "query": query,
-    })
+    try:
+        answer = safe_llm_call(
+            lambda: chain.invoke({
+                "system_prompt": system_prompt,
+                "context": context,
+                "query": query,
+            }),
+            node_name="rag_tools._rag_answer",
+        )
+    except LLMCallError as exc:
+        # 검색된 근거 자료는 이미 있으니, 답변 생성만 실패했다는 걸 명시하고
+        # 출처(sources)는 그대로 넘겨서 호출부(node5 agent)가 참고할 수 있게 함.
+        print(f"[rag_tools] {exc}")
+        return {
+            "found": False,
+            "answer": "AI 답변 생성 중 오류가 발생해 근거 자료 검색 결과만 참고용으로 제공합니다.",
+            "sources": sources,
+            "error": str(exc.original) if exc.original else str(exc),
+        }
 
     return {
         "found": True,

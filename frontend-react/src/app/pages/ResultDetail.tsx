@@ -207,7 +207,10 @@ function normalizeSupplyRank(value: unknown): SupplyRankItem[] {
       type,
       chance: stringValue(item.chance) ?? status ?? (score !== undefined ? `${score}점` : "검토"),
       desc: reason ?? reasons.join(", ") ?? "상세 사유가 응답에 포함되지 않았습니다.",
-      missingFields: stringArray(item.missing_fields),
+      // 백엔드(node2.py)는 missing_items라는 이름으로 보내는데, 예전 코드가
+      // missing_fields를 찾고 있어서 실제 데이터가 있어도 항상 빈 배열이었음.
+      // 혹시 다른 경로에서 missing_fields를 쓰는 경우까지 대비해 둘 다 지원.
+      missingFields: stringArray(item.missing_items ?? item.missing_fields),
       sourceRefs: stringArray(item.source_refs),
     };
   });
@@ -237,10 +240,18 @@ function collectAnalysisItems(report: UnknownRecord, payload: UnknownRecord) {
     ...stringArray(payload.warnings),
   ];
 
+  // 실제 백엔드(financial.py analyze_financial_risk)가 만들어내는 필드는
+  // summary/message가 아니라 description(문장)과 action_items(행동지침 목록)임.
+  // 예전 코드는 존재하지 않는 필드만 찾고 있어서 상세 진단에서도 항상 비어있었음.
   const node5 = asRecord(payload.node5);
   const riskResult = asRecord(node5?.risk_result);
   const riskSummary = stringValue(riskResult?.summary) ?? stringValue(riskResult?.message);
   if (riskSummary) candidates.push(riskSummary);
+
+  const riskDescription = stringValue(riskResult?.description);
+  if (riskDescription) candidates.push(riskDescription);
+
+  candidates.push(...stringArray(riskResult?.action_items));
 
   return uniqueStrings(candidates);
 }

@@ -41,3 +41,6 @@ backend/src/preprocessing/chroma_db/
 # Django local database
 django_backend/db.sqlite3
 
+# LangGraph session checkpoints (SQLite). Runtime-only, per-machine session data.
+Backend/src/checkpoints/
+
