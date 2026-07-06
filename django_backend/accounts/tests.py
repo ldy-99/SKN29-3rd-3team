@@ -2,22 +2,34 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from accounts.models import Profile
 
 User = get_user_model()
 
 class ProfileAPITests(APITestCase):
     def setUp(self):
-        # 테스트 시작 전 DB에 dummy_user 계정이 존재하지 않는 상태에서 시작
-        pass
+        # 로그인/회원가입 throttle 캐시가 테스트 간 누적되지 않도록 초기화합니다.
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="profile_tester",
+            email="profile@example.com",
+            password="testpassword123",
+        )
 
-    def test_dummy_login_middleware_and_profile_not_found(self):
+    def tearDown(self):
+        cache.clear()
+
+    def authenticate_profile_user(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_authenticated_profile_not_found(self):
         """
-        1. 로그인하지 않은 상태로 GET /api/profile/을 요청했을 때,
-        DummyLoginMiddleware가 자동으로 dummy_user를 생성하고,
+        1. 인증된 사용자가 GET /api/profile/을 요청했을 때,
         프로필이 없는 상태이므로 404 NotFound 에러를 반환하는지 테스트합니다.
         (이때 공통 응답 봉투 및 에러 JSON 규격이 적용되어야 합니다.)
         """
+        self.authenticate_profile_user()
         url = reverse('profile-detail')
         response = self.client.get(url)
 
@@ -38,6 +50,7 @@ class ProfileAPITests(APITestCase):
         2. 필수 필드가 누락되거나 잘못된 데이터가 넘어왔을 때(profile-invalid.json 예시),
         400 Bad Request와 함께 PROFILE_REQUIRED_FIELDS_MISSING 에러 코드 및 상세 에러 배열을 반환하는지 검증합니다.
         """
+        self.authenticate_profile_user()
         url = reverse('profile-detail')
         # 필수 필드 대부분이 누락되고, residence_region이 빈값이며, household_member_count가 0인 유효하지 않은 데이터
         invalid_data = {
@@ -79,6 +92,7 @@ class ProfileAPITests(APITestCase):
         3. 올바른 프로필 데이터가 넘어왔을 때(미혼(SINGLE)인 경우 맞벌이 필드는 null로 제공),
         200 OK와 함께 데이터가 정상 저장되고 렌더링되는지 테스트합니다.
         """
+        self.authenticate_profile_user()
         url = reverse('profile-detail')
         valid_data = {
             "bankbook_type": "RE subscription",
@@ -107,14 +121,14 @@ class ProfileAPITests(APITestCase):
         self.assertIsNone(response_json['data']['is_dual_income'])
 
         # DB에 실제 저장되었는지 검증
-        user = User.objects.first()
-        self.assertTrue(Profile.objects.filter(user=user).exists())
+        self.assertTrue(Profile.objects.filter(user=self.user).exists())
 
     def test_post_conditional_validation_married(self):
         """
         4. 기혼(MARRIED) 상태일 때 맞벌이 여부(is_dual_income)가 누락되면
         에러가 발생하는지 검증합니다.
         """
+        self.authenticate_profile_user()
         url = reverse('profile-detail')
         # marital_status가 기혼인데 is_dual_income이 누락됨
         invalid_married_data = {
@@ -289,3 +303,58 @@ class ProfileAPITests(APITestCase):
         self.assertEqual(response_json['data']['household_member_count'], 3)
         # 패치하지 않은 다른 필드가 잘 유지되는지 검증
         self.assertEqual(response_json['data']['bankbook_payment_count'], 24)
+
+    def test_signup_email_normalization(self):
+        """
+        회원가입 시 이메일 소문자 및 공백 제거(정규화) 검증.
+        """
+        signup_data = {
+            "username": "norm_user",
+            "email": "  NormUser@Example.Com  ",
+            "password": "testpassword123"
+        }
+        url = reverse('signup')
+        response = self.client.post(url, signup_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # 실제 저장된 유저의 이메일 확인
+        user = User.objects.get(username="norm_user")
+        self.assertEqual(user.email, "normuser@example.com")
+
+    def test_signup_weak_password(self):
+        """
+        회원가입 시 너무 약한 비밀번호 입력 시 가입 거부(400 Bad Request) 검증.
+        """
+        signup_data = {
+            "username": "weak_user",
+            "email": "weak@example.com",
+            "password": "123"  # 너무 짧고 흔한 비밀번호
+        }
+        url = reverse('signup')
+        response = self.client.post(url, signup_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        response_json = response.json()
+        self.assertIn('password', response_json['error']['field_errors'])
+
+    def test_login_rate_throttling(self):
+        """
+        로그인 시도 10회 초과 시 429 Too Many Requests 에러가 발생하는지 검증합니다.
+        """
+        User.objects.create_user(
+            username="throttle_user",
+            email="throttle@example.com",
+            password="testpassword123"
+        )
+        url = reverse('login')
+        login_data = {
+            "username": "throttle_user",
+            "password": "testpassword123"
+        }
+
+        for _ in range(10):
+            response = self.client.post(url, login_data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

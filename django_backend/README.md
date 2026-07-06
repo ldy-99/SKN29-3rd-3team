@@ -19,4 +19,4 @@ common/             인증, middleware, renderer, 예외 처리
 config/settings.py  환경변수와 Django 설정
 ```
 
-실행·테스트 명령은 [로컬 실행 가이드](../docs/LOCAL_SETUP.md)를 사용합니다. 공개 API는 [API 계약](../docs/API_CONTRACT.md)을 기준으로 합니다.
+실행·테스트 명령은 [루트 README](../README.md)를 사용합니다. 공개 API는 [API 계약](../docs/current/API_CONTRACT.md)을 기준으로 합니다.

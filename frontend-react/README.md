@@ -6,7 +6,6 @@ Vite, React, TypeScript 기반 사용자 화면입니다.
 src/app/api/          Django API client
 src/app/components/   공통 UI와 챗봇
 src/app/pages/        프로필, 전략 실행, 결과, PDF, 로그인
-src/app/fixtures/     mock API 응답
 ```
 
 개발 명령:
@@ -17,11 +16,13 @@ pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 pnpm.cmd run build
 ```
 
-실제 Django 연결:
+Django 연결:
 
 ```dotenv
-VITE_USE_MOCK_API=false
-VITE_API_BASE_URL=http://127.0.0.1:8000
+# 로컬 Vite dev에서는 비워두면 vite.config.ts의 /api proxy를 사용합니다.
+VITE_API_BASE_URL=
 ```
 
-전체 실행 순서는 [로컬 실행 가이드](../docs/LOCAL_SETUP.md), 공개 요청·응답은 [API 계약](../docs/API_CONTRACT.md)을 기준으로 합니다.
+proxy를 쓰지 않는 환경에서는 `VITE_API_BASE_URL`에 Django API 주소를 명시합니다.
+
+전체 실행 순서는 [루트 README](../README.md), 공개 요청·응답은 [API 계약](../docs/current/API_CONTRACT.md)을 기준으로 합니다.

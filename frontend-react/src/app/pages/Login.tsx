@@ -1,96 +1,274 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Button } from "../components/UI";
-import { Command } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { CheckCircle2, Circle, Info, Landmark } from "lucide-react";
+import { ErrorNotice } from "../components/UI";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+
+type AuthMode = "login" | "signup";
 
 export function Login() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [error, setError] = useState("");
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setAuthenticatedUser } = useAuth();
+  const isLogin = mode === "login";
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
+  const passwordChecks = useMemo(
+    () => ({
+      minimumLength: password.length >= 8,
+      notNumericOnly: password.length > 0 && !/^\d+$/.test(password),
+      confirmed: password.length > 0 && password === passwordConfirm,
+    }),
+    [password, passwordConfirm],
+  );
 
-    const formData = new FormData(e.currentTarget);
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
+  const changeMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setPassword("");
+    setPasswordConfirm("");
+    setError(null);
+  };
 
-    try {
-      if (isLogin) {
-        await api.login({ email, password });
-      } else {
-        await api.signup({ email, password });
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setError(null);
+
+    if (!isLogin) {
+      if (!passwordChecks.minimumLength) {
+        setError("비밀번호는 8자 이상이어야 합니다.");
+        return;
       }
-      navigate("/profile");
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "인증 요청에 실패했습니다.");
+      if (!passwordChecks.notNumericOnly) {
+        setError("비밀번호는 숫자로만 구성할 수 없습니다.");
+        return;
+      }
+      if (!passwordChecks.confirmed) {
+        setError("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const user = isLogin
+        ? await api.login({ email, password })
+        : await api.signup({ email, password });
+      setAuthenticatedUser(user);
+      const destination =
+        typeof location.state?.from === "string" ? location.state.from : "/profile";
+      navigate(destination, { replace: true });
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7] p-6 font-sans text-[#1d1d1f]">
-      <div className="w-full max-w-[400px]">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-white rounded-[18px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] mx-auto mb-6 flex items-center justify-center border border-[#e5e5e7]">
-            <Command className="w-8 h-8 text-[#007aff]" />
+    <div className="min-h-screen bg-[#fbfaf7] px-5 py-8 font-sans text-[#152846]">
+      <div className="mx-auto w-full max-w-[480px]">
+        <Link to="/" className="mb-9 flex items-center justify-center gap-3">
+          <Landmark className="h-8 w-8 text-[#102e5a]" strokeWidth={1.7} />
+          <span className="text-[21px] font-bold tracking-[-0.03em]">청약 진단 서비스</span>
+        </Link>
+
+        <div className="overflow-hidden rounded-[24px] border border-[#ded8cc] bg-white shadow-[0_18px_55px_rgba(24,40,65,0.09)]">
+          <div className="grid grid-cols-2 border-b border-[#e9e4da] bg-[#f7f3ec] p-1.5">
+            <ModeTab active={isLogin} onClick={() => changeMode("login")}>
+              로그인
+            </ModeTab>
+            <ModeTab active={!isLogin} onClick={() => changeMode("signup")}>
+              회원가입
+            </ModeTab>
           </div>
-          <h1 className="text-[32px] font-bold tracking-tight mb-2">청약 준비를 더 쉽게</h1>
-          <p className="text-[15px] text-[#6e6e73]">내 조건을 저장하고 맞춤형 전략을 확인하세요.</p>
-        </div>
 
-        <div className="bg-white p-8 rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-[#e5e5e7]">
-          {/* subtle dev API pill */}
-          <div className="flex justify-center mb-6">
-            <span className="text-[10px] text-[#6e6e73] font-mono px-2 py-0.5 bg-[#f5f5f7] rounded-full border border-[#e5e5e7]">
-              POST {isLogin ? "/api/auth/login" : "/api/auth/signup"}
-            </span>
-          </div>
-
-          {error && (
-            <div className="mb-6 p-4 bg-[#ff3b30]/10 text-[#ff3b30] text-[13px] rounded-[16px] text-center">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="email"
-                name="email"
-                className="w-full bg-[#f5f5f7] border border-transparent rounded-[16px] px-4 py-3.5 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] transition-colors"
-                placeholder="이메일"
-                required
-              />
+          <div className="p-7 sm:p-9">
+            <div className="mb-7">
+              <p className="mb-2 text-[13px] font-bold tracking-[0.04em] text-[#b86a12]">
+                {isLogin ? "MEMBER LOGIN" : "CREATE ACCOUNT"}
+              </p>
+              <h1 className="text-[28px] font-bold tracking-[-0.035em] text-[#102e5a]">
+                {isLogin ? "저장한 진단을 이어보세요" : "청약 진단을 시작하세요"}
+              </h1>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#68717d]">
+                {isLogin
+                  ? "가입한 이메일과 비밀번호로 로그인합니다."
+                  : "계정을 만들면 프로필과 전략 진단 결과를 다시 확인할 수 있습니다."}
+              </p>
             </div>
 
-            <div>
-              <input
-                type="password"
-                name="password"
-                className="w-full bg-[#f5f5f7] border border-transparent rounded-[16px] px-4 py-3.5 text-[15px] focus:outline-none focus:bg-white focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] transition-colors"
-                placeholder="비밀번호"
-                required
-              />
-            </div>
+            <ErrorNotice error={error} fallbackMessage="인증 요청을 처리하지 못했습니다." />
 
-            <Button type="submit" className="w-full mt-2 py-3.5 text-[17px]">
-              {isLogin ? "계속하기" : "가입하기"}
-            </Button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <AuthField label="이메일">
+                <input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={inputClass}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </AuthField>
 
-          <div className="mt-8 text-center text-[13px] text-[#6e6e73]">
-            {isLogin ? "계정이 없으신가요?" : "이미 계정이 있으신가요?"}{" "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-[#007aff] hover:underline"
-            >
-              {isLogin ? "회원가입" : "로그인"}
-            </button>
+              <AuthField label="비밀번호">
+                <input
+                  type="password"
+                  name="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className={inputClass}
+                  placeholder={isLogin ? "비밀번호 입력" : "8자 이상 입력"}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  required
+                />
+              </AuthField>
+
+              {!isLogin && (
+                <>
+                  <AuthField label="비밀번호 확인">
+                    <input
+                      type="password"
+                      name="passwordConfirm"
+                      value={passwordConfirm}
+                      onChange={(event) => setPasswordConfirm(event.target.value)}
+                      className={inputClass}
+                      placeholder="비밀번호 다시 입력"
+                      autoComplete="new-password"
+                      required
+                    />
+                  </AuthField>
+
+                  <div className="rounded-[16px] border border-[#e5dfd4] bg-[#fbfaf7] p-4">
+                    <p className="mb-3 text-[13px] font-bold text-[#26364e]">비밀번호 생성 규칙</p>
+                    <ul className="space-y-2">
+                      <PasswordRule checked={passwordChecks.minimumLength}>
+                        8자 이상 입력
+                      </PasswordRule>
+                      <PasswordRule checked={passwordChecks.notNumericOnly}>
+                        숫자로만 구성하지 않기
+                      </PasswordRule>
+                      <PasswordRule checked={passwordChecks.confirmed}>
+                        비밀번호 확인과 일치
+                      </PasswordRule>
+                      <PasswordTip>
+                        이메일 앞부분을 그대로 넣지 마세요. 예: minsu@example.com → minsu1234
+                      </PasswordTip>
+                      <PasswordTip>
+                        password1234, qwerty1234처럼 쉽게 추측되는 비밀번호는 사용할 수 없습니다.
+                      </PasswordTip>
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-2 inline-flex w-full items-center justify-center rounded-[13px] bg-[#102e5a] px-6 py-4 text-[16px] font-bold text-white transition-colors hover:bg-[#183f75] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting
+                  ? isLogin
+                    ? "로그인 중..."
+                    : "가입 처리 중..."
+                  : isLogin
+                    ? "로그인"
+                    : "회원가입"}
+              </button>
+            </form>
+
+            <p className="mt-7 text-center text-[13px] text-[#68717d]">
+              {isLogin ? "처음 이용하시나요?" : "이미 계정이 있나요?"}{" "}
+              <button
+                type="button"
+                onClick={() => changeMode(isLogin ? "signup" : "login")}
+                className="font-bold text-[#0b5bd3] hover:underline"
+              >
+                {isLogin ? "회원가입으로 이동" : "로그인으로 이동"}
+              </button>
+            </p>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+const inputClass =
+  "w-full rounded-[13px] border border-[#dcd7ce] bg-white px-4 py-3.5 text-[15px] text-[#152846] outline-none transition focus:border-[#0b5bd3] focus:ring-2 focus:ring-[#0b5bd3]/10";
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-[12px] px-4 py-3 text-[14px] font-bold transition ${
+        active
+          ? "bg-white text-[#102e5a] shadow-sm"
+          : "text-[#727987] hover:text-[#102e5a]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function AuthField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[13px] font-bold text-[#3d4a5d]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function PasswordRule({
+  checked,
+  children,
+}: {
+  checked?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className={`flex items-start gap-2 text-[12px] ${checked ? "text-[#208444]" : "text-[#727987]"}`}>
+      {checked ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+      ) : (
+        <Circle className="mt-0.5 h-4 w-4 shrink-0" />
+      )}
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function PasswordTip({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2 text-[12px] leading-relaxed text-[#5f6875]">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#0b5bd3]" />
+      <span>{children}</span>
+    </li>
   );
 }

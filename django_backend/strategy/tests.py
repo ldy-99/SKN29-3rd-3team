@@ -150,16 +150,23 @@ class StrategyAPITests(APITestCase):
         self.assertEqual(response_json['error']['code'], 'PDF_INVALID_TYPE')
 
     @patch('strategy.views.FastAPIClient.proxy_pdf_analysis')
-    def test_pdf_upload_success(self, mock_proxy_pdf):
+    def test_pdf_upload_success(self, mock_proxy_pdf_analysis):
         """
-        정상 PDF 업로드 시 FastAPI 프록시를 통해 연산 결과를 안전하게 받아오는지 검증
+        정상 PDF 업로드 시 FastAPI PDF 분석 프록시가 호출되고 결과를 반환하는지 검증
         """
-        mock_proxy_pdf.return_value = {
-            "announcement_name": "힐스테이트 대시보드 공고",
-            "region": "SEOUL",
-            "supply_category": "PRIVATE"
+        mock_proxy_pdf_analysis.return_value = {
+            "pdf_analysis_id": "test-pdf-analysis",
+            "extraction_status": "SUCCESS",
+            "filename": "announcement.pdf",
+            "page_count": 1,
+            "text_length": 120,
+            "combined_text_length": 120,
+            "table_count": 0,
+            "truncated": False,
+            "preview": "모집공고 미리보기",
+            "combined_text": "모집공고 전문",
+            "warnings": [],
         }
-        
         from django.core.files.uploadedfile import SimpleUploadedFile
         fake_pdf = SimpleUploadedFile("announcement.pdf", b"%PDF-1.4 mock pdf body", content_type="application/pdf")
         
@@ -169,7 +176,8 @@ class StrategyAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_json = response.json()
         self.assertIsNone(response_json['error'])
-        self.assertEqual(response_json['data']['announcement_name'], "힐스테이트 대시보드 공고")
+        self.assertEqual(response_json['data']['pdf_analysis_id'], 'test-pdf-analysis')
+        mock_proxy_pdf_analysis.assert_called_once()
 
     def test_announcement_create_invalid(self):
         """
@@ -324,3 +332,21 @@ class FastAPIClientFlowTests(APITestCase):
 
         self.assertEqual(result["session_id"], "fastapi-session")
         self.assertEqual(calls, [("simulate", "fastapi-session", False)])
+
+    def test_strategy_run_invalid_transition(self):
+        user = User.objects.create_user(username="test_transition_user", password="pwd")
+        run = StrategyRun.objects.create(
+            user=user,
+            status='PENDING'
+        )
+        with self.assertRaises(ValueError):
+            run.transition_to('SUCCEEDED')
+        
+        run.transition_to('RUNNING')
+        self.assertEqual(run.status, 'RUNNING')
+        
+        run.transition_to('SUCCEEDED')
+        self.assertEqual(run.status, 'SUCCEEDED')
+        
+        with self.assertRaises(ValueError):
+            run.transition_to('RUNNING')

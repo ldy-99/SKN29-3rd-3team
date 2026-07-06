@@ -1,3 +1,8 @@
+"""
+역할: 전략 진단 실행/조회, PDF proxy, RAG 챗봇 proxy 공개 API를 처리합니다.
+흐름: React client.ts -> strategy.views -> serializers/adapters/services/models -> FastAPI/RAG.
+다음 파일: django_backend/strategy/services.py, Backend/app/routers/*.
+"""
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -33,7 +38,7 @@ class StrategyRunAPIView(APIView):
         청약 진단 실행 (Post strategy)
         """
         user = request.user
-        
+
         # 1. 사용자 프로필 존재 여부 확인
         try:
             profile = user.profile
@@ -52,7 +57,7 @@ class StrategyRunAPIView(APIView):
         # 3. 요청 바디 유효성 검사
         req_serializer = StrategyRequestSerializer(data=request.data)
         req_serializer.is_valid(raise_exception=True)
-        
+
         announcement_data = req_serializer.validated_data.get('announcement')
         top_level_announcement_text = req_serializer.validated_data.get('announcement_text')
         announcement_instance = None
@@ -73,6 +78,8 @@ class StrategyRunAPIView(APIView):
             "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else {
                 "announcement_text": top_level_announcement_text,
                 "pdf_analysis_id": req_serializer.validated_data.get('pdf_analysis_id'),
+                "input_method": req_serializer.validated_data.get('input_method') or ("manual" if top_level_announcement_text else None),
+                "source_filename": req_serializer.validated_data.get('source_filename'),
                 "profile_only": req_serializer.validated_data.get('profile_only', False),
             }
         }
@@ -82,7 +89,7 @@ class StrategyRunAPIView(APIView):
         # 6. 4차 스펙 -> 3차 스펙 변환
         profile_3rd = ProfileAdapter.to_3rd_spec(profile_serializer.data)
         session_id = str(strategy_run.id)
-        
+
         announcement_text = None
         if announcement_instance:
             announcement_text = announcement_instance.announcement_text or announcement_instance.announcement_name or announcement_instance.area_text
@@ -94,25 +101,25 @@ class StrategyRunAPIView(APIView):
         try:
             strategy_run.status = 'RUNNING'
             strategy_run.save()
-            
+
             result = client.run_diagnosis(
                 session_id=session_id,
                 profile_3rd=profile_3rd,
                 announcement_text=announcement_text
             )
-            
+
             # 성공 시 결과 적재 및 상태 갱신
-            strategy_run.status = 'SUCCEEDED'
+            strategy_run.transition_to('SUCCEEDED', save=False)
             strategy_run.result_payload = result
             strategy_run.save()
-            
+
             return Response(StrategyRunSerializer(strategy_run).data, status=status.HTTP_201_CREATED)
-            
+
         except Exception as e:
-            strategy_run.status = 'FAILED'
+            strategy_run.transition_to('FAILED', save=False)
             strategy_run.result_payload = {"error": str(e)}
             strategy_run.save()
-            
+
             logger.error(f"Strategy run {session_id} failed: {e}")
             raise e
 
@@ -139,7 +146,7 @@ class StrategyDetailAPIView(APIView):
 
 class PDFAnalyzeAPIView(APIView):
     """
-    모집공고문 PDF 파일 수신 및 내부 FastAPI AI 분석 프록시 API.
+    모집공고문 PDF 파일 수신 및 내부 FastAPI 텍스트 추출 프록시 API.
     """
     parser_classes = [MultiPartParser]
     permission_classes = [IsAuthenticated]
@@ -155,12 +162,17 @@ class PDFAnalyzeAPIView(APIView):
             exc.code = "PDF_INVALID_TYPE"
             exc.message = "PDF 파일 형식이 유효하지 않습니다."
             raise exc
+        if file_obj.size > 15 * 1024 * 1024:
+            exc = ValidationError("PDF 파일은 15MB 이하만 업로드할 수 있습니다.")
+            exc.code = "PDF_TOO_LARGE"
+            exc.message = "PDF 파일 크기가 제한을 초과했습니다."
+            raise exc
 
-        # 2. FastAPI 프록시 전송
+        # 2. 원본 파일은 저장하지 않고 FastAPI에 일회성 추출 요청으로만 전달합니다.
         client = FastAPIClient()
         try:
             result = client.proxy_pdf_analysis(file_obj.name, file_obj.read())
-            
+
             # FastAPI 응답을 받아 그대로 반환
             return Response(result, status=status.HTTP_200_OK)
         except Exception as e:
@@ -221,5 +233,3 @@ class ChatbotAPIView(APIView):
         except Exception as e:
             logger.error(f"Chatbot proxy failed: {e}")
             raise e
-
-

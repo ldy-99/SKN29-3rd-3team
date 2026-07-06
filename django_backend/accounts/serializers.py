@@ -1,3 +1,8 @@
+"""
+역할: 회원가입/로그인/프로필 요청 데이터를 검증하고 모델과 JSON 사이를 변환합니다.
+흐름: accounts.views -> serializers -> accounts.models.Profile/User.
+다음 파일: django_backend/accounts/views.py 또는 django_backend/strategy/adapters.py.
+"""
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
@@ -72,7 +77,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'is_household_head', 'household_member_count', 'birth_year',
             'marital_status', 'minor_child_count', 'has_household_property_ownership_history'
         ]
-        
+
         errors = {}
         for field in required_fields:
             # partial 검증이 아닐 때만 필수 필드로 검사하도록 처리
@@ -103,6 +108,9 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
+
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     email = serializers.EmailField(required=True)
@@ -118,9 +126,26 @@ class SignUpSerializer(serializers.ModelSerializer):
         return value
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        # 이메일 양 끝 공백 제거 및 소문자 정규화
+        normalized_email = value.strip().lower()
+        if User.objects.filter(email=normalized_email).exists():
             raise ValidationError("이미 사용 중인 이메일입니다.")
-        return value
+        return normalized_email
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        email = attrs.get('email')
+        username = attrs.get('username') or email
+
+        # Django 내장 비밀번호 강도 검사기 실행
+        try:
+            temp_user = User(username=username, email=email)
+            validate_password(password, user=temp_user)
+        except DjangoValidationError as e:
+            # 검증 실패 시 DRF ValidationError 형태로 에러 반환
+            raise ValidationError({"password": list(e.messages)})
+
+        return attrs
 
     def create(self, validated_data):
         email = validated_data['email']
@@ -157,6 +182,6 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise ValidationError("아이디 또는 비밀번호가 올바르지 않습니다.")
-        
+
         attrs['user'] = user
         return attrs

@@ -14,6 +14,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from src.engine.llm_safety import LLMCallError, safe_llm_call
+
 llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
 
 # ── 간단 리포트 GPT 프롬프트 ──────────────────────────────────────
@@ -75,21 +77,55 @@ def _build_simple_report(state: Mapping[str, Any]) -> dict[str, Any]:
         for item in supply_rank
     ])
 
-    # GPT로 요약 생성
-    summary = _simple_report_chain.invoke({
-        "recommended_supply": state.get("recommended_supply", "일반공급"),
-        "supply_rank_text": supply_rank_text,
-        "region": profile.get("region", ""),
-        "homeless_period_years": profile.get("homeless_period_years", ""),
-        "bankbook_payments": profile.get("bankbook_payments", ""),
-    })
+    recommended_supply = state.get("recommended_supply", "일반공급")
+    warning = None
 
-    return {
+    try:
+        # GPT로 요약 생성
+        summary = safe_llm_call(
+            lambda: _simple_report_chain.invoke({
+                "recommended_supply": recommended_supply,
+                "supply_rank_text": supply_rank_text,
+                "region": profile.get("region", ""),
+                "homeless_period_years": profile.get("homeless_period_years", ""),
+                "bankbook_payments": profile.get("bankbook_payments", ""),
+            }),
+            node_name="node6_simple_report",
+        )
+    except LLMCallError as exc:
+        print(f"[node6] {exc}")
+        summary = _build_fallback_simple_summary(recommended_supply, supply_rank)
+        warning = (
+            "AI 요약 생성에 실패해 원본 분석 데이터로만 구성된 결과를 보여드립니다. "
+            "잠시 후 다시 시도하면 자연어 요약을 받아볼 수 있습니다."
+        )
+
+    report = {
         "report_type": "simple",
-        "recommended_supply": state.get("recommended_supply", "일반공급"),
+        "recommended_supply": recommended_supply,
         "supply_rank": supply_rank,
         "summary": summary,
     }
+    if warning:
+        report["warning"] = warning
+    return report
+
+
+def _build_fallback_simple_summary(recommended_supply: str, supply_rank: list) -> str:
+    """GPT 요약 생성이 실패했을 때 원본 데이터만으로 구성하는 대체 요약(비-LLM)."""
+    if not supply_rank:
+        rank_text = "확인된 특별공급 순위 정보가 없습니다."
+    else:
+        rank_text = " / ".join(
+            f"{item.get('rank', '?')}순위: {item.get('type', '확인 불가')}"
+            for item in supply_rank
+        )
+
+    return (
+        f"[참고] AI 요약 생성에 실패해 원본 데이터만 안내드립니다.\n"
+        f"추천 공급 유형: {recommended_supply}\n"
+        f"특공 순위: {rank_text}"
+    )
 
 
 def _build_detailed_report(state: Mapping[str, Any]) -> dict[str, Any]:

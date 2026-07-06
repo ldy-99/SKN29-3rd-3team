@@ -4,13 +4,15 @@ Chatbot 구현을 위한 langgraph 모델링
 '''
 
 import os
+import sqlite3
+from pathlib import Path
 from typing import Annotated, TypedDict, Literal
 import uuid
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -27,6 +29,12 @@ load_dotenv()
 # ── 설정 ─────────────────────────────────────────────────────────
 K_PER_COLLECTION = 3
 TOP_K = 5
+
+# 챗봇 대화 세션도 SQLite에 저장 (재시작 후에도 대화 히스토리 유지).
+# pipeline.py의 세션과는 별개 파일로 분리해서 관리.
+_CHECKPOINT_DIR = Path(__file__).resolve().parent.parent / "checkpoints"
+_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+_CHAT_CHECKPOINT_DB_PATH = _CHECKPOINT_DIR / "chat_sessions.sqlite3"
 
 llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
 classifier_llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
@@ -104,7 +112,7 @@ def retrieve(state: ChatRAGState) -> ChatRAGState:
     search_query = _condense_chain.invoke({"messages": state["messages"]}).strip()
 
     # 디버깅용 터미널 출력
-    print(f"\n🔄 [시스템] 메모리 기반 검색어 변환 완료: '{search_query}'")
+    print(f"\n[system] memory-based search query: '{search_query}'")
 
     # 💡 2. 변환된 고품질 키워드 쿼리로 로컬 ChromaDB 검색 실행!
     result = search(search_query)
@@ -194,13 +202,13 @@ def web_search(state: ChatRAGState) -> ChatRAGState:
     user_messages = [m for m in state["messages"] if isinstance(m, HumanMessage)]
     question = user_messages[-1].content if user_messages else ""
 
-    print(f"\n🔍 [시스템] 내부 DB 검색 실패 (유사도 임계값 미달). DuckDuckGo 실시간 웹 검색을 가동합니다: '{question}'")
+    print(f"\n[system] internal DB search missed; running web search: '{question}'")
 
     try:
         # DuckDuckGo 웹 검색 실행
         web_results = web_search_tool.invoke(question)
     except Exception as e:
-        print(f"❌ [시스템] 웹 검색 중 요류 발생: {e}")
+        print(f"[system] web search failed: {e}")
         web_results = "실시간 웹 검색 결과가 일시적으로 제한되었습니다."
 
     # 검색된 웹 컨텍스트 주입 후 LLM 답변 빌드
@@ -290,6 +298,7 @@ def build_chat_graph():
     graph.add_edge("general_answer", END)
     graph.add_edge("out_of_scope_answer", END)
 
-    # 영속성 메모리 디바이스 결합
-    memory = MemorySaver()
+    # 영속성 메모리 디바이스 결합 (SQLite 기반, 프로세스 재시작에도 유지)
+    conn = sqlite3.connect(str(_CHAT_CHECKPOINT_DB_PATH), check_same_thread=False)
+    memory = SqliteSaver(conn)
     return graph.compile(checkpointer=memory)

@@ -6,6 +6,7 @@
 
 # Python
 .venv/
+.venv_*/
 venv/
 env/
 __pycache__/
@@ -22,6 +23,7 @@ dist/
 # Runtime output
 *.log
 *.pid
+db.sqlite3
 
 # Local editor / OS files
 .vscode/
@@ -35,3 +37,10 @@ docs/4th_project_vault/
 # ChromaDB is intentionally retained locally as RAG runtime data.
 # Rebuild it with backend/src/preprocessing/build_all.py when needed.
 backend/src/preprocessing/chroma_db/
+
+# Django local database
+django_backend/db.sqlite3
+
+# LangGraph session checkpoints (SQLite). Runtime-only, per-machine session data.
+Backend/src/checkpoints/
+

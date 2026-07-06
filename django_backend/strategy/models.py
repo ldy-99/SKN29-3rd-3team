@@ -1,3 +1,8 @@
+"""
+역할: 수동/분석 공고 입력과 전략 진단 실행 이력을 저장합니다.
+흐름: strategy.views -> strategy.models -> ResultDetail 조회.
+다음 파일: django_backend/strategy/serializers.py.
+"""
 from django.db import models
 from django.contrib.auth import get_user_model
 import uuid
@@ -10,7 +15,7 @@ class AnnouncementInput(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='announcement_inputs')
-    
+
     announcement_text = models.TextField(null=True, blank=True)
     announcement_name = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=50) # 공고 기반 진단 시 필수
@@ -38,16 +43,32 @@ class StrategyRun(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='strategy_runs')
-    
+
     status = models.CharField(max_length=20, default='PENDING') # PENDING, RUNNING, SUCCEEDED, FAILED
-    
+
     # 당시 입력 조건 스냅샷 (프로필 + 공고 입력 정보)
     input_snapshot = models.JSONField(null=True, blank=True)
     # 계산 결과 페이로드 (FastAPI 반환 리포트)
     result_payload = models.JSONField(null=True, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def transition_to(self, new_status, save=True):
+        """
+        자가진단 실행 상태를 안전하게 검증하고 전이합니다.
+        """
+        valid_transitions = {
+            'PENDING': {'RUNNING', 'FAILED'},
+            'RUNNING': {'SUCCEEDED', 'FAILED'},
+            'SUCCEEDED': set(),
+            'FAILED': set(),
+        }
+        if self.status != new_status and new_status not in valid_transitions.get(self.status, set()):
+            raise ValueError(f"Cannot transition status from '{self.status}' to '{new_status}'")
+        self.status = new_status
+        if save:
+            self.save(update_fields=['status', 'updated_at'])
 
     def __str__(self):
         return f"StrategyRun {self.id} ({self.status})"

@@ -34,6 +34,17 @@ MULTI_CHILD_VALUES = {
     "둘 이상",
     "다자녀",
 }
+NOT_MARRIED_VALUES = {
+    "SINGLE",
+    "single",
+    "미혼",
+    "DIVORCED",
+    "divorced",
+    "이혼",
+    "WIDOWED",
+    "widowed",
+    "사별",
+}
 
 
 def run_node1(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -96,6 +107,14 @@ def _available_supply_types(profile: Mapping[str, Any]) -> list[str]:
 
 
 def _is_newlywed_candidate(profile: Mapping[str, Any]) -> bool:
+    # marital_status가 명확히 "미혼/이혼/사별"이면 다른 필드값과 상관없이 신혼부부
+    # 특공 대상이 아님. 이 체크를 제일 먼저 해야 함 — 예전에는 marriage_period_years만
+    # 보고 판단해서, 미혼인데 혼인 기간에 실수로(혹은 기본값으로) 0을 입력하면
+    # "0 <= 7"이 True가 되어 신혼부부로 잘못 분류되는 문제가 있었음.
+    marital_status = _text(profile.get("marital_status"))
+    if marital_status in NOT_MARRIED_VALUES:
+        return False
+
     marriage_period = _text(profile.get("marriage_period"))
     if marriage_period == "WITHIN_7_YEARS":
         return True
@@ -106,7 +125,6 @@ def _is_newlywed_candidate(profile: Mapping[str, Any]) -> bool:
     if years is not None:
         return years <= 7
 
-    marital_status = _text(profile.get("marital_status"))
     return marital_status in MARRIED_VALUES
 
 

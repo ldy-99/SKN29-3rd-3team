@@ -1,3 +1,7 @@
+"""
+역할: DRF 응답을 React가 기대하는 공통 envelope 형식으로 감싸는 renderer입니다.
+흐름: Django view Response -> EnvelopeJSONRenderer -> React client unwrap.
+"""
 from rest_framework.renderers import JSONRenderer
 import uuid
 

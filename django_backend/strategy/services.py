@@ -1,3 +1,8 @@
+"""
+역할: Django에서 내부 FastAPI AI API를 호출하는 HTTP client입니다.
+흐름: strategy.views -> FastAPIClient -> Backend /api/profile, /api/simulate, /api/announcement, /api/chat.
+주의: PDF proxy는 원본 파일을 저장하지 않고 FastAPI 추출 endpoint에 일회성으로 전달합니다.
+"""
 import requests
 from django.conf import settings
 from rest_framework.exceptions import APIException
@@ -11,10 +16,20 @@ class FastAPIConnectionError(APIException):
     default_code = 'FASTAPI_CONNECTION_FAILED'
 
 
+class FastAPITimeoutError(APIException):
+    status_code = 504
+    default_detail = '내부 AI 분석 서버 응답 시간이 초과되었습니다.'
+    default_code = 'FASTAPI_TIMEOUT'
+
+
 class FastAPIClient:
     def __init__(self):
         self.base_url = getattr(settings, 'FASTAPI_API_URL', 'http://127.0.0.1:8080')
-        self.timeout = getattr(settings, 'FASTAPI_REQUEST_TIMEOUT_SECONDS', 90)
+        self.profile_timeout = getattr(settings, 'FASTAPI_PROFILE_TIMEOUT', 10)
+        self.simulate_timeout = getattr(settings, 'FASTAPI_SIMULATE_TIMEOUT', 30)
+        self.chatbot_timeout = getattr(settings, 'FASTAPI_CHATBOT_TIMEOUT', 30)
+        self.announcement_timeout = getattr(settings, 'FASTAPI_ANNOUNCEMENT_TIMEOUT', 90)
+        self.pdf_timeout = getattr(settings, 'FASTAPI_PDF_TIMEOUT', 90)
 
     def send_profile(self, profile_data: dict) -> dict:
         """
@@ -23,9 +38,12 @@ class FastAPIClient:
         url = f"{self.base_url}/api/profile"
         payload = {"profile": profile_data}
         try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = requests.post(url, json=payload, timeout=self.profile_timeout)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"FastAPI send_profile timeout after {self.profile_timeout}s: {e}")
+            raise FastAPITimeoutError(f"프로필 데이터 전송 시간 초과: {str(e)}")
         except requests.RequestException as e:
             logger.error(f"FastAPI send_profile error: {e}")
             raise FastAPIConnectionError(f"프로필 데이터 전송 실패: {str(e)}")
@@ -40,9 +58,12 @@ class FastAPIClient:
             "announcement_text": announcement_text
         }
         try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = requests.post(url, json=payload, timeout=self.announcement_timeout)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"FastAPI send_announcement timeout after {self.announcement_timeout}s: {e}")
+            raise FastAPITimeoutError(f"공고문 데이터 전송 시간 초과: {str(e)}")
         except requests.RequestException as e:
             logger.error(f"FastAPI send_announcement error: {e}")
             raise FastAPIConnectionError(f"공고문 데이터 전송 실패: {str(e)}")
@@ -57,9 +78,12 @@ class FastAPIClient:
             "simulate": simulate
         }
         try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = requests.post(url, json=payload, timeout=self.simulate_timeout)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"FastAPI trigger_simulate timeout after {self.simulate_timeout}s: {e}")
+            raise FastAPITimeoutError(f"청약 진단 시뮬레이션 연산 시간 초과: {str(e)}")
         except requests.RequestException as e:
             logger.error(f"FastAPI trigger_simulate error: {e}")
             raise FastAPIConnectionError(f"청약 진단 시뮬레이션 연산 실패: {str(e)}")
@@ -71,7 +95,7 @@ class FastAPIClient:
         # 1. 프로필 전송. FastAPI/LangGraph가 발급한 session_id를 이후 호출에 사용합니다.
         profile_result = self.send_profile(profile_3rd)
         fastapi_session_id = profile_result.get("session_id") or session_id
-        
+
         # 2. 공고문이 있으면 상세 진단 분기로 먼저 이동한 뒤 공고문을 전달합니다.
         if announcement_text:
             self.trigger_simulate(fastapi_session_id, simulate=True)
@@ -86,16 +110,19 @@ class FastAPIClient:
         url = f"{self.base_url}/api/pdf/analyze"
         files = {'file': (file_name, file_content, 'application/pdf')}
         try:
-            response = requests.post(url, files=files, timeout=self.timeout)
+            response = requests.post(url, files=files, timeout=self.pdf_timeout)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"FastAPI proxy_pdf_analysis timeout after {self.pdf_timeout}s: {e}")
+            raise FastAPITimeoutError(f"PDF 파일 분석 프록시 전송 시간 초과: {str(e)}")
         except requests.RequestException as e:
             logger.error(f"FastAPI proxy_pdf_analysis error: {e}")
             raise FastAPIConnectionError(f"PDF 파일 분석 프록시 전송 실패: {str(e)}")
 
     def call_chatbot(self, question: str, session_id: str = None) -> dict:
         """
-        FastAPI의 POST /api/chat 엔드포인트로 질문 및 세션 전송 (타임아웃 90초)
+        FastAPI의 POST /api/chat 엔드포인트로 질문 및 세션 전송 (타임아웃 30초)
         """
         url = f"{self.base_url}/api/chat"
         payload = {
@@ -103,9 +130,13 @@ class FastAPIClient:
             "session_id": session_id
         }
         try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = requests.post(url, json=payload, timeout=self.chatbot_timeout)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"FastAPI call_chatbot timeout after {self.chatbot_timeout}s: {e}")
+            raise FastAPITimeoutError(f"챗봇 서비스 호출 시간 초과: {str(e)}")
         except requests.RequestException as e:
             logger.error(f"FastAPI call_chatbot error: {e}")
             raise FastAPIConnectionError(f"챗봇 서비스 호출에 실패했습니다: {str(e)}")
+

@@ -1,93 +1,51 @@
-import { NavLink, Outlet, useLocation } from "react-router";
-import { 
-  User, 
-  CheckSquare, 
-  FileText, 
-  LogOut,
-  Command,
-  LayoutDashboard
-} from "lucide-react";
+// 역할: 로그인 후 사용하는 보호 화면 레이아웃과 데스크톱 챗봇 패널을 감쌉니다.
+// 흐름: routes.tsx -> Layout -> AuthContext -> Profile/Strategy/MyPage/Result/Pdf/Chatbot.
+// 다음 파일: frontend-react/src/app/auth/AuthContext.tsx, frontend-react/src/app/components/SiteHeader.tsx.
+import { Navigate, Outlet, useLocation } from "react-router";
 import { ChatbotPanel } from "./ChatbotPanel";
-import { api } from "../api/client";
-
-const navItems = [
-  { path: "/", label: "대시보드", icon: <LayoutDashboard className="w-5 h-5" />, exact: true },
-  { path: "/profile", label: "프로필", icon: <User className="w-5 h-5" /> },
-  { path: "/strategy", label: "전략 진단", icon: <CheckSquare className="w-5 h-5" /> },
-  { path: "/pdf", label: "PDF 분석", icon: <FileText className="w-5 h-5" /> },
-];
+import { SiteHeader } from "./SiteHeader";
+import { useAuth } from "../auth/AuthContext";
 
 export function Layout() {
   const location = useLocation();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
+        <SiteHeader />
+        <div className="min-h-[calc(100vh-94px)] flex items-center justify-center text-[14px] text-[#68717d]">
+          로그인 상태를 확인하고 있습니다.
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] flex font-sans text-[#1d1d1f]">
-      {/* Slim Sidebar (Top Nav in desktop can also work, but let's do a very clean left sidebar) */}
-      <aside className="w-[240px] bg-[#f5f5f7] border-r border-[#e5e5e7] flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
-        <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#007aff] rounded-[12px] flex items-center justify-center text-white shadow-sm">
-            <Command className="w-5 h-5" />
-          </div>
-          <span className="font-semibold text-[17px] tracking-tight">청약 준비</span>
-        </div>
+    <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
+      <SiteHeader />
 
-        <nav className="flex-1 px-4 space-y-1 mt-4">
-          {navItems.map((item) => {
-            const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-[14px] font-medium text-[15px] transition-colors
-                  ${isActive 
-                    ? "bg-[#e5e5e7]/50 text-[#1d1d1f]" 
-                    : "text-[#6e6e73] hover:bg-[#e5e5e7]/30 hover:text-[#1d1d1f]"}
-                `}
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 mb-4">
-          <div className="px-4 py-3 bg-white rounded-[16px] shadow-sm border border-[#e5e5e7] mb-2 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center text-[#1d1d1f] font-semibold text-[13px]">
-              홍
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold truncate">홍길동</p>
-              <p className="text-[12px] text-[#6e6e73] truncate">user@apple.com</p>
+      <div className="min-h-[calc(100vh-94px)] flex">
+        <main className="flex-1 min-w-0">
+          <div className="w-full px-6 py-9 md:px-10 xl:px-12 xl:py-12">
+            <div className="max-w-[860px] w-full mx-auto">
+              <Outlet />
             </div>
           </div>
-          <NavLink
-            to="/login"
-            onClick={() => void api.logout()}
-            className="flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium text-[#6e6e73] hover:bg-[#e5e5e7]/30 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            로그아웃
-          </NavLink>
-        </div>
-      </aside>
+        </main>
 
-      {/* Main Content Area (2/3 roughly) */}
-      <main className="flex-1 w-full max-w-[1440px] flex flex-col min-h-screen relative overflow-y-auto">
-        <div className="flex-1 p-6 md:p-10 xl:p-12 w-full mx-auto">
-          <div className="max-w-[760px] w-full">
-            <Outlet />
-          </div>
-        </div>
-      </main>
-
-      {/* Right Chatbot Panel (1/3) */}
-      <aside className="w-[460px] 2xl:w-[500px] shrink-0 border-l border-[#e5e5e7] bg-white/60 backdrop-blur-2xl hidden md:block sticky top-0 h-screen">
-        <div className="p-6 h-full">
-          <ChatbotPanel />
-        </div>
-      </aside>
+        {location.pathname !== "/chatbot" && (
+          <aside className="w-[460px] 2xl:w-[520px] shrink-0 border-l border-[#e9e4da] bg-white hidden xl:block sticky top-[94px] h-[calc(100vh-94px)]">
+            <div className="p-4 2xl:p-5 h-full">
+              <ChatbotPanel />
+            </div>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
