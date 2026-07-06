@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
@@ -9,7 +10,9 @@ import {
   Landmark,
   LockKeyhole,
   UserRound,
+  LogOut,
 } from "lucide-react";
+import { api } from "../api/client";
 
 const serviceSteps = [
   {
@@ -30,6 +33,23 @@ const serviceSteps = [
 ];
 
 export function Home() {
+  const [currentUser, setCurrentUser] = useState<{ username: string; email: string } | null>(null);
+
+  useEffect(() => {
+    api.getMe()
+      .then((user) => setCurrentUser(user))
+      .catch(() => setCurrentUser(null));
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("로그아웃 실패", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
       <header className="h-[94px] bg-[#fffefa]/95 backdrop-blur-md border-b border-[#e9e4da] sticky top-0 z-30">
@@ -47,16 +67,40 @@ export function Home() {
           </nav>
 
           <div className="flex items-center gap-3 shrink-0">
-            <Link to="/login" className="hidden sm:inline-flex px-4 py-3 text-[14px] font-semibold text-[#26364e]">
-              로그인
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-[12px] bg-[#102e5a] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#183f75] transition-colors"
-            >
-              무료로 시작하기
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {currentUser ? (
+              <div className="flex items-center gap-4">
+                <span className="hidden sm:inline text-[14px] text-[#6e6e73] font-medium">
+                  <span className="text-[#007aff] font-bold">{currentUser.username}</span>님 로그인됨
+                </span>
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center gap-2 rounded-[12px] bg-[#102e5a] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#183f75] transition-colors"
+                >
+                  대시보드 바로가기
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[14px] font-semibold text-[#6e6e73] hover:text-[#ff3b30] hover:bg-[#ff3b30]/5 transition-colors border border-transparent hover:border-[#ff3b30]/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 shrink-0">
+                <Link to="/login" className="hidden sm:inline-flex px-4 py-3 text-[14px] font-semibold text-[#26364e]">
+                  로그인
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 rounded-[12px] bg-[#102e5a] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#183f75] transition-colors"
+                >
+                  무료로 시작하기
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -83,7 +127,7 @@ export function Home() {
               </p>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link
-                  to="/login"
+                  to={currentUser ? "/profile" : "/login"}
                   className="inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors"
                 >
                   내 조건 진단하기

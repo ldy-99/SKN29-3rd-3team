@@ -6,13 +6,20 @@ from accounts.models import Profile
 
 User = get_user_model()
 
+from django.core.cache import cache
+
 class ProfileAPITests(APITestCase):
     def setUp(self):
+        # 테스트 간 스로틀링 캐시 누적 방지를 위해 캐시 초기화
+        cache.clear()
         self.user = User.objects.create_user(
             username="profile_tester",
             email="profile@example.com",
             password="testpassword123",
         )
+
+    def tearDown(self):
+        cache.clear()
 
     def authenticate_profile_user(self):
         self.client.force_authenticate(user=self.user)
@@ -330,3 +337,27 @@ class ProfileAPITests(APITestCase):
         
         response_json = response.json()
         self.assertIn('password', response_json['error']['field_errors'])
+
+    def test_login_rate_throttling(self):
+        """
+        로그인 시도 10회 초과 시 429 Too Many Requests 에러가 발생하는지 검증합니다.
+        """
+        User.objects.create_user(
+            username="throttle_user",
+            email="throttle@example.com",
+            password="testpassword123"
+        )
+        url = reverse('login')
+        login_data = {
+            "username": "throttle_user",
+            "password": "testpassword123"
+        }
+
+        # 10회까지는 정상(200) 호출 허용
+        for _ in range(10):
+            response = self.client.post(url, login_data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # 11회째 호출 시 429 Too Many Requests가 발생해야 함
+        response = self.client.post(url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

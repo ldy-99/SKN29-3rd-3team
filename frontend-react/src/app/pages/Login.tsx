@@ -1,7 +1,7 @@
 // 역할: 회원가입과 로그인을 처리하는 화면입니다.
 // 흐름: 사용자 입력 -> api.signup/api.login -> Django accounts API -> session cookie 발급.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/accounts/views.py.
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/UI";
 import { Command } from "lucide-react";
@@ -11,6 +11,17 @@ export function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // 이미 로그인한 세션이 있으면 로그인 화면을 보여주지 않고 대시보드로 자동 이동
+  useEffect(() => {
+    api.getMe()
+      .then(() => {
+        navigate("/profile");
+      })
+      .catch(() => {
+        // 미인증 상태이면 로그인 폼 그대로 노출
+      });
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
