@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import { ArrowRight, CalendarDays, History, RefreshCw, User } from "lucide-react";
 import { Button, Card, ErrorNotice, PageTitle, StatusBadge } from "../components/UI";
 import { api, CurrentUser, StrategyRecord } from "../api/client";
+import { getAnnouncementPresentation } from "../utils/announcementPresentation";
 
 export function MyPage() {
   const navigate = useNavigate();
@@ -141,13 +142,7 @@ function StrategyHistoryCard({
   strategy: StrategyRecord;
   onOpen: () => void;
 }) {
-  const inputSnapshot = asRecord(strategy.input_snapshot);
-  const inputAnnouncement = asRecord(inputSnapshot?.announcement);
-  const announcement = asRecord(strategy.announcement_confirmed);
-  const title =
-    stringValue(announcement?.announcement_name) ??
-    stringValue(inputAnnouncement?.source_filename) ??
-    (strategy.diagnosis_mode === "PROFILE_ONLY" ? "기본 자격 진단" : "공고 기반 전략 진단");
+  const announcement = getAnnouncementPresentation(strategy);
   const recommendedSupply = strategy.recommended_supply || "추천 유형 확인 필요";
   const displayStatus = strategy.overall_analysis_status || strategy.status;
 
@@ -168,10 +163,27 @@ function StrategyHistoryCard({
             {displayStatus !== strategy.status && <StatusBadge status={displayStatus} />}
             <span className="text-[12px] text-[#86868b]">{formatDate(strategy.created_at)}</span>
           </div>
-          <h3 className="font-bold text-[18px] text-[#152846] truncate">{title}</h3>
+          <h3 className="font-bold text-[19px] leading-snug text-[#152846] break-keep">
+            {announcement.title}
+          </h3>
           <p className="mt-2 text-[14px] text-[#596273]">
             추천 공급유형 <span className="font-semibold text-[#245ea8]">{recommendedSupply}</span>
           </p>
+          {announcement.info.length > 0 && (
+            <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {announcement.info.map((item) => (
+                <div
+                  key={`${item.label}-${item.value}`}
+                  className="min-w-0 rounded-[12px] border border-[#e7e2d9] bg-[#fbfaf7] px-3 py-2.5"
+                >
+                  <dt className="text-[11px] font-semibold text-[#858b94]">{item.label}</dt>
+                  <dd className="mt-1 truncate text-[13px] font-semibold text-[#344258]" title={item.value}>
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <p className="mt-1 text-[12px] text-[#86868b]">
             {strategy.diagnosis_mode === "PROFILE_ONLY" ? "프로필 기준" : "공고문 기준"} · ID {strategy.strategy_id}
           </p>
@@ -197,12 +209,3 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : undefined;
-}

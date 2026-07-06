@@ -329,9 +329,6 @@ export function ChatbotPanel() {
             <ArrowUp className="w-4 h-4" />
           </button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-[#8a9099]">
-          상담 내용은 새로고침하면 사라집니다.
-        </p>
       </div>
     </div>
   );
