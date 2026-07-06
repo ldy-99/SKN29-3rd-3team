@@ -2,7 +2,7 @@
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
-import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator } from "../components/UI";
+import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator, WarningBox } from "../components/UI";
 import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, User } from "lucide-react";
 import { api } from "../api/client";
 import { useEffect, useState } from "react";
@@ -82,9 +82,13 @@ export function StrategyRun() {
   return (
     <div className="pb-20">
       <PageTitle
-        title="전략 진단"
-        description="프로필과 관심 공고를 바탕으로 청약 당첨 가능성을 분석합니다."
+        title="아파트 분양 청약 진단"
+        description="프로필과 아파트 입주자모집공고를 바탕으로 청약 조건을 분석합니다."
       />
+
+      <WarningBox type="info" title="현재 지원 범위">
+        민영·공공 아파트 분양 청약을 지원합니다. 오피스텔, 임대주택, 토지 및 상가 청약은 진단하지 않습니다.
+      </WarningBox>
 
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
 
@@ -154,8 +158,8 @@ export function StrategyRun() {
         <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
           <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
-              <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">관심 모집공고 입력</h3>
-              <p className="text-[14px] text-[#69717d]">모집공고문의 주요 내용을 복사해서 붙여넣어 주세요.</p>
+              <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">아파트 분양 모집공고 입력</h3>
+              <p className="text-[14px] text-[#69717d]">아파트 입주자모집공고의 주요 내용을 복사해서 붙여넣어 주세요.</p>
             </div>
             <Button
               variant="outline"
@@ -180,7 +184,7 @@ export function StrategyRun() {
 
           <textarea
             className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
-            placeholder="여기에 모집공고문을 붙여넣으세요..."
+            placeholder="아파트 분양 입주자모집공고를 여기에 붙여넣으세요..."
             value={noticeText}
             onChange={(e) => setNoticeText(e.target.value)}
             disabled={isBasicOnly || isRunning}

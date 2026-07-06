@@ -3,7 +3,7 @@
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/accounts/serializers.py.
 import { useEffect, useState } from "react";
 import { PageTitle, FormGroup, SettingsList, Button, ErrorNotice, WarningBox } from "../components/UI";
-import { Check } from "lucide-react";
+import { Check, LoaderCircle } from "lucide-react";
 import { ApiRequestError, api } from "../api/client";
 
 type ProfileForm = {
@@ -92,6 +92,7 @@ const booleanFields = new Set<keyof ProfileForm>([
 
 export function Profile() {
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileForm>(defaultProfile);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
@@ -115,16 +116,23 @@ export function Profile() {
   }, []);
 
   const saveProfile = async () => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+    setIsSaved(false);
     setError(null);
     setNotice("");
 
     try {
-      await api.saveProfile(profile);
+      const savedProfile = await api.saveProfile(profile);
+      setProfile(normalizeProfile(savedProfile));
       setIsSaved(true);
       setNotice("프로필이 저장되었습니다.");
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
       setError(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -197,9 +205,10 @@ export function Profile() {
         title="내 청약 조건"
         description="모르는 항목은 비워둘 수 있어요. 비워둔 값은 진단 결과에서 따로 안내합니다."
         action={
-          <Button type="button" onClick={saveProfile} className="gap-2 shrink-0">
-            {isSaved && <Check className="w-4 h-4" />}
-            {isSaved ? "저장됨" : "저장하기"}
+          <Button type="button" onClick={saveProfile} disabled={isSaving} className="gap-2 shrink-0">
+            {isSaving && <LoaderCircle className="w-4 h-4 animate-spin" />}
+            {!isSaving && isSaved && <Check className="w-4 h-4" />}
+            {isSaving ? "저장 중" : isSaved ? "저장됨" : "저장하기"}
           </Button>
         }
       />
@@ -239,7 +248,12 @@ export function Profile() {
             </FormGroup>
 
             <FormGroup label="예치금 (원)" required helperText="만원 단위가 아니라 원 단위로 저장됩니다.">
-              <input type="number" min="0" step="10000" placeholder="예: 2400000" className={inputClass} value={numberInputValue(profile.bankbook_balance_krw)} onChange={(e) => updateField("bankbook_balance_krw", e.target.value)} />
+              <CurrencyInput
+                value={profile.bankbook_balance_krw}
+                onChange={(value) => updateField("bankbook_balance_krw", value)}
+                placeholder="예: 2,400,000"
+                className={inputClass}
+              />
             </FormGroup>
 
             <FormGroup label="거주 지역" required>
@@ -379,11 +393,11 @@ export function Profile() {
 
           <SettingsList>
             <FormGroup label="월평균 가구소득 (원)">
-              <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.monthly_household_income_krw)} onChange={(e) => updateField("monthly_household_income_krw", e.target.value)} />
+              <CurrencyInput value={profile.monthly_household_income_krw} onChange={(value) => updateField("monthly_household_income_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
             <FormGroup label="총자산 (원)">
-              <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.total_assets_krw)} onChange={(e) => updateField("total_assets_krw", e.target.value)} />
+              <CurrencyInput value={profile.total_assets_krw} onChange={(value) => updateField("total_assets_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
             <FormGroup label="최근 5년 소득세 납부 이력">
@@ -414,18 +428,37 @@ export function Profile() {
             )}
 
             <FormGroup label="부동산 자산 (원)">
-              <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.real_estate_assets_krw)} onChange={(e) => updateField("real_estate_assets_krw", e.target.value)} />
+              <CurrencyInput value={profile.real_estate_assets_krw} onChange={(value) => updateField("real_estate_assets_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
             <FormGroup label="차량 가액 (원)">
-              <input type="number" min="0" step="10000" placeholder="모르면 비워둠" className={inputClass} value={numberInputValue(profile.vehicle_value_krw)} onChange={(e) => updateField("vehicle_value_krw", e.target.value)} />
+              <CurrencyInput value={profile.vehicle_value_krw} onChange={(value) => updateField("vehicle_value_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
           </SettingsList>
         </section>
 
-        <div className="flex justify-end">
-          <Button type="submit" className="min-w-[160px]">
-            저장하기
+        <div className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-[18px] border border-[#dfe4eb] bg-white/95 p-4 shadow-[0_12px_35px_rgba(35,45,60,0.12)] backdrop-blur md:flex-row md:items-center md:justify-between">
+          <div className="min-h-5 text-[13px]" aria-live="polite">
+            {isSaving && <span className="text-[#566171]">입력한 청약 조건을 저장하고 있습니다.</span>}
+            {!isSaving && isSaved && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[#16823b]">
+                <Check className="h-4 w-4" />
+                저장이 완료되었습니다.
+              </span>
+            )}
+            {!isSaving && error && (
+              <span className="font-semibold text-[#c62f2f]">
+                {error instanceof Error ? error.message : "저장하지 못했습니다. 입력값과 서버 연결을 확인해주세요."}
+              </span>
+            )}
+            {!isSaving && !isSaved && !error && (
+              <span className="text-[#747c87]">변경한 내용은 저장해야 진단에 반영됩니다.</span>
+            )}
+          </div>
+          <Button type="submit" disabled={isSaving} className="min-w-[160px] gap-2">
+            {isSaving && <LoaderCircle className="h-4 w-4 animate-spin" />}
+            {!isSaving && isSaved && <Check className="h-4 w-4" />}
+            {isSaving ? "저장 중" : isSaved ? "저장됨" : "저장하기"}
           </Button>
         </div>
       </form>
@@ -485,4 +518,29 @@ function booleanSelectValue(value: boolean | null) {
 
 function numberInputValue(value: number | null) {
   return value ?? "";
+}
+
+function CurrencyInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: number | null;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className: string;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder={placeholder}
+      className={className}
+      value={value === null ? "" : value.toLocaleString("ko-KR")}
+      onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
+      aria-label="원 단위 금액"
+    />
+  );
 }

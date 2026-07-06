@@ -1,6 +1,7 @@
-import { ArrowRight, Landmark, LogOut } from "lucide-react";
+import { ArrowRight, LogOut } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { BrandMark } from "./BrandMark";
 
 const tabs = [
   { path: "/", label: "홈", end: true },
@@ -26,8 +27,11 @@ export function SiteHeader() {
     <header className="bg-white border-b border-[#e5e7eb] sticky top-0 z-30">
       <div className="max-w-[1440px] h-[72px] lg:h-[94px] mx-auto px-4 sm:px-6 lg:px-10 flex items-center gap-4 lg:gap-6 xl:gap-10">
         <Link to="/" className="flex items-center gap-3 shrink-0">
-          <Landmark className="w-8 h-8 text-[#102e5a]" strokeWidth={1.7} />
+          <BrandMark />
           <span className="hidden sm:inline text-[21px] font-bold tracking-[-0.03em] text-[#102e5a]">청약 진단 서비스</span>
+          <span className="hidden 2xl:inline-flex rounded-full bg-[#f7eedf] px-2.5 py-1 text-[10px] font-bold text-[#9a5810]">
+            DEMO · 아파트 분양 전용
+          </span>
         </Link>
 
         <nav className="hidden lg:flex h-full items-center gap-1 xl:gap-2 flex-1" aria-label="주요 메뉴">

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { CheckCircle2, Circle, Info, Landmark } from "lucide-react";
+import { CheckCircle2, Circle, Info } from "lucide-react";
 import { ErrorNotice } from "../components/UI";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { BrandMark } from "../components/BrandMark";
 
 type AuthMode = "login" | "signup";
 
@@ -75,7 +76,7 @@ export function Login() {
     <div className="min-h-screen bg-[#fbfaf7] px-5 py-8 font-sans text-[#152846]">
       <div className="mx-auto w-full max-w-[480px]">
         <Link to="/" className="mb-9 flex items-center justify-center gap-3">
-          <Landmark className="h-8 w-8 text-[#102e5a]" strokeWidth={1.7} />
+          <BrandMark />
           <span className="text-[21px] font-bold tracking-[-0.03em]">청약 진단 서비스</span>
         </Link>
 
@@ -102,6 +103,9 @@ export function Login() {
                   ? "가입한 이메일과 비밀번호로 로그인합니다."
                   : "계정을 만들면 프로필과 전략 진단 결과를 다시 확인할 수 있습니다."}
               </p>
+              <span className="mt-4 inline-flex rounded-full bg-[#f7eedf] px-3 py-1.5 text-[11px] font-bold text-[#9a5810]">
+                DEMO · 아파트 분양 전용
+              </span>
             </div>
 
             <ErrorNotice error={error} fallbackMessage="인증 요청을 처리하지 못했습니다." />

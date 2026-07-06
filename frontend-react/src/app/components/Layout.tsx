@@ -28,8 +28,18 @@ export function Layout() {
 
       <div className="min-h-[calc(100vh-94px)] flex">
         <main className="flex-1 min-w-0">
-          <div className="w-full px-6 py-9 md:px-10 xl:px-12 xl:py-12">
-            <div className="max-w-[860px] w-full mx-auto">
+          <div
+            className={`w-full ${
+              location.pathname === "/chatbot"
+                ? "px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8"
+                : "px-6 py-9 md:px-10 xl:px-12 xl:py-12"
+            }`}
+          >
+            <div
+              className={`w-full mx-auto ${
+                location.pathname === "/chatbot" ? "max-w-[1480px]" : "max-w-[860px]"
+              }`}
+            >
               <Outlet />
             </div>
           </div>
