@@ -25,14 +25,15 @@ const serviceSteps = [
   },
   {
     icon: <ClipboardList className="w-7 h-7" />,
-    title: "결과와 다음 행동",
-    description: "부족한 정보, 위험 요소와 준비할 항목을 확인합니다.",
+    title: "청약 진단",
+    description: "위험 요소와 청약 전략을 확인합니다.",
   },
 ];
 
 export function Home() {
   const { user, isLoading } = useAuth();
   const diagnosisPath = isLoading ? "/" : user ? "/strategy" : "/login";
+  const historyPath = isLoading ? "/" : user ? "/mypage" : "/login";
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
@@ -47,9 +48,6 @@ export function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-[#fffefa] via-[#fffefa]/95 to-[#fffefa]/5" />
           <div className="relative max-w-[1440px] min-h-[520px] md:min-h-[600px] mx-auto px-6 lg:px-10 flex items-center py-12 md:py-16">
             <div className="landing-reveal max-w-[760px]">
-              <p className="text-[14px] font-bold tracking-[0.04em] text-[#b86a12] mb-5">
-                아파트 분양 청약 진단 데모
-              </p>
               <h1 className="text-[46px] md:text-[58px] xl:text-[66px] font-bold tracking-[-0.045em] leading-[1.18] text-[#102e5a] break-keep">
                 아파트 분양 청약 조건을
                 <br />
@@ -59,7 +57,7 @@ export function Home() {
                 청약 프로필과 아파트 입주자모집공고를 바탕으로 자격, 가점, 위험 요소와 준비 전략을 확인합니다.
               </p>
               <div className="mt-5 max-w-[620px] rounded-[14px] border border-[#e4d8c5] bg-[#fffaf1]/90 px-4 py-3 text-[14px] leading-relaxed text-[#6f5737]">
-                현재 데모 버전은 아파트 분양 청약만 지원합니다. 오피스텔·임대주택·토지·상가 청약은 지원하지 않습니다.
+                현재 데모 버전은 아파트 분양 청약만 지원합니다. 오피스텔·임대주택·토지·상가 청약은 추후 지원 예정입니다.
               </div>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link
@@ -72,13 +70,17 @@ export function Home() {
                   {isLoading ? "로그인 상태 확인 중" : user ? "전략 진단 계속하기" : "내 조건 진단하기"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
-                <a
-                  href="#steps"
-                  className="inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors"
+                <Link
+                  to={historyPath}
+                  state={!isLoading && !user ? { from: "/mypage" } : undefined}
+                  aria-disabled={isLoading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors ${
+                    isLoading ? "pointer-events-none opacity-70" : ""
+                  }`}
                 >
-                  이용 방법 보기
+                  진단 기록 보기
                   <ArrowRight className="w-5 h-5" />
-                </a>
+                </Link>
               </div>
             </div>
 

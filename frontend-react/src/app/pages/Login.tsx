@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { CheckCircle2, Circle, Info } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
 import { ErrorNotice } from "../components/UI";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -20,14 +20,23 @@ export function Login() {
   const { setAuthenticatedUser } = useAuth();
   const isLogin = mode === "login";
 
-  const passwordChecks = useMemo(
-    () => ({
+  const passwordChecks = useMemo(() => {
+    const emailPrefix = email.split("@")[0]?.trim().toLowerCase() ?? "";
+    const normalizedPassword = password.toLowerCase();
+
+    return {
       minimumLength: password.length >= 8,
       notNumericOnly: password.length > 0 && !/^\d+$/.test(password),
       confirmed: password.length > 0 && password === passwordConfirm,
-    }),
-    [password, passwordConfirm],
-  );
+      notSimilarToEmail:
+        password.length > 0 &&
+        (emailPrefix.length < 3 || !normalizedPassword.includes(emailPrefix)),
+      notCommon:
+        password.length > 0 &&
+        !/(password|qwerty|asdf|1234|1111|0000)/i.test(password),
+    };
+  }, [email, password, passwordConfirm]);
+  const arePasswordRulesComplete = Object.values(passwordChecks).every(Boolean);
 
   const changeMode = (nextMode: AuthMode) => {
     setMode(nextMode);
@@ -54,6 +63,14 @@ export function Login() {
         setError("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         return;
       }
+      if (!passwordChecks.notSimilarToEmail) {
+        setError("비밀번호에 이메일 아이디를 그대로 포함할 수 없습니다.");
+        return;
+      }
+      if (!passwordChecks.notCommon) {
+        setError("연속된 숫자나 password, qwerty처럼 쉽게 추측되는 비밀번호는 사용할 수 없습니다.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -77,7 +94,6 @@ export function Login() {
       <div className="mx-auto w-full max-w-[480px]">
         <Link to="/" className="mb-9 flex items-center justify-center gap-3">
           <BrandMark />
-          <span className="text-[21px] font-bold tracking-[-0.03em]">청약 진단 서비스</span>
         </Link>
 
         <div className="overflow-hidden rounded-[24px] border border-[#ded8cc] bg-white shadow-[0_18px_55px_rgba(24,40,65,0.09)]">
@@ -103,9 +119,6 @@ export function Login() {
                   ? "가입한 이메일과 비밀번호로 로그인합니다."
                   : "계정을 만들면 프로필과 전략 진단 결과를 다시 확인할 수 있습니다."}
               </p>
-              <span className="mt-4 inline-flex rounded-full bg-[#f7eedf] px-3 py-1.5 text-[11px] font-bold text-[#9a5810]">
-                DEMO · 아파트 분양 전용
-              </span>
             </div>
 
             <ErrorNotice error={error} fallbackMessage="인증 요청을 처리하지 못했습니다." />
@@ -152,8 +165,16 @@ export function Login() {
                     />
                   </AuthField>
 
-                  <div className="rounded-[16px] border border-[#e5dfd4] bg-[#fbfaf7] p-4">
-                    <p className="mb-3 text-[13px] font-bold text-[#26364e]">비밀번호 생성 규칙</p>
+                  <div
+                    className={`rounded-[16px] border p-4 transition-colors ${
+                      arePasswordRulesComplete
+                        ? "border-[#9bd4ac] bg-[#f0fbf3]"
+                        : "border-[#e5dfd4] bg-[#fbfaf7]"
+                    }`}
+                  >
+                    <p className={`mb-3 text-[13px] font-bold ${arePasswordRulesComplete ? "text-[#16823b]" : "text-[#26364e]"}`}>
+                      {arePasswordRulesComplete ? "비밀번호 생성 규칙을 모두 충족했습니다" : "비밀번호 생성 규칙"}
+                    </p>
                     <ul className="space-y-2">
                       <PasswordRule checked={passwordChecks.minimumLength}>
                         8자 이상 입력
@@ -164,12 +185,12 @@ export function Login() {
                       <PasswordRule checked={passwordChecks.confirmed}>
                         비밀번호 확인과 일치
                       </PasswordRule>
-                      <PasswordTip>
+                      <PasswordRule checked={passwordChecks.notSimilarToEmail}>
                         이메일 앞부분을 그대로 넣지 마세요. 예: minsu@example.com → minsu1234
-                      </PasswordTip>
-                      <PasswordTip>
+                      </PasswordRule>
+                      <PasswordRule checked={passwordChecks.notCommon}>
                         password1234, qwerty1234처럼 쉽게 추측되는 비밀번호는 사용할 수 없습니다.
-                      </PasswordTip>
+                      </PasswordRule>
                     </ul>
                   </div>
                 </>
@@ -263,15 +284,6 @@ function PasswordRule({
       ) : (
         <Circle className="mt-0.5 h-4 w-4 shrink-0" />
       )}
-      <span>{children}</span>
-    </li>
-  );
-}
-
-function PasswordTip({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2 text-[12px] leading-relaxed text-[#5f6875]">
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#0b5bd3]" />
       <span>{children}</span>
     </li>
   );

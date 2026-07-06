@@ -51,7 +51,7 @@ export function ResultDetail() {
 
       <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2 rounded-[16px] border border-[#e4d8c5] bg-[#fffaf1] px-5 py-4 text-[13px] text-[#6f5737]">
         <span><strong className="text-[#49351f]">진단 범위</strong> 아파트 분양 청약</span>
-        <span><strong className="text-[#49351f]">결과 성격</strong> 데모 진단</span>
+        <span><strong className="text-[#49351f]">결과 성격</strong> 참고용 진단</span>
         <span>최종 자격은 해당 입주자모집공고문에서 확인해야 합니다.</span>
       </div>
 

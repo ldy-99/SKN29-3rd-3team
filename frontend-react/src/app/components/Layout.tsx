@@ -37,7 +37,7 @@ export function Layout() {
           >
             <div
               className={`w-full mx-auto ${
-                location.pathname === "/chatbot" ? "max-w-[1480px]" : "max-w-[860px]"
+                location.pathname === "/chatbot" ? "max-w-[1280px]" : "max-w-[860px]"
               }`}
             >
               <Outlet />
