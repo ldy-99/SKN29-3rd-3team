@@ -37,7 +37,6 @@
 
 | 확인하려는 내용 | 문서 |
 |---|---|
-| `final-debug-share` 브랜치에서 처음부터 실행 | [guides/FINAL_DEBUG_SHARE_GUIDE.md](guides/FINAL_DEBUG_SHARE_GUIDE.md) |
 | 역할, 작업 순서, Git·PR·QA 규칙 | [guides/TEAM_GUIDE.md](guides/TEAM_GUIDE.md) |
 | 현재 브랜치 실행과 검증 명령 | [../README.md](../README.md) |
 
@@ -47,9 +46,6 @@
 |---|---|
 | 통합·정리 작업 이력 | [traces/CHANGELOG.md](traces/CHANGELOG.md) |
 | 문제 원인과 수정 근거 중심 기록 | [traces/fix-log.md](traces/fix-log.md) |
-| `version-1` 정상화에서 바뀐 항목과 이유 | [traces/VERSION1_NORMALIZATION_TRACE.md](traces/VERSION1_NORMALIZATION_TRACE.md) |
-| 2026-07-06 API 계약 정리 근거와 확인 기록 | [traces/VERSION1_API_CONTRACT_TRACE_2026_07_06.md](traces/VERSION1_API_CONTRACT_TRACE_2026_07_06.md) |
-| 2026-07-06 dongyoon/eunjin 단계별 통합 판단 기록 | [traces/VERSION1_INTEGRATION_TRACE_2026_07_06.md](traces/VERSION1_INTEGRATION_TRACE_2026_07_06.md) |
 
 ## 프론트 문서
 
