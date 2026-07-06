@@ -87,7 +87,7 @@ export function StrategyRun() {
       />
 
       <WarningBox type="info" title="현재 지원 범위">
-        민영·공공 아파트 분양 청약을 지원합니다. 오피스텔, 임대주택, 토지 및 상가 청약은 진단하지 않습니다.
+        민영·공공 아파트 분양 청약을 지원합니다. 오피스텔, 임대주택, 토지 및 상가 청약은 추후 지원 예정입니다.
       </WarningBox>
 
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
