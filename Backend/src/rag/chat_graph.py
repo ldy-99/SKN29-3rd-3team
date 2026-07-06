@@ -4,13 +4,15 @@ Chatbot 구현을 위한 langgraph 모델링
 '''
 
 import os
+import sqlite3
+from pathlib import Path
 from typing import Annotated, TypedDict, Literal
 import uuid
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -27,6 +29,12 @@ load_dotenv()
 # ── 설정 ─────────────────────────────────────────────────────────
 K_PER_COLLECTION = 3
 TOP_K = 5
+
+# 챗봇 대화 세션도 SQLite에 저장 (재시작 후에도 대화 히스토리 유지).
+# pipeline.py의 세션과는 별개 파일로 분리해서 관리.
+_CHECKPOINT_DIR = Path(__file__).resolve().parent.parent / "checkpoints"
+_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+_CHAT_CHECKPOINT_DB_PATH = _CHECKPOINT_DIR / "chat_sessions.sqlite3"
 
 llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
 classifier_llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
@@ -290,6 +298,7 @@ def build_chat_graph():
     graph.add_edge("general_answer", END)
     graph.add_edge("out_of_scope_answer", END)
 
-    # 영속성 메모리 디바이스 결합
-    memory = MemorySaver()
+    # 영속성 메모리 디바이스 결합 (SQLite 기반, 프로세스 재시작에도 유지)
+    conn = sqlite3.connect(str(_CHAT_CHECKPOINT_DB_PATH), check_same_thread=False)
+    memory = SqliteSaver(conn)
     return graph.compile(checkpointer=memory)

@@ -97,7 +97,9 @@ class StrategyRunSerializer(serializers.ModelSerializer):
             warnings_list = result_payload.get('warnings', [])
             has_missing = False
             for item in result_payload.get('supply_rank', []):
-                if item.get('missing_fields'):
+                # FastAPI(Backend/src/engine/node2.py)는 missing_items라는 이름으로 보내는데
+                # 여기서는 missing_fields를 찾고 있어서 항상 has_missing=False로 계산되던 버그.
+                if item.get('missing_items') or item.get('missing_fields'):
                     has_missing = True
                     break
             
@@ -141,32 +143,38 @@ class StrategyRunSerializer(serializers.ModelSerializer):
         # 7. Map recommended_supply_types (mainly for PROFILE_ONLY)
         recommended_supply_types = []
         for item in supply_rank_raw:
+            item_missing = item.get('missing_items') or item.get('missing_fields') or []
             recommended_supply_types.append({
                 "supply_type": item.get('type') or item.get('supply_type') or item.get('name'),
-                "status": "PARTIAL" if item.get('missing_fields') else "COMPLETE",
-                "missing_fields": item.get('missing_fields', [])
+                "status": "PARTIAL" if item_missing else "COMPLETE",
+                "missing_fields": item_missing
             })
         data['recommended_supply_types'] = recommended_supply_types
         
         # 8. Map supply_rank
+        # 주의: FastAPI(Backend/src/engine/node2.py)가 실제로 보내는 필드명은
+        # missing_items입니다. 여기서는 응답 스펙(REST 계약)상의 출력 필드명인
+        # missing_fields는 그대로 유지하되, 입력값을 읽을 때는 missing_items를
+        # 우선 확인하도록 고쳤습니다(예전엔 missing_fields만 읽어서 항상 빈 배열이었음).
         supply_rank = []
         for idx, item in enumerate(supply_rank_raw):
+            item_missing = item.get('missing_items') or item.get('missing_fields') or []
             supply_rank.append({
                 "rank": item.get('rank') or (idx + 1),
                 "type": item.get('type') or item.get('supply_type') or item.get('name') or f"공급유형 {idx + 1}",
                 "chance": item.get('chance') or item.get('status') or (f"{item.get('score')}점" if item.get('score') is not None else "검토"),
                 "desc": item.get('reason') or ", ".join(item.get('reasons', [])) or "상세 사유가 포함되지 않았습니다.",
-                "missing_fields": item.get('missing_fields', []),
+                "missing_fields": item_missing,
                 "source_refs": item.get('source_refs', [])
             })
         data['supply_rank'] = supply_rank
-        
+
         # 9. Map missing_fields_by_supply_type
         missing_fields_by_supply_type = result_payload.get('missing_fields_by_supply_type') or {}
         if not missing_fields_by_supply_type:
             for item in supply_rank_raw:
                 stype = item.get('type') or item.get('supply_type') or item.get('name')
-                mfields = item.get('missing_fields', [])
+                mfields = item.get('missing_items') or item.get('missing_fields') or []
                 if mfields:
                     missing_fields_by_supply_type[stype] = mfields
         data['missing_fields_by_supply_type'] = missing_fields_by_supply_type

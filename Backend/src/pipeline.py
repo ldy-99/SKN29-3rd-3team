@@ -5,12 +5,14 @@ Node 1 → Node 2 → [인터럽트] → Node 3 → Node 4 → Node 5 → Node 6
 
 from __future__ import annotations
 
+import sqlite3
 import uuid
+from pathlib import Path
 from typing import Any
 from typing_extensions import TypedDict
 
 from langgraph.graph import StateGraph, END, START
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
 from src.engine.node1 import run_node1
@@ -42,19 +44,31 @@ class PipelineState(TypedDict, total=False):
 
     # Node 4 결과
     announcement: dict
+    node4_warning: str
 
     # Node 5 결과
     loan_result: dict
     investment_result: dict
     risk_result: dict
     agent_result: str
+    node5_agent_warning: str
 
     # Node 6 결과
     final_report: dict
 
 
-# ── 메모리 저장소 ─────────────────────────────────────────────────
-memory = MemorySaver()
+# ── 세션 저장소 (SQLite 기반) ─────────────────────────────────────
+# 기존 MemorySaver()는 프로세스 메모리에만 세션을 저장해서
+# uvicorn --reload로 프로세스가 재시작되면 진행 중이던 세션(Node2 인터럽트 대기 등)이
+# 전부 사라졌음. SQLite 파일로 옮겨 재시작 후에도 세션이 유지되도록 함.
+_CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
+_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+_CHECKPOINT_DB_PATH = _CHECKPOINT_DIR / "pipeline_sessions.sqlite3"
+
+# check_same_thread=False: FastAPI가 요청을 스레드풀에서 처리하므로 필요.
+# SqliteSaver 내부적으로 lock을 사용해 동시 접근을 직렬화함.
+_sqlite_conn = sqlite3.connect(str(_CHECKPOINT_DB_PATH), check_same_thread=False)
+memory = SqliteSaver(_sqlite_conn)
 
 
 # ── 파이프라인 그래프 빌드 ────────────────────────────────────────
@@ -125,8 +139,11 @@ def resume_pipeline(session_id: str, simulate: bool) -> dict[str, Any]:
         {"wants_detailed_diagnosis": "예" if simulate else "아니오"},
     )
 
-    for _ in pipeline.stream(None, config, stream_mode="values"):
-        pass
+    try:
+        for _ in pipeline.stream(None, config, stream_mode="values"):
+            pass
+    except Exception as exc:  # 안전망: node 내부에서 못 잡은 예기치 못한 예외
+        return _build_error_response(session_id, exc)
 
     state = pipeline.get_state(config)
 
@@ -144,16 +161,34 @@ def resume_with_announcement(session_id: str, announcement_text: str) -> dict[st
     """Node 4 인터럽트 해제. 공고문 입력 후 Node 5~6 실행."""
     config = {"configurable": {"thread_id": session_id}}
 
-    for _ in pipeline.stream(
-        Command(resume=announcement_text),
-        config,
-        stream_mode="values"
-    ):
-        pass
+    try:
+        for _ in pipeline.stream(
+            Command(resume=announcement_text),
+            config,
+            stream_mode="values"
+        ):
+            pass
+    except Exception as exc:  # 안전망: node 내부에서 못 잡은 예기치 못한 예외
+        return _build_error_response(session_id, exc)
 
     state = pipeline.get_state(config)
 
     return _build_resume_response("success", session_id, state.values)
+
+
+def _build_error_response(session_id: str, exc: Exception) -> dict[str, Any]:
+    """node1~6 어디에서든 각 노드가 스스로 못 잡은 예외가 새어나왔을 때 쓰는 최후의 안전망.
+
+    node4~6은 각자 LLM 호출을 안전하게 감싸서 실패해도 폴백 값을 반환하도록
+    되어있지만(llm_safety.safe_llm_call), 그 밖의 버그나 예상 못한 예외까지 대비해
+    여기서 한 번 더 잡아서 500 대신 일관된 에러 응답을 돌려준다.
+    """
+    print(f"[pipeline] 처리되지 않은 예외 발생 (session_id={session_id}): {type(exc).__name__}: {exc}")
+    return {
+        "status": "error",
+        "session_id": session_id,
+        "message": "전략 진단 처리 중 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    }
 
 
 def _build_resume_response(status: str, session_id: str, values: dict[str, Any]) -> dict[str, Any]:
@@ -164,6 +199,15 @@ def _build_resume_response(status: str, session_id: str, values: dict[str, Any])
         "risk_result": values.get("risk_result", {}),
         "agent_result": values.get("agent_result", ""),
     }
+
+    # node4~6에서 LLM 폴백이 발동됐다면 남겨둔 warning들을 한 곳에 모아서 응답에 포함.
+    # 프론트가 아직 이 필드를 안 쓰더라도, API 응답에는 실패 사실이 남아있게 해서
+    # 조용히 이상한 결과만 보여주고 끝나는 상황을 방지함.
+    warnings = [
+        w for w in [values.get("node4_warning"), values.get("node5_agent_warning")]
+        if w
+    ]
+
     return {
         "status": status,
         "session_id": session_id,
@@ -176,4 +220,5 @@ def _build_resume_response(status: str, session_id: str, values: dict[str, Any])
         "recommended_supply": values.get("recommended_supply"),
         "node5": node5,
         "node6": {"final_report": values.get("final_report", {})},
+        "warnings": warnings,
     }
