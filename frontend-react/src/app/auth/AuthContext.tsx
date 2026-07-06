@@ -1,3 +1,6 @@
+// 역할: React 전역에서 Django session 기반 로그인 상태를 공유합니다.
+// 흐름: App.tsx -> AuthProvider -> api.getMe/logout -> Layout/Login/SiteHeader 보호 라우팅.
+// 다음 파일: frontend-react/src/app/api/client.ts, frontend-react/src/app/components/Layout.tsx.
 import {
   createContext,
   useCallback,

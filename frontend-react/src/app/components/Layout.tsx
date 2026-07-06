@@ -1,3 +1,6 @@
+// 역할: 로그인 후 사용하는 보호 화면 레이아웃과 데스크톱 챗봇 패널을 감쌉니다.
+// 흐름: routes.tsx -> Layout -> AuthContext -> Profile/Strategy/MyPage/Result/Pdf/Chatbot.
+// 다음 파일: frontend-react/src/app/auth/AuthContext.tsx, frontend-react/src/app/components/SiteHeader.tsx.
 import { Navigate, Outlet, useLocation } from "react-router";
 import { ChatbotPanel } from "./ChatbotPanel";
 import { SiteHeader } from "./SiteHeader";

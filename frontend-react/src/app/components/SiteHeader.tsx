@@ -1,3 +1,6 @@
+// 역할: 로그인 상태에 따라 상단 이동 탭과 로그아웃 동작을 제공하는 공통 헤더입니다.
+// 흐름: Layout/Home -> SiteHeader -> AuthContext.logout -> Django /api/auth/logout.
+// 다음 파일: frontend-react/src/app/auth/AuthContext.tsx, frontend-react/src/app/routes.tsx.
 import { ArrowRight, Landmark, LogOut } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";

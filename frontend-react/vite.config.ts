@@ -1,3 +1,6 @@
+// 역할: React 개발 서버와 Django API proxy를 설정합니다.
+// 흐름: browser /api/* -> Vite dev proxy -> Django 127.0.0.1:8000.
+// 다음 파일: frontend-react/src/app/api/client.ts.
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'

@@ -1,3 +1,6 @@
+// 역할: Django 공통 envelope 오류를 화면용 제목/메시지/상세 목록으로 변환합니다.
+// 흐름: api.client.ts ApiRequestError -> ErrorNotice -> Login/Profile/Strategy/Pdf 화면.
+// 다음 파일: frontend-react/src/app/components/UI.tsx.
 import { ApiRequestError } from "./client";
 
 export type ErrorPresentation = {

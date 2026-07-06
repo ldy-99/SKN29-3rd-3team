@@ -1,4 +1,6 @@
 // 역할: 로그인 사용자의 계정 정보와 Django에 저장된 전략 진단 이력을 조회합니다.
+// 흐름: MyPage -> api.getMe/getMyStrategies -> Django /api/auth/me, /api/strategy/me.
+// 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ArrowRight, CalendarDays, History, RefreshCw, User } from "lucide-react";
