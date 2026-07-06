@@ -52,3 +52,33 @@
 - 진단 상세 조회 스켈레톤
 - 접근성 자동 검사와 키보드 탐색 점검
 - 프론트 Dockerfile·Nginx SPA fallback·CI 추가
+
+## 5. `version-1-integrate-0706` UI 재통합
+
+통합 커밋: `0f1f3a6`
+
+팀원의 후속 통합 과정에서 빠진 `eunjin/frontend` UI 개선 커밋 `7f7acd4`, `b508dfb`를 최신 `version-1-integrate-0706` 기준으로 다시 적용했다.
+
+### 반영 내용
+
+- AFIT 로고, 브라우저 탭 이름, favicon
+- 아파트 분양 청약 데모 범위와 랜딩 문구
+- 로그인·회원가입 구분과 비밀번호 규칙 완료 상태
+- 조건부 프로필 입력과 금액 천 단위 콤마
+- 저장 중·완료·실패 상태와 중복 요청 방지
+- 아파트 분양 공고 진단 범위 안내
+- 결과 상세 구조와 참고용 진단 안내
+- 반응형 챗봇 전용 화면과 세션 유지
+
+### 충돌 처리와 보존 범위
+
+- `SiteHeader.tsx`는 통합 브랜치의 역할·API 흐름 주석을 유지하고 AFIT UI를 결합했다.
+- `index.html`은 기존 메타데이터를 유지하고 AFIT 제목·favicon만 결합했다.
+- 최신 API client, 인증, MyPage, Vite proxy 등 팀원의 프론트 로직은 덮어쓰지 않았다.
+- Django·FastAPI 및 기타 비프론트 코드는 변경하지 않았다.
+
+### 검증
+
+- `pnpm.cmd run build`: 통과
+- `pnpm.cmd test`: 7/7 통과
+- UI 코드 커밋의 변경 경로: `frontend-react` 내부 12개 파일
