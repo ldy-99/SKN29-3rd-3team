@@ -25,14 +25,15 @@ const serviceSteps = [
   },
   {
     icon: <ClipboardList className="w-7 h-7" />,
-    title: "결과와 다음 행동",
-    description: "부족한 정보, 위험 요소와 준비할 항목을 확인합니다.",
+    title: "청약 진단",
+    description: "위험 요소와 청약 전략을 확인합니다.",
   },
 ];
 
 export function Home() {
   const { user, isLoading } = useAuth();
   const diagnosisPath = isLoading ? "/" : user ? "/strategy" : "/login";
+  const historyPath = isLoading ? "/" : user ? "/mypage" : "/login";
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
@@ -45,19 +46,19 @@ export function Home() {
           style={{ backgroundImage: "url('/landing-urban-hero.png')" }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-[#fffefa] via-[#fffefa]/95 to-[#fffefa]/5" />
-          <div className="relative max-w-[1440px] min-h-[520px] md:min-h-[600px] mx-auto px-6 lg:px-10 grid lg:grid-cols-[1.08fr_0.92fr] items-center gap-12 py-12 md:py-16">
-            <div className="landing-reveal max-w-[700px]">
-              <p className="text-[14px] font-bold tracking-[0.04em] text-[#b86a12] mb-5">
-                프로필과 공고를 한 번에 분석
-              </p>
+          <div className="relative max-w-[1440px] min-h-[520px] md:min-h-[600px] mx-auto px-6 lg:px-10 flex items-center py-12 md:py-16">
+            <div className="landing-reveal max-w-[760px]">
               <h1 className="text-[46px] md:text-[58px] xl:text-[66px] font-bold tracking-[-0.045em] leading-[1.18] text-[#102e5a] break-keep">
-                복잡한 청약 조건,
+                아파트 분양 청약 조건을
                 <br />
-                내 상황에 맞게 정리하세요
+                내 상황에 맞게 진단해 보세요
               </h1>
               <p className="mt-7 text-[17px] md:text-[19px] leading-[1.8] text-[#566171] max-w-[620px] break-keep">
-                청약 프로필과 관심 모집공고를 바탕으로 자격, 가점, 위험 요소와 준비 전략을 확인합니다.
+                청약 프로필과 아파트 입주자모집공고를 바탕으로 자격, 가점, 위험 요소와 준비 전략을 확인합니다.
               </p>
+              <div className="mt-5 max-w-[620px] rounded-[14px] border border-[#e4d8c5] bg-[#fffaf1]/90 px-4 py-3 text-[14px] leading-relaxed text-[#6f5737]">
+                현재 데모 버전은 아파트 분양 청약만 지원합니다. 오피스텔·임대주택·토지·상가 청약은 추후 지원 예정입니다.
+              </div>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link
                   to={diagnosisPath}
@@ -69,30 +70,20 @@ export function Home() {
                   {isLoading ? "로그인 상태 확인 중" : user ? "전략 진단 계속하기" : "내 조건 진단하기"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
-                <a
-                  href="#steps"
-                  className="inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors"
+                <Link
+                  to={historyPath}
+                  state={!isLoading && !user ? { from: "/mypage" } : undefined}
+                  aria-disabled={isLoading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors ${
+                    isLoading ? "pointer-events-none opacity-70" : ""
+                  }`}
                 >
-                  이용 방법 보기
+                  진단 기록 보기
                   <ArrowRight className="w-5 h-5" />
-                </a>
+                </Link>
               </div>
             </div>
 
-            <div id="preview" className="landing-reveal landing-reveal-delay-2 hidden lg:block">
-              <div className="landing-float max-w-[390px] ml-auto rounded-[22px] border border-[#ded8cc] bg-[#fffefa]/95 p-7 shadow-[0_22px_60px_rgba(24,40,65,0.16)] backdrop-blur-md">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[22px] font-bold text-[#152846]">내 진단 결과 미리보기</h2>
-                  <span className="w-9 h-9 rounded-full bg-[#f7eedf] flex items-center justify-center text-[#b86a12]">
-                    <ClipboardList className="w-5 h-5" />
-                  </span>
-                </div>
-                <PreviewRow label="충족 조건" />
-                <PreviewRow label="확인 필요 정보" />
-                <PreviewRow label="검토할 공급 유형" />
-                <PreviewRow label="다음 준비 행동" last />
-              </div>
-            </div>
           </div>
         </section>
 
@@ -129,16 +120,6 @@ export function Home() {
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-function PreviewRow({ label, last = false }: { label: string; last?: boolean }) {
-  return (
-    <div className={`flex items-center gap-3 py-4 ${last ? "" : "border-b border-[#e9e4da]"}`}>
-      <CheckCircle2 className="w-5 h-5 text-[#102e5a]" />
-      <span className="flex-1 text-[15px] font-semibold text-[#26364e]">{label}</span>
-      <ArrowRight className="w-4 h-4 text-[#a36a25]" />
     </div>
   );
 }
