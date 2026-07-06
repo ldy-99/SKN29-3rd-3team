@@ -295,10 +295,10 @@ PdfAnalysis.tsx
 
 | 목적 | 문서 |
 |---|---|
-| MVP 범위/원칙 | `docs/PROJECT_SPEC.md` |
-| API 입출력 계약 | `docs/API_CONTRACT.md` |
-| 실행 명령 | `docs/LOCAL_SETUP.md` |
-| 팀 작업 규칙 | `docs/TEAM_GUIDE.md` |
-| 변경 이력 | `docs/CHANGELOG.md` |
+| MVP 범위/원칙 | `docs/current/PROJECT_SPEC.md` |
+| API 입출력 계약 | `docs/current/API_CONTRACT.md` |
+| 실행 명령 | `README.md`, `docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md` |
+| 팀 작업 규칙 | `docs/guides/TEAM_GUIDE.md` |
+| 변경 이력 | `docs/traces/CHANGELOG.md` |
 
 

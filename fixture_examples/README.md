@@ -14,7 +14,7 @@
 
 ## enum 기준
 
-fixture의 필드와 값은 `docs/API_CONTRACT.md` 기준으로 관리한다. 계약 변경 시 코드, fixture, 문서를 함께 수정한다.
+fixture의 필드와 값은 `docs/current/API_CONTRACT.md` 기준으로 관리한다. 계약 변경 시 코드, fixture, 문서를 함께 수정한다.
 
 - `BankbookType`
 - `MaritalStatus`

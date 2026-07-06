@@ -107,7 +107,7 @@ frontend-react/src/app/pages/ResultDetail.tsx
 
 통합 시 기준:
 
-- 결과 상세 화면은 `docs/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md`의 필드 계약을 따른다.
+- 결과 상세 화면은 `docs/current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md`의 필드 계약을 따른다.
 - 로그인 상태 관리는 eunjin/frontend의 `AuthContext` 방식이 더 일관적이므로 우선 검토한다.
 - Django 공개 API는 session cookie 기준이고, React는 Django API만 호출한다.
 

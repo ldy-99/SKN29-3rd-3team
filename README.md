@@ -26,7 +26,7 @@ React (:5173)
 
 PDF 업로드 화면과 Django 프록시는 존재하지만 FastAPI의 `/api/pdf/analyze`가 아직 구현되지 않아 MVP의 정상 경로는 수동 공고문 입력입니다.
 
-`final-debug-share` 브랜치에서 처음부터 환경을 맞추는 팀원은 [final-debug-share 실행 가이드](docs/FINAL_DEBUG_SHARE_GUIDE.md)를 먼저 확인합니다.
+`version-1-integrate-0706` 브랜치의 통합 흐름은 [통합 인수인계 문서](docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md)를 먼저 확인합니다.
 
 ## 빠른 실행
 
@@ -39,7 +39,7 @@ Copy-Item .env.example .env
 Copy-Item frontend-react\.env.example frontend-react\.env.local
 ```
 
-루트 `.env`의 `OPENAI_API_KEY`를 설정합니다. 전체 변수 설명은 [로컬 실행 가이드](docs/LOCAL_SETUP.md#3-환경-파일)를 확인합니다.
+루트 `.env`의 `OPENAI_API_KEY`를 설정합니다. 현재 브랜치의 실행 흐름은 이 README와 [문서 색인](docs/README.md)을 기준으로 확인합니다.
 
 ### 2. Python 의존성
 
@@ -103,7 +103,7 @@ cd frontend-react
 pnpm.cmd dev -- --host 127.0.0.1 --port 5173
 ```
 
-브라우저에서 `http://127.0.0.1:5173`에 접속합니다. 더 자세한 설치·오류 대응은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)를 따릅니다.
+브라우저에서 `http://127.0.0.1:5173`에 접속합니다. 통합 브랜치의 세부 확인 순서는 [통합 인수인계 문서](docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md)를 따릅니다.
 
 ## 검증 명령
 
@@ -154,8 +154,8 @@ docs/reports/            기존 AI/RAG 분석 보고서
 ## 상세 문서
 
 - [문서 색인](docs/README.md)
-- [프로젝트 명세](docs/PROJECT_SPEC.md)
-- [API 계약](docs/API_CONTRACT.md)
-- [로컬 실행 가이드](docs/LOCAL_SETUP.md)
-- [팀 작업 가이드](docs/TEAM_GUIDE.md)
-- [변경 이력](docs/CHANGELOG.md)
+- [프로젝트 명세](docs/current/PROJECT_SPEC.md)
+- [API 계약](docs/current/API_CONTRACT.md)
+- [통합 인수인계 문서](docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md)
+- [팀 작업 가이드](docs/guides/TEAM_GUIDE.md)
+- [변경 이력](docs/traces/CHANGELOG.md)

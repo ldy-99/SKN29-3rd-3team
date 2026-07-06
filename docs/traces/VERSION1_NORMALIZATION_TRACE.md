@@ -69,7 +69,7 @@ OK
 
 변경 파일:
 
-- `docs/VERSION1_CURRENT_ARCHITECTURE.md`
+- `docs/current/VERSION1_CURRENT_ARCHITECTURE.md`
 - `docs/README.md`
 
 바뀐 이유:
@@ -88,7 +88,7 @@ OK
 
 - `Backend/src/preprocessing/build_all.py`
 - `scripts/dev-doctor.ps1`
-- `docs/VERSION1_CURRENT_ARCHITECTURE.md`
+- `docs/current/VERSION1_CURRENT_ARCHITECTURE.md`
 
 바뀐 이유:
 

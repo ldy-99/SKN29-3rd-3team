@@ -25,4 +25,4 @@ VITE_API_BASE_URL=
 
 proxy를 쓰지 않는 환경에서는 `VITE_API_BASE_URL`에 Django API 주소를 명시합니다.
 
-전체 실행 순서는 [로컬 실행 가이드](../docs/LOCAL_SETUP.md), 공개 요청·응답은 [API 계약](../docs/API_CONTRACT.md)을 기준으로 합니다.
+전체 실행 순서는 [루트 README](../README.md), 공개 요청·응답은 [API 계약](../docs/current/API_CONTRACT.md)을 기준으로 합니다.

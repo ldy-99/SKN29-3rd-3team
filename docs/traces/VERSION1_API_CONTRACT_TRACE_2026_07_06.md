@@ -149,7 +149,7 @@ Django serializer는 React 표시용으로 다음 필드를 추가로 만든다.
 
 추가 문서:
 
-- `docs/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md`
+- `docs/current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md`
 
 수정 문서:
 

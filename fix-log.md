@@ -1,7 +1,7 @@
 # 수정 기록 (Fix Log)
 
 이 문서는 코드 리뷰에서 발견된 문제를 하나씩 수정하면서, 왜 고쳤고 무엇이 바뀌었는지 기록합니다.
-팀의 공식 `docs/CHANGELOG.md`와는 별도로, "왜 이렇게 고쳤는지"에 초점을 맞춘 작업 로그입니다.
+팀의 공식 `docs/traces/CHANGELOG.md`와는 별도로, "왜 이렇게 고쳤는지"에 초점을 맞춘 작업 로그입니다.
 
 ---
 
@@ -255,7 +255,7 @@ LLM에게 다시 물어보는 왕복이 발생했고(도구 3개 + 최종 답변
   이 경로까지 채우고 싶다면 `node6.py`의 `_build_simple_report()`가 별도의
   분석 항목을 만들어 반환하도록 추가 작업이 필요합니다.
 - 근본적으로는 백엔드 응답 스키마와 프론트 타입이 문서화되어 있지 않아 생긴
-  문제라, `docs/API_CONTRACT.md`에 이 필드들(`missing_items`, `risk_result.description`,
+  문제라, `docs/current/API_CONTRACT.md`에 이 필드들(`missing_items`, `risk_result.description`,
   `risk_result.action_items` 등)을 명시해두면 앞으로 같은 종류의 불일치를 줄일 수
   있습니다.
 
