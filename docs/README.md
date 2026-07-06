@@ -6,6 +6,8 @@
 |---|---|
 | `version-1` 통합 브랜치의 현재 구조와 정상화 요약 | [VERSION1_CURRENT_ARCHITECTURE.md](VERSION1_CURRENT_ARCHITECTURE.md) |
 | `version-1` 정상화에서 바뀐 항목과 이유 | [VERSION1_NORMALIZATION_TRACE.md](VERSION1_NORMALIZATION_TRACE.md) |
+| 2026-07-06 기준 FastAPI 응답 계약과 오늘 통합 로드맵 | [VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md](VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md) |
+| 2026-07-06 API 계약 정리 근거와 확인 기록 | [VERSION1_API_CONTRACT_TRACE_2026_07_06.md](VERSION1_API_CONTRACT_TRACE_2026_07_06.md) |
 | `final-debug-share` 브랜치에서 처음부터 실행 | [FINAL_DEBUG_SHARE_GUIDE.md](FINAL_DEBUG_SHARE_GUIDE.md) |
 | 지금 전체 현황을 빠르게 파악 | [CURRENT_STATUS.md](CURRENT_STATUS.md) |
 | MVP 범위, 구조, 현재 상태 | [PROJECT_SPEC.md](PROJECT_SPEC.md) |
