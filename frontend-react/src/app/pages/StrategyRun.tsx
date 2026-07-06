@@ -2,7 +2,7 @@
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
-import { Card, PageTitle, Button, ErrorNotice, WarningBox } from "../components/UI";
+import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator } from "../components/UI";
 import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, User } from "lucide-react";
 import { api } from "../api/client";
 import { useEffect, useState } from "react";
@@ -89,16 +89,23 @@ export function StrategyRun() {
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
 
       {isRunning && (
-        <WarningBox type="info" title="전략을 분석하고 있습니다">
-          <p>
-            {elapsedSeconds < 30
-              ? "프로필과 공고문을 분석하고 있습니다."
-              : "AI가 최종 전략을 생성하고 있습니다. 조금만 더 기다려주세요."}
-          </p>
-          <p className="mt-1">
-            보통 30~40초 정도 걸립니다. 경과 시간: {elapsedSeconds}초
-          </p>
-        </WarningBox>
+        <ProcessingIndicator
+          title={
+            elapsedSeconds < 12
+              ? "입력 정보를 확인하고 있습니다"
+              : elapsedSeconds < 30
+                ? "청약 조건과 공급 유형을 비교하고 있습니다"
+                : "맞춤 전략을 생성하고 있습니다"
+          }
+          description={
+            isBasicOnly
+              ? "저장된 프로필을 기준으로 신청 가능성이 높은 공급 유형을 분석합니다."
+              : "프로필과 입력한 모집공고를 함께 분석해 맞춤 전략을 정리합니다."
+          }
+          elapsedSeconds={elapsedSeconds}
+          steps={["입력 정보 확인", "조건 비교", "전략 생성"]}
+          currentStep={elapsedSeconds < 12 ? 0 : elapsedSeconds < 30 ? 1 : 2}
+        />
       )}
 
       <div className="space-y-6">

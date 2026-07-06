@@ -14,6 +14,10 @@
 | 역할, 작업 순서, Git·PR·QA 규칙 | [TEAM_GUIDE.md](TEAM_GUIDE.md) |
 | 통합·정리 작업 이력 | [CHANGELOG.md](CHANGELOG.md) |
 | 기존 AI/RAG 설계 근거 | [reports/](reports/) |
+| 프론트 화면설계서 | [frontend/SCREEN_DESIGN.md](frontend/SCREEN_DESIGN.md) |
+| 프론트 요구사항 추적표 | [frontend/REQUIREMENTS_TRACEABILITY.md](frontend/REQUIREMENTS_TRACEABILITY.md) |
+| 프론트 테스트 결과 보고서 | [frontend/TEST_REPORT_2026-07-06.md](frontend/TEST_REPORT_2026-07-06.md) |
+| 프론트 금일 수정·개선 기록 | [frontend/FRONTEND_CHANGELOG_2026-07-06.md](frontend/FRONTEND_CHANGELOG_2026-07-06.md) |
 
 개발자 PC에서만 쓰는 편의 파일:
 

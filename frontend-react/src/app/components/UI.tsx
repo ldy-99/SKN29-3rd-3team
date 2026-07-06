@@ -1,5 +1,5 @@
 import React from "react";
-import { Info, AlertCircle, XCircle, CheckCircle } from "lucide-react";
+import { Info, AlertCircle, XCircle, CheckCircle, Clock3, LoaderCircle } from "lucide-react";
 import { getErrorPresentation } from "../api/errorPresentation";
 
 export function Card({
@@ -103,6 +103,90 @@ export function ErrorNotice({
       )}
     </WarningBox>
   );
+}
+
+export function ProcessingIndicator({
+  title,
+  description,
+  elapsedSeconds,
+  steps,
+  currentStep,
+  className = "",
+}: {
+  title: string;
+  description: string;
+  elapsedSeconds: number;
+  steps: string[];
+  currentStep: number;
+  className?: string;
+}) {
+  const activeStep = Math.min(Math.max(currentStep, 0), steps.length - 1);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`mb-6 overflow-hidden rounded-[22px] border border-[#cfe0f7] bg-gradient-to-br from-[#f4f8ff] to-white shadow-[0_10px_30px_rgba(25,74,135,0.08)] ${className}`}
+    >
+      <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
+          <span className="absolute inset-0 rounded-full bg-[#dfeeff] animate-pulse" />
+          <LoaderCircle className="relative h-10 w-10 animate-spin text-[#0b5bd3]" strokeWidth={2.2} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-[18px] font-bold text-[#102e5a]">{title}</h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-[#596273] shadow-sm">
+              <Clock3 className="h-3.5 w-3.5 text-[#0b5bd3]" />
+              {formatElapsedTime(elapsedSeconds)}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-[#68717d]">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div className="border-t border-[#dce8f7] bg-white/70 px-6 py-5">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {steps.map((step, index) => {
+            const isComplete = index < activeStep;
+            const isActive = index === activeStep;
+            return (
+              <div key={step} className="flex items-center gap-2.5">
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                    isComplete
+                      ? "bg-[#2d8a54] text-white"
+                      : isActive
+                        ? "bg-[#0b5bd3] text-white ring-4 ring-[#0b5bd3]/10"
+                        : "bg-[#e8edf3] text-[#7b828d]"
+                  }`}
+                >
+                  {isComplete ? "✓" : index + 1}
+                </span>
+                <span className={`text-[12px] font-semibold ${isActive ? "text-[#102e5a]" : "text-[#7b828d]"}`}>
+                  {step}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-[12px] text-[#7b828d]">
+          분석이 끝날 때까지 이 화면을 닫거나 새로고침하지 마세요.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function formatElapsedTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0
+    ? `${minutes}분 ${String(seconds).padStart(2, "0")}초 경과`
+    : `${seconds}초 경과`;
 }
 
 export function Button({
