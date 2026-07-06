@@ -2,6 +2,23 @@
 
 세부 파일별 작업 일지 대신 통합 상태에 영향을 주는 변경만 기록합니다.
 
+## 2026-07-06 — `jihun` 브랜치 병합
+
+- 최신 `origin/version-1`을 기준으로 `origin/jihun` 병합
+- LLM 안전 처리 모듈 추가 및 파이프라인 노드의 오류·fallback 처리 강화
+- 파이프라인과 채팅 체크포인트를 프로세스 메모리 대신 SQLite에 저장
+- ChromaDB 또는 API 키 문제로 FastAPI 전체가 시작되지 않도록 채팅 그래프 지연 초기화
+- RAG 도구, 채팅 router/service, 파이프라인 재개 및 오류 응답 처리 보완
+- 실제 FastAPI 응답 구조에 맞게 Django serializer와 React 결과 상세 필드 정리
+- 관련 의존성과 `.gitignore` 갱신
+
+검증:
+
+- 병합 충돌 없음
+- `Backend`, `django_backend` Python 문법 검사 통과
+- React production build 통과
+- 원본 커밋 `bf0c5ff`, 병합 커밋 `4019b00`
+
 ## 2026-07-03 — PDF 텍스트 추출 MVP
 
 - FastAPI `/api/pdf/analyze` endpoint 추가
