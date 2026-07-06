@@ -2,7 +2,7 @@
 // 흐름: ChatbotPanel -> api.askChatbot -> Django ChatbotAPIView -> FastAPI /api/chat -> RAG graph.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useState, useRef, useEffect } from "react";
-import { Bot, ArrowUp, BookOpen, ChevronDown, Sparkles, AlertCircle } from "lucide-react";
+import { Bot, ArrowUp, BookOpen, ChevronDown, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
 import { useLocation } from "react-router";
 import { api } from "../api/client";
 
@@ -14,57 +14,118 @@ type Message = {
   variant?: "greeting" | "answer" | "error";
 };
 
+const CHAT_MESSAGES_STORAGE_KEY = "subscription-chatbot-messages";
+const CHAT_SESSION_STORAGE_KEY = "subscription-chatbot-session-id";
+
+function readStoredMessages(): Message[] | null {
+  try {
+    const raw = sessionStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const messages = parsed.filter(
+      (item): item is Message =>
+        Boolean(
+          item &&
+          typeof item === "object" &&
+          "id" in item &&
+          "type" in item &&
+          "content" in item,
+        ),
+    );
+    return messages.length > 0 ? messages : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ChatbotPanel() {
   const location = useLocation();
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(
+    () => sessionStorage.getItem(CHAT_SESSION_STORAGE_KEY),
+  );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const getContextMessage = () => {
-    if (location.pathname.includes("/profile")) return "현재 프로필 정보를 기준으로 답변해 드릴 수 있어요.";
-    if (location.pathname.includes("/strategy")) return "입력하신 공고나 기본 전략에 대해 질문해 보세요.";
-    if (location.pathname.includes("/pdf")) return "추출된 정보에 대해 궁금한 점을 알려주세요.";
-    if (location.pathname.includes("/results")) return "이 결과에 대해 추가로 궁금한 점이 있으신가요?";
-    return "무엇이든 물어보세요.";
+    if (location.pathname.includes("/profile")) return "프로필 입력에 필요한 청약 기준을 물어보세요.";
+    if (location.pathname.includes("/strategy")) return "지원 자격과 공급 유형별 기준을 물어보세요.";
+    if (location.pathname.includes("/pdf")) return "공고문에 나오는 청약 용어와 기준을 물어보세요.";
+    if (location.pathname.includes("/results")) return "진단 결과에 나온 청약 제도와 기준을 물어보세요.";
+    if (location.pathname.includes("/mypage")) return "진단 기록을 검토할 때 필요한 청약 기준을 물어보세요.";
+    return "주택청약 제도와 자격 조건을 물어보세요.";
   };
 
   const getRecommendedQuestions = () => {
     if (location.pathname.includes("/profile")) {
-      return ["이 항목을 비워도 되나요?", "무주택 기간은 어떻게 계산하나요?"];
+      return [
+        "무주택 기간은 어떤 기준으로 계산하나요?",
+        "부양가족 수에 포함되는 가족 범위는 무엇인가요?",
+      ];
     }
     if (location.pathname.includes("/strategy")) {
-      return ["이 공고에 지원 가능할까요?", "기본 진단은 어떤 것을 확인하나요?"];
+      return [
+        "민영주택 일반공급 1순위 조건은 무엇인가요?",
+        "신혼부부 특별공급의 기본 자격은 무엇인가요?",
+      ];
     }
     if (location.pathname.includes("/pdf")) {
-      return ["추출이 잘못된 것 같으면 어떡하나요?", "분양가 기준이 어떻게 되나요?"];
+      return [
+        "입주자모집공고에서 꼭 확인할 항목은 무엇인가요?",
+        "공고문의 소득 기준은 어떻게 확인하나요?",
+      ];
     }
     if (location.pathname.includes("/results")) {
-      return ["부족한 정보는 무엇인가요?", "점수를 올리려면 어떻게 해야 하나요?"];
+      return [
+        "청약 가점은 어떤 항목으로 계산하나요?",
+        "특별공급 유형별 기본 자격 차이를 알려주세요.",
+      ];
+    }
+    if (location.pathname.includes("/mypage")) {
+      return [
+        "청약통장 가입기간은 언제부터 계산하나요?",
+        "재당첨 제한은 어떤 경우에 적용되나요?",
+      ];
     }
     return ["청약 1순위 조건이 무엇인가요?", "생애최초 특별공급이란?"];
   };
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      type: "bot",
-      content: "안녕하세요. 청약 도우미입니다. " + getContextMessage(),
-      variant: "greeting",
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>(
+    () =>
+      readStoredMessages() ?? [
+        {
+          id: 1,
+          type: "bot",
+          content: "안녕하세요. 청약 도우미입니다. " + getContextMessage(),
+          variant: "greeting",
+        },
+      ],
+  );
 
-  // Update greeting when location changes significantly
   useEffect(() => {
-    if (messages.length <= 2) {
-      setMessages([{
+    setMessages((current) => {
+      if (current.some((message) => message.type === "user")) return current;
+      return [{
         id: Date.now(),
         type: "bot",
         content: "안녕하세요. 청약 도우미입니다. " + getContextMessage(),
         variant: "greeting",
-      }]);
-    }
+      }];
+    });
   }, [location.pathname]);
+
+  useEffect(() => {
+    sessionStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (chatSessionId) {
+      sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, chatSessionId);
+    } else {
+      sessionStorage.removeItem(CHAT_SESSION_STORAGE_KEY);
+    }
+  }, [chatSessionId]);
 
   const updateMessageScroll = () => {
     const container = messagesContainerRef.current;
@@ -124,35 +185,53 @@ export function ChatbotPanel() {
     }
   };
 
+  const handleNewChat = () => {
+    if (isTyping) return;
+    sessionStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY);
+    sessionStorage.removeItem(CHAT_SESSION_STORAGE_KEY);
+    setChatSessionId(null);
+    setInput("");
+    setMessages([{
+      id: Date.now(),
+      type: "bot",
+      content: "안녕하세요. 청약 도우미입니다. " + getContextMessage(),
+      variant: "greeting",
+    }]);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#fffefa] border border-[#e5dfd4] rounded-[22px] shadow-[0_12px_34px_rgba(35,45,60,0.05)] overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white border border-[#dfe4eb] rounded-[22px] shadow-[0_14px_40px_rgba(35,45,60,0.07)] overflow-hidden relative">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-[#eee9df] bg-[#fffefa]/95 backdrop-blur-md flex items-center justify-between shrink-0 z-10">
+      <div className="px-5 py-4 border-b border-[#e8ecf1] bg-white flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#f3eee4] flex items-center justify-center text-[#102e5a]">
+          <div className="w-11 h-11 rounded-[14px] bg-[#edf4ff] flex items-center justify-center text-[#0b5bd3]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-bold text-[17px] text-[#152846]">청약 도우미</h3>
             <p className="text-[12px] text-[#747c87] flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-[#34c759]"></span>
-              현재 화면 맥락 참조 중
+              청약 제도 자료 검색 가능
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleNewChat}
+          disabled={isTyping || messages.length <= 1}
+          className="inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-2 text-[12px] font-semibold text-[#68717d] transition-colors hover:bg-[#f2f5f8] hover:text-[#102e5a] disabled:cursor-not-allowed disabled:opacity-40"
+          title="현재 대화를 지우고 새로 시작합니다"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="hidden 2xl:inline">새 대화</span>
+        </button>
       </div>
 
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-4 bg-[#fbfaf7]"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-5 space-y-4 bg-[#f8fafc]"
       >
-        <div className="text-center">
-          <p className="text-[11px] text-[#7b828d] bg-[#f3f0e9] inline-block px-3 py-1 rounded-full">
-            이 대화는 DB에 저장되지 않으며 새로고침 시 사라집니다.
-          </p>
-        </div>
-
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -183,8 +262,31 @@ export function ChatbotPanel() {
           </div>
         ))}
 
-        {messages.length < 5 && (
-          <div className="grid gap-2 pt-1">
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-3 rounded-[18px] rounded-bl-md border border-[#dfe5ed] bg-white px-4 py-3 shadow-sm">
+              <Bot className="h-4 w-4 text-[#0b5bd3]" />
+              <div className="flex items-center gap-1" aria-label="답변 작성 중">
+                {[0, 1, 2].map((index) => (
+                  <span
+                    key={index}
+                    className="h-1.5 w-1.5 rounded-full bg-[#0b5bd3] animate-pulse"
+                    style={{ animationDelay: `${index * 160}ms` }}
+                  />
+                ))}
+              </div>
+              <span className="text-[12px] text-[#68717d]">자료를 찾아 답변을 정리하고 있습니다.</span>
+            </div>
+          </div>
+        )}
+
+        {messages.length === 1 && !isTyping && (
+          <div className="pt-1">
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <Sparkles className="h-4 w-4 text-[#b86a12]" />
+              <p className="text-[12px] font-bold text-[#596273]">추천 질문</p>
+            </div>
+            <div className="grid gap-2">
             {getRecommendedQuestions().map((q, idx) => (
               <button
                 key={idx}
@@ -196,9 +298,12 @@ export function ChatbotPanel() {
                 <span aria-hidden="true" className="text-[18px] leading-none transition-transform group-hover:translate-x-0.5">›</span>
               </button>
             ))}
+            </div>
           </div>
         )}
+      </div>
 
+      <div className="shrink-0 border-t border-[#e5e9ef] bg-white px-4 py-4">
         <div className="relative flex items-center">
           <input
             type="text"
@@ -210,18 +315,23 @@ export function ChatbotPanel() {
                 void handleSend(input);
               }
             }}
-            placeholder="청약 도우미에게 질문하세요"
-            className="w-full bg-white border border-[#d8d2c7] rounded-[16px] pl-4 pr-12 py-3.5 text-[14px] text-[#26364e] placeholder:text-[#8e939b] focus:outline-none focus:ring-2 focus:ring-[#245ea8]/15 focus:border-[#245ea8] transition-colors"
+            placeholder={isTyping ? "답변을 작성하고 있습니다" : "청약 제도에 대해 질문하세요"}
+            className="w-full bg-[#f8fafc] border border-[#d9e0e8] rounded-[16px] pl-4 pr-12 py-3.5 text-[14px] text-[#26364e] placeholder:text-[#8e939b] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#245ea8]/15 focus:border-[#245ea8] transition-colors"
             disabled={isTyping}
+            aria-label="챗봇 질문 입력"
           />
           <button
             onClick={() => handleSend(input)}
             disabled={!input.trim() || isTyping}
-            className="absolute right-1.5 w-9 h-9 bg-[#102e5a] text-white rounded-full flex items-center justify-center disabled:opacity-30 disabled:bg-[#8e8e93] transition-colors"
+            className="absolute right-1.5 w-9 h-9 bg-[#102e5a] text-white rounded-[12px] flex items-center justify-center disabled:opacity-30 disabled:bg-[#8e8e93] transition-colors"
+            aria-label="질문 보내기"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
         </div>
+        <p className="mt-2 text-center text-[11px] text-[#8a9099]">
+          상담 내용은 새로고침하면 사라집니다.
+        </p>
       </div>
     </div>
   );

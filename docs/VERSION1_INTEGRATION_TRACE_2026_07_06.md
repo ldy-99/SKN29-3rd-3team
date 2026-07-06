@@ -136,3 +136,63 @@ React production build: OK
 - 로그인 throttle 테스트가 추가되어 Django 테스트 수가 25개에서 26개로 증가했다.
 - `Home.tsx`, `Login.tsx`, `routes.tsx`는 아직 반영하지 않았다.
 - 해당 프론트 파일들은 eunjin/frontend 통합 시 AuthContext, mock 제거, 보호 라우팅 기준으로 다시 판단한다.
+
+## 8. eunjin/frontend 통합 기준
+
+통합 기준:
+
+- 프론트를 기준으로 백엔드/Django 응답을 바꾸지 않는다.
+- 최신 `version-1`의 FastAPI/Django 응답 계약을 기준으로 React 화면을 맞춘다.
+- eunjin/frontend의 UI/UX 개선, mock 제거, AuthContext, MyPage, ChatbotPage, 프론트 테스트는 최대한 수용한다.
+
+실제 병합 충돌:
+
+```text
+frontend-react/src/app/pages/ResultDetail.tsx
+```
+
+해결 내용:
+
+- eunjin/frontend의 개선된 결과 상세 UI, 재무 분석, 상세 전략, 요약 카드, matched item 표시를 유지했다.
+- API 계약상 중요한 필드 대응은 다음과 같이 보존했다.
+
+```text
+chance -> competitiveness -> status -> score
+missing_fields + missing_items
+matched_items
+source_refs
+report.finance
+report.strategy
+node5.agent_result
+warnings
+```
+
+- `missing_items`는 FastAPI 내부 필드명이고 `missing_fields`는 Django 공개 계약 필드명이므로, 통합 과도기에는 둘 다 읽도록 했다.
+- `risk_result.description`과 `risk_result.action_items`는 상세 확인 사항에 반영하되 중복 표시되지 않도록 정리했다.
+
+추가 조정:
+
+- eunjin/frontend는 mock fixture fallback을 제거해 실제 Django API 호출 중심으로 변경했다.
+- dongyoon_v1에서 반영한 Vite proxy를 실제로 활용하기 위해, 로컬 기본 `VITE_API_BASE_URL`은 빈 값으로 두도록 `client.ts`, `.env.example`, `frontend-react/README.md`를 조정했다.
+- proxy를 쓰지 않는 배포/특수 환경에서는 `VITE_API_BASE_URL`에 절대 Django API 주소를 명시한다.
+
+## 9. eunjin/frontend 통합 검증 결과
+
+eunjin/frontend 병합 및 `ResultDetail.tsx` 수동 해결 후 다음 검증을 수행했다.
+
+```text
+git diff --check: OK
+Django manage.py check: OK
+Django accounts + strategy tests: 26 passed
+FastAPI app import: OK
+React frontend tests: 7 passed
+React production build: OK
+ChromaDB collection count: []
+```
+
+검증 메모:
+
+- mock fixture fallback은 제거되었고 React client는 Django 공개 API를 직접 호출한다.
+- 로컬 Vite dev 기본값은 `/api` 상대경로를 사용하므로 `vite.config.ts` proxy를 탄다.
+- `ResultDetail.tsx`는 eunjin/frontend UI를 유지하면서 FastAPI/Django 응답 계약에 맞춰 `missing_items`와 `missing_fields`를 모두 처리한다.
+- 현재 worktree의 ChromaDB collection은 비어 있으므로 RAG/챗봇 실동작 확인 전 `Backend/src/preprocessing/build_all.py` 재실행이 필요하다.

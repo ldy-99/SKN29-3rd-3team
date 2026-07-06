@@ -1,9 +1,9 @@
 // 역할: 모집공고 PDF 업로드 화면입니다.
 // 흐름: PdfAnalysis.tsx -> api.analyzePdf -> Django PDFAnalyzeAPIView -> FastAPI /api/pdf/analyze.
 // 추출된 원본 PDF는 저장하지 않고 combined_text만 전략 진단 입력으로 넘깁니다.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Card, PageTitle, ApiBadge, Button, SettingsList, WarningBox } from "../components/UI";
+import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator, SettingsList, WarningBox } from "../components/UI";
 import { ArrowRight, FileText, Upload } from "lucide-react";
 import { api } from "../api/client";
 
@@ -25,9 +25,18 @@ export function PdfAnalysis() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [result, setResult] = useState<PdfAnalysisResult | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isUploading) return;
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isUploading]);
 
   const handleFileChange = async (file?: File | null) => {
     // 선택 즉시 Django proxy를 통해 FastAPI PDF 추출 endpoint까지 왕복합니다.
@@ -39,14 +48,15 @@ export function PdfAnalysis() {
 
     setSelectedFile(file);
     setIsUploading(true);
-    setError("");
+    setElapsedSeconds(0);
+    setError(null);
     setResult(null);
 
     try {
       const data = await api.analyzePdf(file);
       setResult(data);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "PDF 분석 요청에 실패했습니다.");
+      setError(error);
     } finally {
       setIsUploading(false);
     }
@@ -67,8 +77,6 @@ export function PdfAnalysis() {
 
   return (
     <div className="pb-20">
-      <ApiBadge method="POST" endpoint="/api/pdf/analyze" />
-
       <PageTitle
         title="PDF 공고문 분석"
         description="모집공고문에서 텍스트와 표를 추출해 전략 진단 입력으로 사용합니다."
@@ -78,15 +86,11 @@ export function PdfAnalysis() {
         PDF 원본은 저장하지 않습니다. 추출된 텍스트를 확인한 뒤 전략 진단 입력으로 넘깁니다.
       </div>
 
-      {error && (
-        <WarningBox type="error" title="API 연결 오류">
-          {error}
-        </WarningBox>
-      )}
+      <ErrorNotice error={error} fallbackMessage="PDF 분석 요청에 실패했습니다." />
 
       <div className="space-y-8">
-        <Card className={`p-10 border-2 border-dashed flex flex-col items-center justify-center text-center min-h-[300px] transition-colors cursor-pointer group ${
-          isUploading ? "border-[#007aff]/30 bg-[#007aff]/5" : "border-[#e5e5e7] hover:border-[#007aff]/50 hover:bg-[#f5f5f7]"
+        <Card className={`p-6 sm:p-10 border-2 border-dashed flex flex-col items-center justify-center text-center min-h-[300px] transition-colors group ${
+          isUploading ? "border-[#007aff]/30 bg-[#007aff]/5 cursor-wait" : "border-[#e5e5e7] hover:border-[#007aff]/50 hover:bg-[#f5f5f7] cursor-pointer"
         }`} onClick={!isUploading ? () => fileInputRef.current?.click() : undefined}>
           <input
             ref={fileInputRef}
@@ -96,11 +100,20 @@ export function PdfAnalysis() {
             onChange={(event) => handleFileChange(event.target.files?.[0])}
           />
           {isUploading ? (
-            <>
-              <div className="w-12 h-12 rounded-full border-4 border-[#e5e5e7] border-t-[#007aff] animate-spin mb-4"></div>
-              <h3 className="text-[17px] font-semibold mb-2">분석 중...</h3>
-              <p className="text-[14px] text-[#6e6e73]">PDF 내용을 읽고 있습니다.</p>
-            </>
+            <ProcessingIndicator
+              title={
+                elapsedSeconds < 8
+                  ? "PDF 파일을 확인하고 있습니다"
+                  : elapsedSeconds < 22
+                    ? "본문과 표를 추출하고 있습니다"
+                    : "추출 결과를 정리하고 있습니다"
+              }
+              description={`${selectedFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
+              elapsedSeconds={elapsedSeconds}
+              steps={["파일 확인", "내용 추출", "결과 정리"]}
+              currentStep={elapsedSeconds < 8 ? 0 : elapsedSeconds < 22 ? 1 : 2}
+              className="!mb-0 w-full max-w-[620px] text-left"
+            />
           ) : (
             <>
               <div className="w-16 h-16 rounded-full bg-[#f5f5f7] flex items-center justify-center mb-4 text-[#6e6e73] group-hover:scale-110 transition-transform">

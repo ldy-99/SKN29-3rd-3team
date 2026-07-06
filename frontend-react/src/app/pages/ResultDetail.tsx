@@ -3,8 +3,9 @@
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Card, PageTitle, ApiBadge, StatusBadge, WarningBox, Button, SettingsList } from "../components/UI";
+import { Card, PageTitle, StatusBadge, WarningBox, Button, ErrorNotice, SettingsList } from "../components/UI";
 import { api } from "../api/client";
+import { CheckCircle2, FileText, Info } from "lucide-react";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -14,6 +15,7 @@ type SupplyRankItem = {
   chance: string;
   desc: string;
   missingFields: string[];
+  matchedItems: string[];
   sourceRefs: string[];
 };
 
@@ -21,12 +23,12 @@ export function ResultDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [result, setResult] = useState<UnknownRecord | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     api.getStrategy(id ?? "")
       .then((data) => setResult(data as UnknownRecord))
-      .catch((error) => setError(error instanceof Error ? error.message : "전략 상세 조회에 실패했습니다."));
+      .catch((error) => setError(error));
   }, [id]);
 
   const viewModel = useMemo(() => buildResultViewModel(result), [result]);
@@ -36,24 +38,18 @@ export function ResultDetail() {
       <div className="flex items-center gap-2 mb-6">
         <button
           className="text-[14px] text-[#6e6e73] hover:text-[#1d1d1f] flex items-center gap-1 transition-colors"
-          onClick={() => navigate("/strategy")}
+          onClick={() => navigate("/mypage")}
         >
-          ← 돌아가기
+          ← 진단 기록으로
         </button>
       </div>
-
-      <ApiBadge method="GET" endpoint={`/api/strategy/${id}`} />
 
       <PageTitle
         title={viewModel.title}
         description={`${viewModel.createdAt} 기준 진단 결과`}
       />
 
-      {error && (
-        <WarningBox type="error" title="API 연결 오류">
-          {error}
-        </WarningBox>
-      )}
+      <ErrorNotice error={error} fallbackMessage="전략 상세 조회에 실패했습니다." />
 
       {result && (
         <div className="mb-6 flex flex-wrap gap-2">
@@ -66,6 +62,12 @@ export function ResultDetail() {
       {viewModel.isPartial && (
         <WarningBox type="warning" title="일부 정보가 부족합니다">
           일부 공급유형은 입력값 부족으로 제한적으로 판단되었습니다. 프로필이나 공고 정보를 보완하면 더 정확해집니다.
+        </WarningBox>
+      )}
+
+      {viewModel.failureMessage && (
+        <WarningBox type="error" title="진단이 완료되지 않았습니다">
+          {viewModel.failureMessage}
         </WarningBox>
       )}
 
@@ -85,9 +87,10 @@ export function ResultDetail() {
       </Card>
 
       {viewModel.summary && (
-        <WarningBox type="info" title="요약">
-          {viewModel.summary}
-        </WarningBox>
+        <SummaryReport
+          content={viewModel.summary}
+          isProfileOnly={viewModel.isProfileOnly}
+        />
       )}
 
       <div className="mb-8">
@@ -107,6 +110,11 @@ export function ResultDetail() {
                     </span>
                   </div>
                   <p className="text-[14px] text-[#6e6e73] leading-relaxed">{item.desc}</p>
+                  {item.matchedItems.length > 0 && (
+                    <p className="mt-2 text-[12px] text-[#86868b] leading-relaxed">
+                      충족·반영 항목: {item.matchedItems.join(", ")}
+                    </p>
+                  )}
                 </div>
               </div>
             ))
@@ -115,6 +123,41 @@ export function ResultDetail() {
           )}
         </SettingsList>
       </div>
+
+      {viewModel.finance && (
+        <div className="mb-8">
+          <h3 className="text-[20px] font-bold mb-4 px-2">재무 분석</h3>
+          <SettingsList>
+            <ResultRow label="분양가" value={formatWon(viewModel.finance.price)} />
+            <ResultRow label="대출 가능 금액" value={formatWon(viewModel.finance.loanAmount)} />
+            <ResultRow label="적용 LTV" value={formatRatio(viewModel.finance.ltvRate)} />
+            <ResultRow label="실투자금" value={formatWon(viewModel.finance.realInvestment)} />
+            <ResultRow label="지역 구분" value={viewModel.finance.areaType ?? "확인 필요"} />
+            <ResultRow
+              label="자금 위험도"
+              value={[
+                viewModel.finance.riskLevel,
+                formatRatio(viewModel.finance.riskRatio),
+              ].filter(Boolean).join(" · ") || "확인 필요"}
+              last
+            />
+          </SettingsList>
+          {viewModel.finance.riskDescription && (
+            <div className="mt-3">
+              <WarningBox type="warning" title="자금 위험 안내">
+                {viewModel.finance.riskDescription}
+              </WarningBox>
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewModel.strategy && (
+        <div className="mb-8">
+          <h3 className="text-[20px] font-bold mb-4 px-2">상세 전략</h3>
+          <StrategyReport content={viewModel.strategy} />
+        </div>
+      )}
 
       <div className="mb-10">
         <h3 className="text-[20px] font-bold mb-4 px-2">상세 확인 사항</h3>
@@ -125,7 +168,7 @@ export function ResultDetail() {
               {viewModel.analysisItems.length > 0 ? (
                 viewModel.analysisItems.map((item) => <li key={item}>• {item}</li>)
               ) : (
-                <li>• 상세 분석 결과가 아직 없습니다.</li>
+                <li>• 현재 진단 응답에 별도로 분류된 분석 항목이 없습니다.</li>
               )}
             </ul>
           </div>
@@ -135,21 +178,12 @@ export function ResultDetail() {
               {viewModel.missingItems.length > 0 ? (
                 viewModel.missingItems.map((item) => <li key={item}>• {item}</li>)
               ) : (
-                <li>• 추가 확인 항목이 없습니다.</li>
+                <li>• 현재 진단 응답에는 추가 확인이 필요한 항목이 없습니다.</li>
               )}
             </ul>
           </div>
         </SettingsList>
       </div>
-
-      {viewModel.debugPayload && (
-        <div className="mb-10">
-          <h3 className="text-[20px] font-bold mb-4 px-2">FastAPI 원본 요약</h3>
-          <pre className="bg-[#1d1d1f] text-white rounded-[20px] p-5 overflow-auto text-[12px] leading-relaxed max-h-[320px]">
-            {viewModel.debugPayload}
-          </pre>
-        </div>
-      )}
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
@@ -167,10 +201,22 @@ function buildResultViewModel(result: UnknownRecord | null) {
   const payload = asRecord(result?.result_payload) ?? {};
   const report = asRecord(result?.report) ?? asRecord(payload.report) ?? asRecord(asRecord(payload.node6)?.final_report) ?? {};
   const announcement = asRecord(result?.announcement_confirmed) ?? asRecord(payload.announcement) ?? {};
-  const supplyRank = normalizeSupplyRank(result?.supply_rank ?? payload.supply_rank);
+  const supplyRank = normalizeSupplyRank(payload.supply_rank ?? report.supply_rank ?? result?.supply_rank);
   const missingItems = collectMissingItems(result, payload, supplyRank);
-  const analysisItems = collectAnalysisItems(report, payload);
+  const analysisItems = collectAnalysisItems(report, payload, supplyRank);
   const resultStatus = stringValue(payload.status) ?? stringValue(result?.overall_analysis_status);
+  const finance = normalizeFinance(report, payload);
+  const strategy =
+    stringValue(report.strategy) ??
+    stringValue(payload.strategy) ??
+    stringValue(asRecord(payload.node5)?.agent_result);
+  const failureMessage =
+    result?.status === "FAILED" || result?.overall_analysis_status === "FAILED"
+      ? stringValue(asRecord(payload.error)?.message) ??
+        stringValue(payload.error) ??
+        stringValue(payload.message) ??
+        "서버 처리 중 오류가 발생해 상세 결과를 생성하지 못했습니다."
+      : undefined;
 
   return {
     title: stringValue(announcement.announcement_name) ?? "청약 전략 진단 결과",
@@ -181,14 +227,231 @@ function buildResultViewModel(result: UnknownRecord | null) {
       resultStatus === "success" ? "CALCULATED" : resultStatus,
     ]),
     isPartial: result?.overall_analysis_status === "PARTIAL" || missingItems.length > 0,
+    isProfileOnly: result?.diagnosis_mode === "PROFILE_ONLY",
     recommendedSupply: stringValue(result?.recommended_supply) ?? stringValue(payload.recommended_supply) ?? supplyRank[0]?.type ?? "확인 필요",
     resultLabel: resultStatus === "success" ? "완료" : resultStatus === "waiting" ? "대기" : "확인",
     summary: collectSummary(report, payload),
     supplyRank,
     analysisItems,
     missingItems,
-    debugPayload: Object.keys(payload).length > 0 ? JSON.stringify(payload, null, 2) : null,
+    finance,
+    strategy,
+    failureMessage,
   };
+}
+
+type StrategySection = {
+  title: string;
+  lines: string[];
+};
+
+function SummaryReport({
+  content,
+  isProfileOnly,
+}: {
+  content: string;
+  isProfileOnly: boolean;
+}) {
+  const sections = parseStrategySections(content);
+
+  return (
+    <Card className="mb-8 !rounded-[22px] !border-[#dce4ef] !bg-[#f8fbff]">
+      <div className="border-b border-[#dce4ef] px-6 py-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e7f1ff] text-[#0b5bd3]">
+            <Info className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-[17px] font-bold text-[#152846]">진단 요약</h3>
+              {isProfileOnly && (
+                <span className="rounded-full bg-[#fff1d9] px-2.5 py-1 text-[11px] font-bold text-[#9a5c11]">
+                  공고 없이 진단
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#68717d]">
+              {isProfileOnly
+                ? "저장된 청약 조건만으로 분석한 결과입니다. 실제 신청 전 모집공고의 세부 자격을 확인해주세요."
+                : "프로필과 모집공고를 함께 분석한 핵심 결과입니다."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-5 px-6 py-5">
+        {sections.map((section, sectionIndex) => (
+          <section key={`${section.title}-${sectionIndex}`}>
+            <h4 className="mb-2 text-[14px] font-bold text-[#0b5bd3]">
+              {stripMarkdown(section.title)}
+            </h4>
+            <div className="space-y-2">
+              {section.lines.map((line, lineIndex) => (
+                <StrategyLine
+                  key={`${line.slice(0, 30)}-${lineIndex}`}
+                  line={line}
+                  compact
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function StrategyReport({ content }: { content: string }) {
+  const parsedSections = parseStrategySections(content);
+  const firstSection = parsedSections[0];
+  const hasTitleOnlySection =
+    parsedSections.length > 1 && firstSection?.lines.length === 0;
+  const reportTitle = hasTitleOnlySection
+    ? firstSection.title
+    : "맞춤 청약 전략";
+  const sections = hasTitleOnlySection
+    ? parsedSections.slice(1)
+    : parsedSections;
+
+  return (
+    <Card className="!overflow-visible !rounded-[22px] !border-[#e3ded4]">
+      <div className="flex items-center gap-3 rounded-t-[22px] border-b border-[#e8e2d8] bg-[#f8f4ec] px-6 py-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#102e5a] text-white">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-[12px] font-bold tracking-[0.05em] text-[#b86a12]">
+            STRATEGY REPORT
+          </p>
+          <h4 className="text-[18px] font-bold text-[#152846]">
+            {stripMarkdown(reportTitle)}
+          </h4>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-5 md:p-6">
+        {sections.map((section, sectionIndex) => (
+          <section
+            key={`${section.title}-${sectionIndex}`}
+            className="rounded-[18px] border border-[#e8e3da] bg-white p-5 md:p-6 shadow-[0_5px_18px_rgba(35,45,60,0.035)]"
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eaf2ff] text-[12px] font-bold text-[#0b5bd3]">
+                {sectionIndex + 1}
+              </span>
+              <h5 className="text-[17px] font-bold leading-relaxed text-[#152846]">
+                <StrategyInline text={section.title} />
+              </h5>
+            </div>
+
+            <div className="space-y-3 pl-0 md:pl-10">
+              {section.lines.map((line, lineIndex) => (
+                <StrategyLine
+                  key={`${line.slice(0, 30)}-${lineIndex}`}
+                  line={line}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function parseStrategySections(content: string): StrategySection[] {
+  const lines = content
+    .replace(/\r\n/g, "\n")
+    .replace(/\s+(#{1,6}\s+)/g, "\n$1")
+    .replace(/\s+(-\s+)/g, "\n$1")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const sections: StrategySection[] = [];
+  let current: StrategySection = { title: "핵심 분석", lines: [] };
+
+  for (const line of lines) {
+    const heading = line.match(/^#{1,6}\s+(.+)$/);
+    if (heading) {
+      if (current.lines.length > 0 || current.title !== "핵심 분석") {
+        sections.push(current);
+      }
+      current = { title: heading[1].trim(), lines: [] };
+      continue;
+    }
+    current.lines.push(line);
+  }
+
+  if (current.lines.length > 0 || current.title !== "핵심 분석") {
+    sections.push(current);
+  }
+
+  return sections.length > 0
+    ? sections
+    : [{ title: "상세 분석", lines: [content] }];
+}
+
+function StrategyLine({
+  line,
+  compact = false,
+}: {
+  line: string;
+  compact?: boolean;
+}) {
+  const bullet = line.match(/^[-*]\s+(.+)$/);
+  const text = bullet ? bullet[1] : line;
+  const labelValue = text.match(/^\*\*(.+?)\*\*\s*:?\s*(.*)$/);
+
+  if (labelValue) {
+    return (
+      <div className={`rounded-[12px] px-4 py-3 ${compact ? "bg-white/80" : "bg-[#f7f8fa]"}`}>
+        <p className="text-[12px] font-bold text-[#0b5bd3]">
+          {stripMarkdown(labelValue[1])}
+        </p>
+        {labelValue[2] && (
+          <p className="mt-1 text-[14px] leading-6 text-[#465365]">
+            <StrategyInline text={labelValue[2]} />
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (bullet) {
+    return (
+      <div className="flex items-start gap-2.5 text-[14px] leading-7 text-[#465365]">
+        <CheckCircle2 className="mt-1.5 h-4 w-4 shrink-0 text-[#2d8a54]" />
+        <p><StrategyInline text={text} /></p>
+      </div>
+    );
+  }
+
+  return (
+    <p className="text-[14px] leading-7 text-[#465365]">
+      <StrategyInline text={text} />
+    </p>
+  );
+}
+
+function StrategyInline({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.startsWith("**") && part.endsWith("**") ? (
+          <strong key={index} className="font-bold text-[#26364e]">
+            {part.slice(2, -2)}
+          </strong>
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function stripMarkdown(value: string) {
+  return value.replace(/\*\*/g, "").trim();
 }
 
 function normalizeSupplyRank(value: unknown): SupplyRankItem[] {
@@ -201,16 +464,24 @@ function normalizeSupplyRank(value: unknown): SupplyRankItem[] {
     const score = numberValue(item.score);
     const status = stringValue(item.status);
     const type = stringValue(item.type) ?? stringValue(item.supply_type) ?? stringValue(item.name) ?? `공급유형 ${index + 1}`;
+    const missingFields = uniqueStrings([
+      ...stringArray(item.missing_fields),
+      ...stringArray(item.missing_items),
+    ]);
 
     return {
       rank: numberValue(item.rank) ?? index + 1,
       type,
-      chance: stringValue(item.chance) ?? status ?? (score !== undefined ? `${score}점` : "검토"),
-      desc: reason ?? reasons.join(", ") ?? "상세 사유가 응답에 포함되지 않았습니다.",
-      // 백엔드(node2.py)는 missing_items라는 이름으로 보내는데, 예전 코드가
-      // missing_fields를 찾고 있어서 실제 데이터가 있어도 항상 빈 배열이었음.
-      // 혹시 다른 경로에서 missing_fields를 쓰는 경우까지 대비해 둘 다 지원.
-      missingFields: stringArray(item.missing_items ?? item.missing_fields),
+      chance:
+        stringValue(item.chance) ??
+        stringValue(item.competitiveness) ??
+        status ??
+        (score !== undefined ? `${score}점` : "검토"),
+      desc: reason ?? (reasons.length > 0 ? reasons.join(", ") : "상세 사유가 응답에 포함되지 않았습니다."),
+      // FastAPI 내부는 missing_items, Django 공개 계약은 missing_fields를 사용한다.
+      // 통합 과도기에는 둘 다 읽어 실제 추가 확인 항목이 화면에서 누락되지 않게 한다.
+      missingFields,
+      matchedItems: stringArray(item.matched_items),
       sourceRefs: stringArray(item.source_refs),
     };
   });
@@ -218,26 +489,61 @@ function normalizeSupplyRank(value: unknown): SupplyRankItem[] {
 
 function collectMissingItems(result: UnknownRecord | null, payload: UnknownRecord, supplyRank: SupplyRankItem[]) {
   const explicitMissing = asRecord(result?.missing_fields_by_supply_type);
-  if (explicitMissing) {
-    return Object.entries(explicitMissing).map(([supplyType, fields]) => `${supplyType}: ${stringArray(fields).join(", ")}`);
-  }
+  const fromExplicit = explicitMissing
+    ? Object.entries(explicitMissing)
+      .map(([supplyType, fields]) => {
+        const normalizedFields = stringArray(fields);
+        return normalizedFields.length > 0 ? `${supplyType}: ${normalizedFields.join(", ")}` : undefined;
+      })
+      .filter((item): item is string => Boolean(item))
+    : [];
 
   const fromSupplyRank = supplyRank.flatMap((item) =>
     item.missingFields.map((field) => `${item.type}: ${field}`)
   );
 
-  const report = asRecord(payload.report);
-  const fromReport = stringArray(report?.missing_fields);
+  const payloadReport = asRecord(payload.report) ?? asRecord(asRecord(payload.node6)?.final_report);
+  const reportSupplyRank = normalizeSupplyRank(payloadReport?.supply_rank);
+  const supplyAnalysis = asRecord(payload.supply_analysis);
+  const availableSupplies = normalizeSupplyRank(supplyAnalysis?.available_supplies);
+  const recommendedSupplyTypes = normalizeSupplyRank(result?.recommended_supply_types);
+  const fromReport = uniqueStrings([
+    ...stringArray(payloadReport?.missing_fields),
+    ...stringArray(payloadReport?.missing_items),
+  ]);
+  const fromNestedSupplyData = [
+    ...reportSupplyRank,
+    ...availableSupplies,
+    ...recommendedSupplyTypes,
+  ].flatMap((item) =>
+    item.missingFields.map((field) => `${item.type}: ${field}`)
+  );
+  const warnings = uniqueStrings([
+    ...stringArray(result?.warnings),
+    ...stringArray(payload.warnings),
+    ...stringArray(payloadReport?.warnings),
+  ]);
 
-  return uniqueStrings([...fromSupplyRank, ...fromReport]);
+  return uniqueStrings([
+    ...fromExplicit,
+    ...fromSupplyRank,
+    ...fromReport,
+    ...fromNestedSupplyData,
+    ...warnings,
+  ]);
 }
 
-function collectAnalysisItems(report: UnknownRecord, payload: UnknownRecord) {
+function collectAnalysisItems(
+  report: UnknownRecord,
+  payload: UnknownRecord,
+  supplyRank: SupplyRankItem[],
+) {
   const candidates = [
     ...stringArray(report.key_findings),
     ...stringArray(report.recommendations),
-    ...stringArray(report.warnings),
-    ...stringArray(payload.warnings),
+    ...supplyRank.flatMap((item) =>
+      item.matchedItems.map((matched) => `${item.type}: ${matched}`)
+    ),
   ];
 
   // 실제 백엔드(financial.py analyze_financial_risk)가 만들어내는 필드는
@@ -245,15 +551,39 @@ function collectAnalysisItems(report: UnknownRecord, payload: UnknownRecord) {
   // 예전 코드는 존재하지 않는 필드만 찾고 있어서 상세 진단에서도 항상 비어있었음.
   const node5 = asRecord(payload.node5);
   const riskResult = asRecord(node5?.risk_result);
-  const riskSummary = stringValue(riskResult?.summary) ?? stringValue(riskResult?.message);
+  const finance = asRecord(report.finance);
+  const riskSummary =
+    stringValue(finance?.risk_description) ??
+    stringValue(riskResult?.description) ??
+    stringValue(riskResult?.summary) ??
+    stringValue(riskResult?.message);
   if (riskSummary) candidates.push(riskSummary);
-
-  const riskDescription = stringValue(riskResult?.description);
-  if (riskDescription) candidates.push(riskDescription);
-
   candidates.push(...stringArray(riskResult?.action_items));
 
   return uniqueStrings(candidates);
+}
+
+function normalizeFinance(report: UnknownRecord, payload: UnknownRecord) {
+  const reportFinance = asRecord(report.finance);
+  const payloadFinance = asRecord(payload.finance);
+  const node5 = asRecord(payload.node5);
+  const loan = asRecord(node5?.loan_result);
+  const investment = asRecord(node5?.investment_result);
+  const risk = asRecord(node5?.risk_result);
+  const source = reportFinance ?? payloadFinance ?? {};
+
+  const normalized = {
+    loanAmount: numberValue(source.loan_amount) ?? numberValue(loan?.loan_amount),
+    ltvRate: numberValue(source.ltv_rate) ?? numberValue(loan?.ltv_rate),
+    areaType: stringValue(source.area_type) ?? stringValue(loan?.area_type),
+    realInvestment: numberValue(source.real_investment) ?? numberValue(investment?.real_investment),
+    price: numberValue(source.price) ?? numberValue(investment?.price),
+    riskLevel: stringValue(source.risk_level) ?? stringValue(risk?.risk_level),
+    riskRatio: numberValue(source.risk_ratio) ?? numberValue(risk?.ratio),
+    riskDescription: stringValue(source.risk_description) ?? stringValue(risk?.description),
+  };
+
+  return Object.values(normalized).some((value) => value !== undefined) ? normalized : null;
 }
 
 function collectSummary(report: UnknownRecord, payload: UnknownRecord) {
@@ -296,4 +626,29 @@ function stringArray(value: unknown): string[] {
 
 function uniqueStrings(values: Array<string | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function formatWon(value: number | undefined) {
+  return value === undefined ? "확인 필요" : `${value.toLocaleString("ko-KR")}원`;
+}
+
+function formatRatio(value: number | undefined) {
+  return value === undefined ? undefined : `${Math.round(value * 100)}%`;
+}
+
+function ResultRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <div className={`py-4 flex items-center justify-between gap-6 ${last ? "" : "border-b border-[#e5e5e7]"}`}>
+      <span className="text-[14px] text-[#6e6e73]">{label}</span>
+      <span className="text-[15px] font-semibold text-right">{value}</span>
+    </div>
+  );
 }

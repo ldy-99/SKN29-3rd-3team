@@ -6,10 +6,11 @@ import {
   CheckCircle2,
   ClipboardList,
   FileSearch,
-  Landmark,
   LockKeyhole,
   UserRound,
 } from "lucide-react";
+import { SiteHeader } from "../components/SiteHeader";
+import { useAuth } from "../auth/AuthContext";
 
 const serviceSteps = [
   {
@@ -30,46 +31,22 @@ const serviceSteps = [
 ];
 
 export function Home() {
+  const { user, isLoading } = useAuth();
+  const diagnosisPath = isLoading ? "/" : user ? "/strategy" : "/login";
+
   return (
     <div className="min-h-screen bg-[#fbfaf7] font-sans text-[#10284b]">
-      <header className="h-[94px] bg-[#fffefa]/95 backdrop-blur-md border-b border-[#e9e4da] sticky top-0 z-30">
-        <div className="max-w-[1440px] h-full mx-auto px-6 lg:px-10 flex items-center justify-between gap-8">
-          <Link to="/" className="flex items-center gap-3 shrink-0">
-            <Landmark className="w-8 h-8 text-[#102e5a]" strokeWidth={1.7} />
-            <span className="text-[21px] font-bold tracking-[-0.03em]">청약 가이드</span>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-10 text-[15px] font-semibold text-[#26364e]">
-            <a href="#service" className="hover:text-[#0b5bd3] transition-colors">서비스 소개</a>
-            <a href="#steps" className="hover:text-[#0b5bd3] transition-colors">이용 방법</a>
-            <a href="#preview" className="hover:text-[#0b5bd3] transition-colors">진단 예시</a>
-            <a href="#assistant" className="hover:text-[#0b5bd3] transition-colors">청약 도우미</a>
-          </nav>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <Link to="/login" className="hidden sm:inline-flex px-4 py-3 text-[14px] font-semibold text-[#26364e]">
-              로그인
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-[12px] bg-[#102e5a] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#183f75] transition-colors"
-            >
-              무료로 시작하기
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         <section
           id="service"
-          className="relative min-h-[600px] border-b border-[#e9e4da] bg-cover bg-center"
+          className="landing-hero-pan relative min-h-[520px] md:min-h-[600px] border-b border-[#e9e4da] bg-no-repeat bg-[length:auto_100%] bg-[position:68%_center] md:bg-cover"
           style={{ backgroundImage: "url('/landing-urban-hero.png')" }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-[#fffefa] via-[#fffefa]/95 to-[#fffefa]/5" />
-          <div className="relative max-w-[1440px] min-h-[600px] mx-auto px-6 lg:px-10 grid lg:grid-cols-[1.08fr_0.92fr] items-center gap-12 py-16">
-            <div className="max-w-[700px]">
+          <div className="relative max-w-[1440px] min-h-[520px] md:min-h-[600px] mx-auto px-6 lg:px-10 grid lg:grid-cols-[1.08fr_0.92fr] items-center gap-12 py-12 md:py-16">
+            <div className="landing-reveal max-w-[700px]">
               <p className="text-[14px] font-bold tracking-[0.04em] text-[#b86a12] mb-5">
                 프로필과 공고를 한 번에 분석
               </p>
@@ -83,10 +60,13 @@ export function Home() {
               </p>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors"
+                  to={diagnosisPath}
+                  aria-disabled={isLoading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors ${
+                    isLoading ? "pointer-events-none opacity-70" : ""
+                  }`}
                 >
-                  내 조건 진단하기
+                  {isLoading ? "로그인 상태 확인 중" : user ? "전략 진단 계속하기" : "내 조건 진단하기"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
                 <a
@@ -99,8 +79,8 @@ export function Home() {
               </div>
             </div>
 
-            <div id="preview" className="hidden lg:block">
-              <div className="max-w-[390px] ml-auto rounded-[22px] border border-[#ded8cc] bg-[#fffefa]/95 p-7 shadow-[0_22px_60px_rgba(24,40,65,0.16)] backdrop-blur-md">
+            <div id="preview" className="landing-reveal landing-reveal-delay-2 hidden lg:block">
+              <div className="landing-float max-w-[390px] ml-auto rounded-[22px] border border-[#ded8cc] bg-[#fffefa]/95 p-7 shadow-[0_22px_60px_rgba(24,40,65,0.16)] backdrop-blur-md">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-[22px] font-bold text-[#152846]">내 진단 결과 미리보기</h2>
                   <span className="w-9 h-9 rounded-full bg-[#f7eedf] flex items-center justify-center text-[#b86a12]">
@@ -118,7 +98,7 @@ export function Home() {
 
         <section id="steps" className="py-16 md:py-20 bg-[#fffefa]">
           <div className="max-w-[1360px] mx-auto px-6 lg:px-10">
-            <div className="text-center mb-10">
+            <div className="landing-reveal text-center mb-10">
               <p className="text-[13px] font-bold tracking-[0.08em] text-[#b86a12] mb-3">HOW IT WORKS</p>
               <h2 className="text-[30px] md:text-[38px] font-bold tracking-[-0.035em] text-[#102e5a]">
                 청약 준비를 세 단계로 정리합니다
@@ -126,9 +106,13 @@ export function Home() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-5">
-              {serviceSteps.map((step) => (
-                <article key={step.title} className="rounded-[20px] border border-[#e5dfd4] bg-white p-7 shadow-[0_10px_30px_rgba(35,45,60,0.04)]">
-                  <div className="w-14 h-14 rounded-full bg-[#f7f1e8] flex items-center justify-center text-[#102e5a] mb-5">
+              {serviceSteps.map((step, index) => (
+                <article
+                  key={step.title}
+                  className="landing-step-card rounded-[20px] border border-[#e5dfd4] bg-white p-7 shadow-[0_10px_30px_rgba(35,45,60,0.04)]"
+                  style={{ animationDelay: `${index * 130}ms` }}
+                >
+                  <div className="landing-float w-14 h-14 rounded-full bg-[#f7f1e8] flex items-center justify-center text-[#102e5a] mb-5" style={{ animationDelay: `${index * 220}ms` }}>
                     {step.icon}
                   </div>
                   <h3 className="text-[20px] font-bold text-[#152846]">{step.title}</h3>

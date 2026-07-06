@@ -1,10 +1,5 @@
 // 역할: React 화면들이 Django 공개 API를 호출할 때 사용하는 공통 client입니다.
-// 흐름: 각 page/component -> client.ts -> Django /api/* -> FastAPI/RAG(필요 시).
-// 이전 파일: Login/Profile/StrategyRun/ResultDetail/PdfAnalysis/ChatbotPanel, 다음 파일: django_backend의 accounts/strategy views.
-import profileFixture from "../fixtures/profile-basic-p0.json";
-import strategyFixture from "../fixtures/strategy-response-partial.json";
-import pdfFixture from "../fixtures/pdf-analyze-response-needs-review.json";
-import chatbotFixture from "../fixtures/chatbot-response-answer.json";
+// 모든 요청은 Django API로 전송하며 로컬 fixture fallback을 사용하지 않습니다.
 
 export type ApiEnvelope<T> = {
   data: T | null;
@@ -16,12 +11,46 @@ export type ApiEnvelope<T> = {
   request_id?: string;
 };
 
-type RequestOptions = RequestInit & {
-  mockData?: unknown;
+export type CurrentUser = {
+  id: number;
+  username: string;
+  email: string;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== "false";
+export type StrategyRecord = {
+  id?: string;
+  strategy_id: string;
+  status: string;
+  diagnosis_mode?: string;
+  overall_analysis_status?: string;
+  recommended_supply?: string | null;
+  recommended_supply_types?: Array<Record<string, unknown>>;
+  supply_rank?: Array<Record<string, unknown>>;
+  missing_fields_by_supply_type?: Record<string, unknown>;
+  warnings?: string[];
+  announcement_confirmed?: Record<string, unknown> | null;
+  input_snapshot?: Record<string, unknown> | null;
+  result_payload?: Record<string, unknown> | null;
+  report?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type PdfAnalysisResponse = {
+  pdf_analysis_id: string;
+  extraction_status: string;
+  filename: string;
+  page_count: number;
+  text_length: number;
+  combined_text_length: number;
+  table_count: number;
+  truncated: boolean;
+  preview: string;
+  combined_text: string;
+  warnings: string[];
+};
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export class ApiRequestError extends Error {
   status: number;
@@ -37,118 +66,102 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { mockData, headers, ...fetchOptions } = options;
-
-  if (USE_MOCK_API && mockData !== undefined) {
-    await delay(350);
-    return unwrapMock<T>(mockData);
-  }
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData;
+  let response: Response;
 
   try {
-    const isFormData = fetchOptions.body instanceof FormData;
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
       credentials: "include",
       headers: isFormData
-        ? headers
+        ? options.headers
         : {
             "Content-Type": "application/json",
-            ...headers,
+            ...options.headers,
           },
-      ...fetchOptions,
+      ...options,
     });
-
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new ApiRequestError(
-        payload?.error?.message ?? `API request failed: ${response.status}`,
-        response.status,
-        payload?.error?.code,
-        payload?.error?.field_errors,
-      );
-    }
-
-    return unwrapMock<T>(payload);
-  } catch (error) {
-    if (USE_MOCK_API && mockData !== undefined) {
-      console.warn(`[mock fallback] ${endpoint}`, error);
-      await delay(250);
-      return unwrapMock<T>(mockData);
-    }
-    throw error;
+  } catch {
+    throw new ApiRequestError(
+      "Django API에 연결할 수 없습니다. 서버 실행 상태와 VITE_API_BASE_URL을 확인해주세요.",
+      0,
+      "NETWORK_ERROR",
+    );
   }
+
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const apiError = readEnvelopeError(payload);
+    throw new ApiRequestError(
+      apiError?.message ?? `API 요청에 실패했습니다. (${response.status})`,
+      response.status,
+      apiError?.code,
+      apiError?.field_errors,
+    );
+  }
+
+  return unwrapEnvelope<T>(payload);
 }
 
-function unwrapMock<T>(payload: unknown): T {
+function readEnvelopeError(payload: unknown) {
+  if (!payload || typeof payload !== "object" || !("error" in payload)) return null;
+  const error = (payload as ApiEnvelope<unknown>).error;
+  return error && typeof error === "object" ? error : null;
+}
+
+function unwrapEnvelope<T>(payload: unknown): T {
   if (payload && typeof payload === "object" && "data" in payload) {
     return (payload as ApiEnvelope<T>).data as T;
   }
   return payload as T;
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export const api = {
   login(input: { email: string; password: string }) {
-    return request<{ user_id: string; email: string; name: string }>("/api/auth/login", {
+    return request<CurrentUser>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: { user_id: "mock-user", email: input.email, name: "Mock User" },
     });
   },
 
   signup(input: { email: string; password: string }) {
-    return request<{ user_id: string; email: string; name: string }>("/api/auth/signup", {
+    return request<CurrentUser>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: { user_id: "mock-user", email: input.email, name: "Mock User" },
     });
   },
 
   logout() {
-    return request<null>("/api/auth/logout", {
+    return request<{ message: string }>("/api/auth/logout", {
       method: "POST",
       body: JSON.stringify({}),
-      mockData: null,
     });
   },
 
   getMe() {
-    return request<{ id: number; username: string; email: string }>("/api/auth/me", {
+    return request<CurrentUser>("/api/auth/me", {
       method: "GET",
-      mockData: { id: 1, username: "dummy_user", email: "dummy@example.com" }
     });
   },
 
   getProfile() {
-    return request<typeof profileFixture>("/api/user/profile", {
+    return request<Record<string, unknown>>("/api/user/profile", {
       method: "GET",
-      mockData: profileFixture,
     });
   },
 
   saveProfile(input: Record<string, unknown>) {
-    return request<{ profile_id: string; updated_at: string }>("/api/user/profile", {
+    return request<Record<string, unknown>>("/api/user/profile", {
       method: "PUT",
       body: JSON.stringify(input),
-      mockData: {
-        profile_id: "11111111-1111-1111-1111-111111111111",
-        updated_at: new Date().toISOString(),
-      },
     });
   },
 
   patchProfile(input: Record<string, unknown>) {
-    return request<{ profile_id: string; updated_at: string }>("/api/user/profile", {
+    return request<Record<string, unknown>>("/api/user/profile", {
       method: "PATCH",
       body: JSON.stringify(input),
-      mockData: {
-        profile_id: "11111111-1111-1111-1111-111111111111",
-        updated_at: new Date().toISOString(),
-      },
     });
   },
 
@@ -162,25 +175,22 @@ export const api = {
     },
     signal?: AbortSignal,
   ) {
-    return request<typeof strategyFixture.data>("/api/strategy", {
+    return request<StrategyRecord>("/api/strategy", {
       method: "POST",
       body: JSON.stringify(input),
       signal,
-      mockData: strategyFixture,
     });
   },
 
   getMyStrategies() {
-    return request<Array<typeof strategyFixture.data>>("/api/strategy/me", {
+    return request<StrategyRecord[]>("/api/strategy/me", {
       method: "GET",
-      mockData: { data: [strategyFixture.data], error: null },
     });
   },
 
   getStrategy(strategyId: string) {
-    return request<typeof strategyFixture.data>(`/api/strategy/${strategyId}`, {
+    return request<StrategyRecord>(`/api/strategy/${strategyId}`, {
       method: "GET",
-      mockData: strategyFixture,
     });
   },
 
@@ -188,7 +198,6 @@ export const api = {
     return request<{ answer: string; sources: string[]; session_id: string }>("/api/chatbot", {
       method: "POST",
       body: JSON.stringify(input),
-      mockData: chatbotFixture,
     });
   },
 
@@ -196,11 +205,9 @@ export const api = {
     const body = new FormData();
     body.append("file", file);
 
-    return request<typeof pdfFixture.data>("/api/pdf/analyze", {
+    return request<PdfAnalysisResponse>("/api/pdf/analyze", {
       method: "POST",
-      headers: {},
       body,
-      mockData: pdfFixture,
     });
   },
 };
