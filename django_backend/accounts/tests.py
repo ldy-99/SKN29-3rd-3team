@@ -2,17 +2,23 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from accounts.models import Profile
 
 User = get_user_model()
 
 class ProfileAPITests(APITestCase):
     def setUp(self):
+        # 로그인/회원가입 throttle 캐시가 테스트 간 누적되지 않도록 초기화합니다.
+        cache.clear()
         self.user = User.objects.create_user(
             username="profile_tester",
             email="profile@example.com",
             password="testpassword123",
         )
+
+    def tearDown(self):
+        cache.clear()
 
     def authenticate_profile_user(self):
         self.client.force_authenticate(user=self.user)
@@ -330,3 +336,25 @@ class ProfileAPITests(APITestCase):
         
         response_json = response.json()
         self.assertIn('password', response_json['error']['field_errors'])
+
+    def test_login_rate_throttling(self):
+        """
+        로그인 시도 10회 초과 시 429 Too Many Requests 에러가 발생하는지 검증합니다.
+        """
+        User.objects.create_user(
+            username="throttle_user",
+            email="throttle@example.com",
+            password="testpassword123"
+        )
+        url = reverse('login')
+        login_data = {
+            "username": "throttle_user",
+            "password": "testpassword123"
+        }
+
+        for _ in range(10):
+            response = self.client.post(url, login_data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

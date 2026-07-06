@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import NotFound
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from accounts.models import Profile
 from accounts.serializers import (
     ProfileSerializer, UserSerializer, SignUpSerializer, LoginSerializer
@@ -17,10 +18,17 @@ from accounts.permissions import IsOwner
 
 User = get_user_model()
 
-from rest_framework.throttling import AnonRateThrottle
-
 class SignUpRateThrottle(AnonRateThrottle):
     rate = '10/min'  # IP당 분당 최대 10회 가입 시도 제한
+
+
+class LoginRateThrottle(SimpleRateThrottle):
+    scope = 'login'
+    rate = '10/min'  # IP당 분당 최대 10회 로그인 시도 제한
+
+    def get_cache_key(self, request, view):
+        # 로그인 상태와 관계없이 IP 주소 기준으로 스로틀링 수행
+        return f"throttle_{self.scope}_{self.get_ident(request)}"
 
 
 class SignUpAPIView(APIView):
@@ -49,6 +57,7 @@ class LoginAPIView(APIView):
     세션 쿠키를 브라우저에 발행합니다.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
