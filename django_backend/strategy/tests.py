@@ -155,6 +155,7 @@ class StrategyAPITests(APITestCase):
         run = StrategyRun.objects.get(user=self.user)
         announcement = run.input_snapshot["announcement"]
         self.assertEqual(announcement["input_method"], "pdf")
+        self.assertEqual(announcement["display_title"], "테스트 공고")
         self.assertEqual(announcement["pdf_analysis_id"], "pdf-analysis-id")
         self.assertEqual(announcement["pdf_summary_text"], "[PDF 공고문 핵심 요약]")
         self.assertEqual(

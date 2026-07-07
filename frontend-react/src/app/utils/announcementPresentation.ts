@@ -61,6 +61,7 @@ export function getAnnouncementPresentation(
   const inputAnnouncement = asRecord(inputSnapshot?.announcement) ?? {};
   const announcement = asRecord(strategy.announcement_confirmed) ?? {};
   const pdfFields = asRecord(inputAnnouncement.pdf_extracted_fields) ?? {};
+  const displayTitle = stringValue(inputAnnouncement.display_title);
   const sourceFilename = stringValue(inputAnnouncement.source_filename);
   const announcementText = stringValue(inputAnnouncement.announcement_text);
   const pdfSummaryText = stringValue(inputAnnouncement.pdf_summary_text);
@@ -72,6 +73,7 @@ export function getAnnouncementPresentation(
   const title = isProfileOnly
     ? "청약 가능성 분석"
     : firstDefined(
+        cleanAnnouncementTitle(displayTitle),
         cleanAnnouncementTitle(stringValue(pdfFields.announcement_name)),
         cleanAnnouncementTitle(stringValue(announcement.announcement_name)),
         cleanAnnouncementTitle(stringValue(inputAnnouncement.announcement_name)),

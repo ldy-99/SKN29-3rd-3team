@@ -81,6 +81,7 @@ test("장시간 작업에 중복 요청 방지·로딩·타임아웃 처리가 �
   const strategy = readSource("pages/StrategyRun.tsx");
   const pdf = readSource("pages/PdfAnalysis.tsx");
   const ui = readSource("components/UI.tsx");
+  const announcementPresentation = readSource("utils/announcementPresentation.ts");
 
   assert.match(strategy, /if \(isBusy\) return/);
   assert.match(strategy, /new AbortController\(\)/);
@@ -89,6 +90,8 @@ test("장시간 작업에 중복 요청 방지·로딩·타임아웃 처리가 �
   assert.match(strategy, /STRATEGY_DRAFT_STORAGE_KEY/);
   assert.match(strategy, /sessionStorage\.setItem\(STRATEGY_DRAFT_STORAGE_KEY/);
   assert.match(strategy, /api\.analyzePdf\(file\)/);
+  assert.match(announcementPresentation, /inputAnnouncement\.display_title/);
+  assert.match(announcementPresentation, /cleanAnnouncementTitle\(displayTitle\)/);
   assert.match(strategy, /isPdfDragging/);
   assert.match(strategy, /getPdfUploadStage/);
   assert.match(strategy, /여기에 PDF를 드롭하세요/);

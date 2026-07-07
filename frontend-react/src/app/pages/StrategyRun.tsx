@@ -370,10 +370,6 @@ export function StrategyRun() {
                     fileInputRef.current?.click();
                   }
                 }}
-                onDragEnter={handlePdfDragEnter}
-                onDragOver={handlePdfDragOver}
-                onDragLeave={handlePdfDragLeave}
-                onDrop={handlePdfDrop}
               >
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#245ea8] shadow-sm">
