@@ -14,6 +14,7 @@
 | 표 기반 핵심값 | LLM이 놓칠 수 있음 | 주택형/전용면적/공급금액 범위를 규칙 기반으로 먼저 추출 |
 | 이력 추적 | 파일명, 입력 텍스트 중심 | `pdf_analysis_id`, `pdf_summary_text`, `pdf_extracted_fields` 저장 |
 | 마이페이지 제목 | 공고 없는 진단/공고 진단 구분이 약함 | PDF 공고는 아파트명/공고명, 공고 없는 분석은 `청약 가능성 분석` |
+| PDF 입력 UX | `/pdf` 화면으로 이동 후 파일 선택 | 전략 진단 화면에서 바로 파일 선택/드래그 가능, 탭 이동 시 정리본 임시 유지 |
 | LLM 의존도 | raw 텍스트 정리에 의존 | 규칙 기반 추출 우선, LLM은 짧은 요약 보조 |
 
 이번 개선의 핵심은 “공고문을 길게 요약”하는 것이 아니다.  
@@ -142,7 +143,7 @@ sequenceDiagram
 | `django_backend/strategy/views.py` | Django PDF proxy, 전략 진단 input_snapshot 저장 |
 | `django_backend/strategy/serializers.py` | `pdf_summary_text`, `pdf_extracted_fields` 요청 검증 |
 | `frontend-react/src/app/pages/PdfAnalysis.tsx` | PDF 업로드, 정리본 확인/수정 |
-| `frontend-react/src/app/pages/StrategyRun.tsx` | PDF 정리본과 메타데이터를 전략 진단으로 전달 |
+| `frontend-react/src/app/pages/StrategyRun.tsx` | PDF 직접 선택/드래그, 정리본 임시 보존, 전략 진단 실행 |
 | `frontend-react/src/app/api/client.ts` | PDF/전략 API 타입 |
 | `frontend-react/src/app/utils/announcementPresentation.ts` | 마이페이지/결과 상세의 공고 제목과 기본정보 표시 |
 

@@ -39,6 +39,21 @@ const supplyLabels: Record<string, string> = {
   PUBLIC_HOUSING: "공공주택",
 };
 
+const titleCutoffPatterns = [
+  /\s*입주자\s*모집공고.*$/i,
+  /\s*입주자모집공고.*$/i,
+  /\s*분양\s*공고.*$/i,
+  /\s*모집공고문.*$/i,
+  /\s*선착순.*$/i,
+  /\s*잔여\s*세대.*$/i,
+  /\s*잔여세대.*$/i,
+  /\s*일반\s*매각.*$/i,
+  /\s*일반매각.*$/i,
+  /\s*미분양\s*매입.*$/i,
+  /\s*미분양매입.*$/i,
+  /\s*공고문.*$/i,
+];
+
 export function getAnnouncementPresentation(
   strategy: AnnouncementSource,
 ): AnnouncementPresentation {
@@ -48,6 +63,7 @@ export function getAnnouncementPresentation(
   const pdfFields = asRecord(inputAnnouncement.pdf_extracted_fields) ?? {};
   const sourceFilename = stringValue(inputAnnouncement.source_filename);
   const announcementText = stringValue(inputAnnouncement.announcement_text);
+  const pdfSummaryText = stringValue(inputAnnouncement.pdf_summary_text);
   const isProfileOnly =
     strategy.diagnosis_mode === "PROFILE_ONLY" ||
     inputAnnouncement.profile_only === true ||
@@ -66,7 +82,7 @@ export function getAnnouncementPresentation(
 
   const info = isProfileOnly
     ? [{ label: "진단 기준", value: "저장된 내 청약 조건" }]
-    : buildAnnouncementInfo(announcement, pdfFields, sourceFilename, announcementText);
+    : buildAnnouncementInfo(announcement, pdfFields, sourceFilename, announcementText, pdfSummaryText);
 
   return {
     title,
@@ -80,33 +96,35 @@ function buildAnnouncementInfo(
   pdfFields: UnknownRecord,
   sourceFilename?: string,
   announcementText?: string,
+  pdfSummaryText?: string,
 ): AnnouncementInfoItem[] {
+  const searchableText = [announcementText, pdfSummaryText].filter(Boolean).join("\n");
   const region =
     stringValue(pdfFields.location) ??
     formatRegion(stringValue(announcement.region)) ??
-    findLabeledValue(announcementText, ["공급 위치", "공급지역", "지역"]);
+    findLabeledValue(searchableText, ["공급 위치", "공급지역", "지역"]);
   const supply =
     formatHousingCategory(stringValue(pdfFields.housing_category)) ??
     supplyLabels[stringValue(announcement.supply_category) ?? ""] ??
     supplyLabels[stringValue(announcement.housing_type) ?? ""] ??
-    findLabeledValue(announcementText, ["공급 유형", "공급유형", "주택 유형", "주택유형"]);
+    findLabeledValue(searchableText, ["공급 유형", "공급유형", "주택 유형", "주택유형"]);
   const exclusiveArea = numberValue(announcement.exclusive_area_sqm);
   const area =
     formatHousingTypes(pdfFields.housing_types) ??
     (exclusiveArea !== undefined
       ? `${exclusiveArea}㎡`
       : formatAreaText(stringValue(announcement.area_text)) ??
-        findLabeledValue(announcementText, ["전용면적", "전용 면적"]));
+        findLabeledValue(searchableText, ["전용면적", "전용 면적"]));
   const price =
     formatPriceSummary(pdfFields.price_summary) ??
     formatWon(numberValue(announcement.sale_price_krw)) ??
-    findLabeledValue(announcementText, ["분양가", "공급금액"]);
+    findLabeledValue(searchableText, ["분양가", "공급금액"]);
   const households = numberValue(announcement.supply_household_count);
   const householdText =
     formatSupplySummary(pdfFields.supply_summary) ??
     (households !== undefined
       ? `${households.toLocaleString("ko-KR")}세대`
-      : findLabeledValue(announcementText, ["공급 세대수", "공급세대수", "공급 세대"]));
+      : findLabeledValue(searchableText, ["공급 세대수", "공급세대수", "공급 세대"]));
   const schedule = asRecord(pdfFields.schedule) ?? {};
   const startDate = stringValue(announcement.application_start_date);
   const endDate = stringValue(announcement.application_end_date);
@@ -116,12 +134,12 @@ function buildAnnouncementInfo(
       ? `${startDate} ~ ${endDate}`
       : startDate ??
         endDate ??
-        findLabeledValue(announcementText, ["청약 접수 기간", "청약접수기간", "접수 기간"]));
+        findLabeledValue(searchableText, ["청약 접수 기간", "청약접수기간", "접수 기간"]));
   const winnerDate = stringValue(schedule.winner_announcement);
   const announcementDate =
     stringValue(pdfFields.announcement_date) ??
     findLabeledValue(
-      announcementText,
+      searchableText,
       ["입주자 모집공고일", "입주자모집공고일", "모집공고일"],
     );
 
@@ -178,6 +196,16 @@ function extractTitleFromText(text?: string) {
       if (cleaned) return cleaned;
     }
   }
+
+  const apartmentNameLine = lines.find(
+    (line) =>
+      line.length <= 80 &&
+      /(아파트|자이|힐스테이트|푸르지오|래미안|아이파크|롯데캐슬|더샵|e편한세상|해피포유|센트럴|파크|리버|가든|캐슬|타워)/i.test(line) &&
+      !/(위치|주소|문의|전화|접수|기간|일정|자격|대상|공급세대|전용면적)/i.test(line),
+  );
+
+  const cleanedApartmentName = cleanAnnouncementTitle(apartmentNameLine);
+  if (cleanedApartmentName) return cleanedApartmentName;
 
   const announcementLine = lines.find(
     (line) =>
@@ -251,6 +279,8 @@ function cleanFilename(filename?: string) {
     filename
       .replace(/\.(pdf|hwp|hwpx|docx?)$/i, "")
       .replace(/[_-]+/g, " ")
+      .replace(/([가-힣])([A-Za-z0-9])/g, "$1 $2")
+      .replace(/([A-Za-z0-9])([가-힣])/g, "$1 $2")
       .replace(/^(공고문|입주자\s*모집공고)\s*/i, ""),
   );
 }
@@ -260,11 +290,27 @@ function cleanAnnouncementTitle(value?: string) {
 
   const cleaned = value
     .replace(/\.(pdf|hwp|hwpx|docx?)$/i, "")
-    .replace(/\s*(?:입주자\s*모집공고|분양\s*공고|모집공고문)\s*$/i, "")
+    .replace(/^[\s■●ㆍ\-•]+/, "")
+    .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  return cleaned || undefined;
+  const titleOnly = titleCutoffPatterns.reduce(
+    (current, pattern) => current.replace(pattern, ""),
+    cleaned,
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const finalTitle = titleOnly || cleaned;
+  if (isUnusableAnnouncementTitle(finalTitle)) return undefined;
+  return finalTitle || undefined;
+}
+
+function isUnusableAnnouncementTitle(value: string) {
+  if (!value || value.length < 2) return true;
+  if (value.length > 60) return true;
+  return /금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택/.test(value);
 }
 
 function formatRegion(value?: string) {
