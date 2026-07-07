@@ -73,6 +73,7 @@ class StrategyRunAPIView(APIView):
         )
 
         # 5. 입력값 스냅샷 딕셔너리 생성
+        # PDF 원본은 저장하지 않고, 사용자가 확인한 정리본과 요약/구조화 메타데이터만 이력에 남깁니다.
         input_snapshot = {
             "profile": profile_serializer.data,
             "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else {
@@ -80,6 +81,8 @@ class StrategyRunAPIView(APIView):
                 "pdf_analysis_id": req_serializer.validated_data.get('pdf_analysis_id'),
                 "input_method": req_serializer.validated_data.get('input_method') or ("manual" if top_level_announcement_text else None),
                 "source_filename": req_serializer.validated_data.get('source_filename'),
+                "pdf_summary_text": req_serializer.validated_data.get('pdf_summary_text'),
+                "pdf_extracted_fields": req_serializer.validated_data.get('pdf_extracted_fields'),
                 "profile_only": req_serializer.validated_data.get('profile_only', False),
             }
         }

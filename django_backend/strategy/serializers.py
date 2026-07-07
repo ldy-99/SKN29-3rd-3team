@@ -229,9 +229,12 @@ class StrategyRunSerializer(serializers.ModelSerializer):
 class StrategyRequestSerializer(serializers.Serializer):
     announcement = AnnouncementInputSerializer(required=False, allow_null=True)
     announcement_text = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+    # PDF 분석 메타데이터는 원본 파일 대신 이력 식별/마이페이지 표시용으로 저장합니다.
     pdf_analysis_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     input_method = serializers.ChoiceField(choices=["manual", "pdf"], required=False, allow_null=True)
     source_filename = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+    pdf_summary_text = serializers.CharField(required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+    pdf_extracted_fields = serializers.JSONField(required=False, allow_null=True)
     profile_only = serializers.BooleanField(required=False)
 
 

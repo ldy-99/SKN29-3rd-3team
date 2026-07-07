@@ -145,7 +145,7 @@ ChromaDB는 Git에 포함하지 않습니다. 새 환경에서는 필요할 때 
 충돌이 생기면 다음 순서로 판단합니다.
 
 1. 실행 중인 코드와 자동 테스트
-2. [API_CONTRACT.md](API_CONTRACT.md)
+2. [260703_API_CONTRACT.md](260703_API_CONTRACT.md)
 3. `fixture_examples/`
 4. 본 문서
 5. `reports/`의 과거 분석 자료

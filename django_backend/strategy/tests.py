@@ -105,6 +105,63 @@ class StrategyAPITests(APITestCase):
         
         self.assertTrue(StrategyRun.objects.filter(user=self.user).exists())
 
+    @patch('strategy.views.FastAPIClient.run_diagnosis')
+    def test_strategy_run_preserves_pdf_metadata_in_snapshot(self, mock_run_diagnosis):
+        """
+        PDF 분석 후 전략 진단 실행 시 요약/구조화 메타데이터가 이력 스냅샷에 남는지 검증
+        """
+        mock_run_diagnosis.return_value = {
+            "status": "success",
+            "report": {"summary": "PDF 기반 진단 완료"},
+            "warnings": [],
+        }
+
+        Profile.objects.create(
+            user=self.user,
+            bankbook_type="RE subscription",
+            bankbook_join_date="2022-01-15",
+            bankbook_payment_count=24,
+            bankbook_balance_krw=2400000,
+            residence_region="SEOUL",
+            is_homeless=True,
+            is_household_head=True,
+            household_member_count=1,
+            birth_year=1995,
+            marital_status="SINGLE",
+            minor_child_count=0,
+            has_household_property_ownership_history=False
+        )
+
+        req_data = {
+            "announcement_text": "[아파트 청약 진단용 공고문 정리]",
+            "profile_only": False,
+            "input_method": "pdf",
+            "source_filename": "notice.pdf",
+            "pdf_analysis_id": "pdf-analysis-id",
+            "pdf_summary_text": "[PDF 공고문 핵심 요약]",
+            "pdf_extracted_fields": {
+                "announcement_name": "테스트 공고",
+                "price_summary": {
+                    "min_krw": 1206000000,
+                    "max_krw": 1707000000,
+                },
+            },
+        }
+
+        url = reverse('strategy-run')
+        response = self.client.post(url, req_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        run = StrategyRun.objects.get(user=self.user)
+        announcement = run.input_snapshot["announcement"]
+        self.assertEqual(announcement["input_method"], "pdf")
+        self.assertEqual(announcement["pdf_analysis_id"], "pdf-analysis-id")
+        self.assertEqual(announcement["pdf_summary_text"], "[PDF 공고문 핵심 요약]")
+        self.assertEqual(
+            announcement["pdf_extracted_fields"]["price_summary"]["max_krw"],
+            1707000000,
+        )
+
     def test_strategy_list_and_detail(self):
         """
         진단 이력 목록 조회 및 상세 단건 조회 검증

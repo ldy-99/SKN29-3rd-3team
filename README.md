@@ -25,10 +25,11 @@ Browser
 
 | 목적 | 문서 |
 |---|---|
-| 현재 통합 브랜치 구조와 팀원 전달 메모 | [docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md](docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md) |
+| 현재 통합 브랜치 구조와 팀원 전달 메모 | [docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md](docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md) |
+| PDF 분석 개선 현황과 팀 공유 요약 | [docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md) |
+| PDF 개선 작업 추적 | [docs/traces/260707_PDF_IMPROVEMENT_TRACKING.md](docs/traces/260707_PDF_IMPROVEMENT_TRACKING.md) |
 | 문서 전체 색인 | [docs/README.md](docs/README.md) |
-| API 요청/응답 계약 | [docs/current/API_CONTRACT.md](docs/current/API_CONTRACT.md) |
-| FastAPI 응답 필드 기준 | [docs/current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md](docs/current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md) |
+| API 요청/응답 계약 | [docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md](docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md) |
 
 ## 검증 환경
 
@@ -74,6 +75,11 @@ DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 DJANGO_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 DJANGO_CSRF_TRUSTED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 FASTAPI_API_URL=http://127.0.0.1:8080
+FASTAPI_PROFILE_TIMEOUT=10
+FASTAPI_SIMULATE_TIMEOUT=30
+FASTAPI_CHATBOT_TIMEOUT=30
+FASTAPI_ANNOUNCEMENT_TIMEOUT=90
+FASTAPI_PDF_TIMEOUT=90
 ```
 
 `frontend-react/.env.local`은 로컬 Vite 개발 서버 기준으로 비워둡니다.
@@ -151,7 +157,7 @@ conda run -n skn4_py310 python -m venv .venv
 
 ```text
 System check identified no issues
-Ran 26 tests
+Ran 27 tests
 OK
 ```
 
@@ -286,6 +292,8 @@ ChromaDB 검증:
 5. 전략 진단 실행
 6. 마이페이지에서 진단 이력 확인
 7. 챗봇 질문 확인
+
+PDF 분석은 원본 파일을 저장하지 않습니다. 현재는 PDF에서 텍스트/표를 추출한 뒤 `summary_text`(사용자 이력/확인용 짧은 요약), `diagnosis_text`(전략 진단 입력용 구조화 텍스트), `extracted_fields`(공고명/위치/주택형/공급금액/일정 등)를 생성합니다. 자세한 내용은 [docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md)를 확인하세요.
 
 회원가입은 현재 `email`, `password`만 필요합니다. `username`은 선택이고 `nickname` 필드는 없습니다.
 

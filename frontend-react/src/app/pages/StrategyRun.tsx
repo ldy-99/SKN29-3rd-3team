@@ -1,4 +1,4 @@
-// 역할: 기본 프로필 진단 또는 수동 공고문 기반 전략 진단을 실행하는 화면입니다.
+// 역할: 기본 프로필 진단, 수동 공고문, PDF 정리본 기반 전략 진단을 실행하는 화면입니다.
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
@@ -15,13 +15,23 @@ export function StrategyRun() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [inputMethod, setInputMethod] = useState<"manual" | "pdf">("manual");
   const [sourceFilename, setSourceFilename] = useState<string | null>(null);
+  const [pdfAnalysisId, setPdfAnalysisId] = useState<string | null>(null);
+  const [pdfSummaryText, setPdfSummaryText] = useState<string | null>(null);
+  const [pdfExtractedFields, setPdfExtractedFields] = useState<Record<string, unknown> | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    // PdfAnalysis에서 전달한 combined_text를 기존 수동 공고문 입력 흐름에 태웁니다.
+    // PdfAnalysis에서 전달한 정리본을 기존 수동 공고문 입력 흐름에 태웁니다.
     const state = location.state as
-      | { announcementText?: string; sourceFilename?: string; inputMethod?: string }
+      | {
+          announcementText?: string;
+          sourceFilename?: string;
+          inputMethod?: string;
+          pdfAnalysisId?: string;
+          pdfSummaryText?: string;
+          pdfExtractedFields?: Record<string, unknown>;
+        }
       | null;
 
     if (state?.announcementText) {
@@ -29,6 +39,9 @@ export function StrategyRun() {
       setIsBasicOnly(false);
       setInputMethod(state.inputMethod === "pdf" ? "pdf" : "manual");
       setSourceFilename(state.sourceFilename ?? null);
+      setPdfAnalysisId(state.pdfAnalysisId ?? null);
+      setPdfSummaryText(state.pdfSummaryText ?? null);
+      setPdfExtractedFields(state.pdfExtractedFields ?? null);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -63,6 +76,9 @@ export function StrategyRun() {
           profile_only: isBasicOnly,
           input_method: isBasicOnly ? null : inputMethod,
           source_filename: isBasicOnly ? null : sourceFilename,
+          pdf_analysis_id: isBasicOnly ? null : pdfAnalysisId,
+          pdf_summary_text: isBasicOnly ? null : pdfSummaryText,
+          pdf_extracted_fields: isBasicOnly ? null : pdfExtractedFields,
         },
         controller.signal,
       );
@@ -202,6 +218,9 @@ export function StrategyRun() {
                     setNoticeText("");
                     setInputMethod("manual");
                     setSourceFilename(null);
+                    setPdfAnalysisId(null);
+                    setPdfSummaryText(null);
+                    setPdfExtractedFields(null);
                   }
                 }}
                 disabled={isRunning}
