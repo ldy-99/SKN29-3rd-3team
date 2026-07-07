@@ -89,7 +89,13 @@ test("장시간 작업에 중복 요청 방지·로딩·타임아웃 처리가 �
   assert.match(strategy, /STRATEGY_DRAFT_STORAGE_KEY/);
   assert.match(strategy, /sessionStorage\.setItem\(STRATEGY_DRAFT_STORAGE_KEY/);
   assert.match(strategy, /api\.analyzePdf\(file\)/);
+  assert.match(strategy, /handlePdfDragOver/);
+  assert.match(strategy, /dropEffect = isBusy \? "none" : "copy"/);
+  assert.match(strategy, /onDragEnter=\{handlePdfDragOver\}/);
+  assert.match(strategy, /onDragOver=\{handlePdfDragOver\}/);
   assert.match(strategy, /onDrop=\{handlePdfDrop\}/);
+  assert.doesNotMatch(strategy, /PDF 파일로 분석하기/);
+  assert.doesNotMatch(strategy, />\s*파일 선택\s*</);
   assert.match(pdf, /isUploading/);
   assert.match(pdf, /ProcessingIndicator/);
   assert.match(ui, /animate-spin/);

@@ -156,7 +156,15 @@ export function StrategyRun() {
 
   const handlePdfDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.stopPropagation();
+    if (isBusy) return;
     void handlePdfFileSelect(event.dataTransfer.files?.[0]);
+  };
+
+  const handlePdfDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = isBusy ? "none" : "copy";
   };
 
   const handleRun = async () => {
@@ -206,43 +214,13 @@ export function StrategyRun() {
         description="프로필과 아파트 입주자모집공고를 바탕으로 청약 조건을 분석합니다."
       />
 
-      <WarningBox type="info" title="현재 지원 범위">
-        민영·공공 아파트 분양 청약을 지원합니다. 오피스텔, 임대주택, 토지 및 상가 청약은 추후 지원 예정입니다.
-      </WarningBox>
+      {!isBusy && (
+        <WarningBox type="info" title="현재 지원 범위">
+          민영·공공 아파트 분양 청약을 지원합니다. 오피스텔, 임대주택, 토지 및 상가 청약은 추후 지원 예정입니다.
+        </WarningBox>
+      )}
 
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
-
-      {isPdfUploading && (
-        <ProcessingIndicator
-          title={
-            pdfElapsedSeconds < 8
-              ? "PDF 파일을 확인하고 있습니다"
-              : pdfElapsedSeconds < 22
-                ? "본문과 표를 추출하고 있습니다"
-                : "추출 결과를 정리하고 있습니다"
-          }
-          description={`${selectedPdfFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
-          elapsedSeconds={pdfElapsedSeconds}
-          steps={["파일 확인", "내용 추출", "결과 정리"]}
-          currentStep={pdfElapsedSeconds < 8 ? 0 : pdfElapsedSeconds < 22 ? 1 : 2}
-        />
-      )}
-
-      {isRunning && (
-        <ProcessingIndicator
-          title={runningStage.title}
-          description={
-            isBasicOnly
-              ? "저장된 프로필을 기준으로 신청 가능성이 높은 공급 유형을 분석합니다."
-              : "프로필과 입력한 모집공고를 함께 분석해 맞춤 전략을 정리합니다."
-          }
-          elapsedSeconds={elapsedSeconds}
-          steps={["프로필 확인", "공고 조건 비교", "전략 정리"]}
-          currentStep={runningStage.currentStep}
-          progressPercent={runningStage.progressPercent}
-          showProgress
-        />
-      )}
 
       <div className="space-y-6">
         <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
@@ -303,110 +281,124 @@ export function StrategyRun() {
               <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">아파트 분양 모집공고 입력</h3>
               <p className="text-[14px] text-[#69717d]">아파트 입주자모집공고의 주요 내용을 붙여넣거나 PDF로 바로 분석하세요.</p>
             </div>
-            <Button
-              variant="outline"
-              className="text-[13px] py-2 px-4 h-auto shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isBusy}
-            >
-              PDF 파일로 분석하기
-            </Button>
           </div>
 
-          <div
-            className={`mb-5 rounded-[16px] border border-dashed px-5 py-4 transition-colors ${
-              isBusy
-                ? "border-[#e4ded4] bg-[#f6f3ee]"
-                : "border-[#cfd8e6] bg-[#f8fbff] hover:border-[#245ea8]/50"
-            }`}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={handlePdfDrop}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#245ea8] shadow-sm">
-                  <Upload className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-[14px] font-semibold text-[#26364e]">PDF를 여기에 드래그하거나 바로 선택하세요</p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-[#737b87]">
-                    분석 후 정리본이 아래 입력창에 채워지고, 다른 탭에 다녀와도 현재 브라우저 탭에서는 유지됩니다.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="h-auto shrink-0 px-4 py-2 text-[13px]"
+          {isPdfUploading ? (
+            <ProcessingIndicator
+              title={
+                pdfElapsedSeconds < 8
+                  ? "PDF 파일을 확인하고 있습니다"
+                  : pdfElapsedSeconds < 22
+                    ? "본문과 표를 추출하고 있습니다"
+                    : "추출 결과를 정리하고 있습니다"
+              }
+              description={`${selectedPdfFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
+              elapsedSeconds={pdfElapsedSeconds}
+              steps={["파일 확인", "내용 추출", "결과 정리"]}
+              currentStep={pdfElapsedSeconds < 8 ? 0 : pdfElapsedSeconds < 22 ? 1 : 2}
+              className="!mb-0"
+            />
+          ) : isRunning ? (
+            <ProcessingIndicator
+              title={runningStage.title}
+              description={
+                isBasicOnly
+                  ? "저장된 프로필을 기준으로 신청 가능성이 높은 공급 유형을 분석합니다."
+                  : "프로필과 입력한 모집공고를 함께 분석해 맞춤 전략을 정리합니다."
+              }
+              elapsedSeconds={elapsedSeconds}
+              steps={["프로필 확인", "공고 조건 비교", "전략 정리"]}
+              currentStep={runningStage.currentStep}
+              progressPercent={runningStage.progressPercent}
+              showProgress
+              className="!mb-0"
+            />
+          ) : (
+            <>
+              <div
+                className="mb-5 cursor-pointer rounded-[16px] border border-dashed border-[#cfd8e6] bg-[#f8fbff] px-5 py-4 transition-colors hover:border-[#245ea8]/50"
+                role="button"
+                tabIndex={0}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isBusy}
-              >
-                파일 선택
-              </Button>
-            </div>
-          </div>
-
-          {noticeText && !isBasicOnly && (
-            <div className="mb-4 flex items-center gap-2 rounded-[14px] bg-[#007aff]/10 px-4 py-3 text-[13px] text-[#1d1d1f]">
-              <FileText className="w-4 h-4 text-[#007aff] shrink-0" />
-              <span>
-                {inputMethod === "pdf"
-                  ? `${sourceFilename ?? "PDF"} 추출 텍스트가 진단 입력에 준비되어 있습니다.`
-                  : "수동 입력 공고문이 진단 입력에 준비되어 있습니다."}
-              </span>
-            </div>
-          )}
-
-          <textarea
-            className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
-            placeholder="아파트 분양 입주자모집공고를 여기에 붙여넣으세요..."
-            value={noticeText}
-            onChange={(e) => setNoticeText(e.target.value)}
-            disabled={isBasicOnly || isBusy}
-          ></textarea>
-
-          <label className="flex items-center gap-3 mb-8 cursor-pointer group">
-            <span className="relative flex items-center">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={isBasicOnly}
-                onChange={(e) => {
-                  setIsBasicOnly(e.target.checked);
-                  if (e.target.checked) {
-                    clearAnnouncementDraft();
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
                   }
                 }}
-                disabled={isBusy}
-              />
-              <span className="w-6 h-6 rounded-[8px] border-2 border-[#dcd6ca] peer-checked:bg-[#102e5a] peer-checked:border-[#102e5a] transition-colors flex items-center justify-center group-hover:border-[#102e5a]/60">
-                <Check className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
-              </span>
-            </span>
-            <span className="text-[14px] font-semibold select-none">공고 없이 기본 조건만 확인</span>
-          </label>
+                onDragEnter={handlePdfDragOver}
+                onDragOver={handlePdfDragOver}
+                onDrop={handlePdfDrop}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#245ea8] shadow-sm">
+                    <Upload className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#26364e]">PDF를 여기에 드래그하거나 클릭해서 선택하세요</p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-[#737b87]">
+                      분석 후 정리본이 아래 입력창에 채워지고, 다른 탭에 다녀와도 현재 브라우저 탭에서는 유지됩니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2 mb-4 px-1 text-[13px] text-[#737b87]">
-            <Timer className="w-4 h-4" />
-            <span>분석에는 보통 30~40초가 걸립니다.</span>
-          </div>
+              {noticeText && !isBasicOnly && (
+                <div className="mb-4 flex items-center gap-2 rounded-[14px] bg-[#007aff]/10 px-4 py-3 text-[13px] text-[#1d1d1f]">
+                  <FileText className="w-4 h-4 text-[#007aff] shrink-0" />
+                  <span>
+                    {inputMethod === "pdf"
+                      ? `${sourceFilename ?? "PDF"} 추출 텍스트가 진단 입력에 준비되어 있습니다.`
+                      : "수동 입력 공고문이 진단 입력에 준비되어 있습니다."}
+                  </span>
+                </div>
+              )}
 
-          <Button
-            className="w-full py-4 text-[17px]"
-            onClick={handleRun}
-            disabled={isBusy || (!isBasicOnly && noticeText.trim() === "")}
-          >
-            {isRunning ? (
-              <span className="flex items-center justify-center gap-2">
-                <SpinnerIcon className="w-5 h-5 animate-spin" />
-                분석 중...
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                진단 실행
-                <ArrowRight className="w-5 h-5" />
-              </span>
-            )}
-          </Button>
+              <textarea
+                className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
+                placeholder="아파트 분양 입주자모집공고를 여기에 붙여넣으세요..."
+                value={noticeText}
+                onChange={(e) => setNoticeText(e.target.value)}
+                disabled={isBasicOnly}
+              ></textarea>
+
+              <label className="flex items-center gap-3 mb-8 cursor-pointer group">
+                <span className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={isBasicOnly}
+                    onChange={(e) => {
+                      setIsBasicOnly(e.target.checked);
+                      if (e.target.checked) {
+                        clearAnnouncementDraft();
+                      }
+                    }}
+                  />
+                  <span className="w-6 h-6 rounded-[8px] border-2 border-[#dcd6ca] peer-checked:bg-[#102e5a] peer-checked:border-[#102e5a] transition-colors flex items-center justify-center group-hover:border-[#102e5a]/60">
+                    <Check className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
+                  </span>
+                </span>
+                <span className="text-[14px] font-semibold select-none">공고 없이 기본 조건만 확인</span>
+              </label>
+
+              <div className="flex items-center gap-2 mb-4 px-1 text-[13px] text-[#737b87]">
+                <Timer className="w-4 h-4" />
+                <span>분석에는 보통 30~40초가 걸립니다.</span>
+              </div>
+
+              <Button
+                className="w-full py-4 text-[17px]"
+                onClick={handleRun}
+                disabled={!isBasicOnly && noticeText.trim() === ""}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  진단 실행
+                  <ArrowRight className="w-5 h-5" />
+                </span>
+              </Button>
+            </>
+          )}
         </Card>
       </div>
     </div>
@@ -473,13 +465,4 @@ function clearStrategyDraft() {
   } catch {
     // ignore
   }
-}
-
-function SpinnerIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-  );
 }
