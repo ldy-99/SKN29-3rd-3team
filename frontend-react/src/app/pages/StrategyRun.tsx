@@ -28,6 +28,7 @@ export function StrategyRun() {
   const [error, setError] = useState<unknown>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [pdfElapsedSeconds, setPdfElapsedSeconds] = useState(0);
+  const [isPdfDragging, setIsPdfDragging] = useState(false);
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [inputMethod, setInputMethod] = useState<"manual" | "pdf">(initialDraft?.inputMethod ?? "manual");
   const [sourceFilename, setSourceFilename] = useState<string | null>(initialDraft?.sourceFilename ?? null);
@@ -37,9 +38,11 @@ export function StrategyRun() {
     initialDraft?.pdfExtractedFields ?? null,
   );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pdfDragDepthRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
   const runningStage = getStrategyRunningStage(elapsedSeconds);
+  const pdfStage = getPdfUploadStage(pdfElapsedSeconds);
   const isBusy = isRunning || isPdfUploading;
 
   useEffect(() => {
@@ -154,17 +157,42 @@ export function StrategyRun() {
     }
   };
 
+  const isPdfFileDrag = (event: DragEvent<HTMLDivElement>) => Array.from(event.dataTransfer.types).includes("Files");
+
+  const handlePdfDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPdfFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = isBusy ? "none" : "copy";
+    if (isBusy) return;
+    pdfDragDepthRef.current += 1;
+    setIsPdfDragging(true);
+  };
+
   const handlePdfDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    pdfDragDepthRef.current = 0;
+    setIsPdfDragging(false);
     if (isBusy) return;
     void handlePdfFileSelect(event.dataTransfer.files?.[0]);
   };
 
   const handlePdfDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPdfFileDrag(event)) return;
     event.preventDefault();
     event.stopPropagation();
     event.dataTransfer.dropEffect = isBusy ? "none" : "copy";
+  };
+
+  const handlePdfDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!isPdfDragging && !isPdfFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pdfDragDepthRef.current = Math.max(pdfDragDepthRef.current - 1, 0);
+    if (pdfDragDepthRef.current === 0) {
+      setIsPdfDragging(false);
+    }
   };
 
   const handleRun = async () => {
@@ -265,7 +293,27 @@ export function StrategyRun() {
           </div>
         </Card>
 
-        <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
+        <Card
+          className={`relative p-7 !rounded-[20px] !shadow-[0_10px_32px_rgba(35,45,60,0.05)] ${
+            isPdfDragging
+              ? "!border-[#0b5bd3] !ring-4 !ring-[#0b5bd3]/10"
+              : "!border-[#e6e0d6]"
+          }`}
+          onDragEnter={handlePdfDragEnter}
+          onDragOver={handlePdfDragOver}
+          onDragLeave={handlePdfDragLeave}
+          onDrop={handlePdfDrop}
+        >
+          {isPdfDragging && (
+            <div className="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-[18px] border-2 border-dashed border-[#0b5bd3] bg-[#f4f8ff]/95 text-center shadow-[inset_0_0_0_1px_rgba(11,91,211,0.06)]">
+              <div>
+                <Upload className="mx-auto mb-3 h-8 w-8 text-[#0b5bd3]" />
+                <p className="text-[18px] font-bold text-[#102e5a]">여기에 PDF를 드롭하세요</p>
+                <p className="mt-1 text-[13px] text-[#68717d]">아파트 입주자모집공고 PDF를 바로 분석합니다.</p>
+              </div>
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -285,17 +333,13 @@ export function StrategyRun() {
 
           {isPdfUploading ? (
             <ProcessingIndicator
-              title={
-                pdfElapsedSeconds < 8
-                  ? "PDF 파일을 확인하고 있습니다"
-                  : pdfElapsedSeconds < 22
-                    ? "본문과 표를 추출하고 있습니다"
-                    : "추출 결과를 정리하고 있습니다"
-              }
+              title={pdfStage.title}
               description={`${selectedPdfFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
               elapsedSeconds={pdfElapsedSeconds}
               steps={["파일 확인", "내용 추출", "결과 정리"]}
-              currentStep={pdfElapsedSeconds < 8 ? 0 : pdfElapsedSeconds < 22 ? 1 : 2}
+              currentStep={pdfStage.currentStep}
+              progressPercent={pdfStage.progressPercent}
+              showProgress
               className="!mb-0"
             />
           ) : isRunning ? (
@@ -326,8 +370,9 @@ export function StrategyRun() {
                     fileInputRef.current?.click();
                   }
                 }}
-                onDragEnter={handlePdfDragOver}
+                onDragEnter={handlePdfDragEnter}
                 onDragOver={handlePdfDragOver}
+                onDragLeave={handlePdfDragLeave}
                 onDrop={handlePdfDrop}
               >
                 <div className="flex items-start gap-3">
@@ -403,6 +448,31 @@ export function StrategyRun() {
       </div>
     </div>
   );
+}
+
+function getPdfUploadStage(elapsedSeconds: number) {
+  // Backend progress events are not exposed yet, so the bar is an elapsed-time estimate per visible stage.
+  if (elapsedSeconds < 5) {
+    return {
+      title: "PDF 파일을 확인하고 있습니다",
+      currentStep: 0,
+      progressPercent: Math.min(12 + elapsedSeconds * 4, 32),
+    };
+  }
+
+  if (elapsedSeconds < 28) {
+    return {
+      title: "본문과 표를 추출하고 있습니다",
+      currentStep: 1,
+      progressPercent: Math.min(35 + (elapsedSeconds - 5) * 2, 84),
+    };
+  }
+
+  return {
+    title: "추출 결과를 정리하고 있습니다",
+    currentStep: 2,
+    progressPercent: Math.min(86 + Math.floor((elapsedSeconds - 28) * 0.5), 96),
+  };
 }
 
 function getStrategyRunningStage(elapsedSeconds: number) {
