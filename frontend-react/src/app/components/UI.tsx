@@ -112,6 +112,7 @@ export function ProcessingIndicator({
   steps,
   currentStep,
   progressPercent,
+  showProgress = false,
   className = "",
 }: {
   title: string;
@@ -120,6 +121,7 @@ export function ProcessingIndicator({
   steps: string[];
   currentStep: number;
   progressPercent?: number;
+  showProgress?: boolean;
   className?: string;
 }) {
   const activeStep = Math.min(Math.max(currentStep, 0), steps.length - 1);
@@ -154,18 +156,20 @@ export function ProcessingIndicator({
           <p className="mt-1.5 text-[14px] leading-relaxed text-[#68717d]">
             {description}
           </p>
-          <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between text-[12px] font-semibold text-[#596273]">
-              <span>진행 상황</span>
-              <span>{safeProgress}%</span>
+          {showProgress && (
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between text-[12px] font-semibold text-[#596273]">
+                <span>진행 상황</span>
+                <span>{safeProgress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#dce8f7]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0b5bd3] to-[#49a4ff] transition-all duration-700 ease-out"
+                  style={{ width: `${safeProgress}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[#dce8f7]">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#0b5bd3] to-[#49a4ff] transition-all duration-700 ease-out"
-                style={{ width: `${safeProgress}%` }}
-              />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

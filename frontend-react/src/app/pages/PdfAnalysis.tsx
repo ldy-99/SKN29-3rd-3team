@@ -35,7 +35,6 @@ export function PdfAnalysis() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
-  const loadingStage = getPdfLoadingStage(elapsedSeconds);
 
   useEffect(() => {
     if (!isUploading) return;
@@ -114,12 +113,17 @@ export function PdfAnalysis() {
           />
           {isUploading ? (
             <ProcessingIndicator
-              title={loadingStage.title}
+              title={
+                elapsedSeconds < 8
+                  ? "PDF 파일을 확인하고 있습니다"
+                  : elapsedSeconds < 22
+                    ? "본문과 표를 추출하고 있습니다"
+                    : "추출 결과를 정리하고 있습니다"
+              }
               description={`${selectedFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
               elapsedSeconds={elapsedSeconds}
-              steps={["파일 확인", "본문·표 추출", "진단용 정리"]}
-              currentStep={loadingStage.currentStep}
-              progressPercent={loadingStage.progressPercent}
+              steps={["파일 확인", "내용 추출", "결과 정리"]}
+              currentStep={elapsedSeconds < 8 ? 0 : elapsedSeconds < 22 ? 1 : 2}
               className="!mb-0 w-full max-w-[620px] text-left"
             />
           ) : (
@@ -228,28 +232,4 @@ export function PdfAnalysis() {
       </div>
     </div>
   );
-}
-
-function getPdfLoadingStage(elapsedSeconds: number) {
-  if (elapsedSeconds < 6) {
-    return {
-      title: "PDF 파일을 확인하고 있습니다",
-      currentStep: 0,
-      progressPercent: Math.min(18 + elapsedSeconds * 4, 38),
-    };
-  }
-
-  if (elapsedSeconds < 25) {
-    return {
-      title: "본문과 표를 추출하고 있습니다",
-      currentStep: 1,
-      progressPercent: Math.min(42 + (elapsedSeconds - 6) * 2, 78),
-    };
-  }
-
-  return {
-    title: "추출 결과를 진단용으로 정리하고 있습니다",
-    currentStep: 2,
-    progressPercent: Math.min(80 + Math.floor((elapsedSeconds - 25) * 0.6), 94),
-  };
 }

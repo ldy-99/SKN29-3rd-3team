@@ -20,6 +20,7 @@ export function StrategyRun() {
   const [pdfExtractedFields, setPdfExtractedFields] = useState<Record<string, unknown> | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const runningStage = getStrategyRunningStage(elapsedSeconds);
 
   useEffect(() => {
     // PdfAnalysis에서 전달한 정리본을 기존 수동 공고문 입력 흐름에 태웁니다.
@@ -110,21 +111,17 @@ export function StrategyRun() {
 
       {isRunning && (
         <ProcessingIndicator
-          title={
-            elapsedSeconds < 12
-              ? "입력 정보를 확인하고 있습니다"
-              : elapsedSeconds < 30
-                ? "청약 조건과 공급 유형을 비교하고 있습니다"
-                : "맞춤 전략을 생성하고 있습니다"
-          }
+          title={runningStage.title}
           description={
             isBasicOnly
               ? "저장된 프로필을 기준으로 신청 가능성이 높은 공급 유형을 분석합니다."
               : "프로필과 입력한 모집공고를 함께 분석해 맞춤 전략을 정리합니다."
           }
           elapsedSeconds={elapsedSeconds}
-          steps={["입력 정보 확인", "조건 비교", "전략 생성"]}
-          currentStep={elapsedSeconds < 12 ? 0 : elapsedSeconds < 30 ? 1 : 2}
+          steps={["프로필 확인", "공고 조건 비교", "전략 정리"]}
+          currentStep={runningStage.currentStep}
+          progressPercent={runningStage.progressPercent}
+          showProgress
         />
       )}
 
@@ -258,6 +255,30 @@ export function StrategyRun() {
       </div>
     </div>
   );
+}
+
+function getStrategyRunningStage(elapsedSeconds: number) {
+  if (elapsedSeconds < 10) {
+    return {
+      title: "프로필과 입력 정보를 확인하고 있습니다",
+      currentStep: 0,
+      progressPercent: Math.min(15 + elapsedSeconds * 3, 42),
+    };
+  }
+
+  if (elapsedSeconds < 35) {
+    return {
+      title: "청약 조건과 공급 유형을 비교하고 있습니다",
+      currentStep: 1,
+      progressPercent: Math.min(45 + (elapsedSeconds - 10) * 1.5, 82),
+    };
+  }
+
+  return {
+    title: "맞춤 전략을 생성하고 있습니다",
+    currentStep: 2,
+    progressPercent: Math.min(84 + Math.floor((elapsedSeconds - 35) * 0.4), 96),
+  };
 }
 
 function SpinnerIcon({ className }: { className?: string }) {
