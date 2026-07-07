@@ -82,3 +82,28 @@
 - `pnpm.cmd run build`: 통과
 - `pnpm.cmd test`: 7/7 통과
 - UI 코드 커밋의 변경 경로: `frontend-react` 내부 12개 파일
+
+## 6. 2026-07-07 `eunjin/frontend-v2` 추가 UI 반영
+
+작업 브랜치: `integrate-eunjin-v2-0707`
+반영 커밋: `8a05300`
+
+### 반영 내용
+
+- 마이페이지 진단 기록 카드 제목을 공고명/아파트명 중심으로 표시
+- 결과 상세 화면에 공고 기본 정보 카드 추가
+- 상세 확인 사항을 접고 펼칠 수 있는 UI로 정리
+- `announcementPresentation.ts`를 추가해 `announcement_confirmed`와 `input_snapshot.announcement`를 함께 읽도록 구성
+- 전략 진단 범위 안내 문구를 "추후 지원 예정"으로 완화
+- 챗봇 패널의 새로고침 안내 문구 제거
+
+### 보존한 계약
+
+- `ResultDetail.tsx`의 `missing_fields + missing_items` 동시 대응 유지
+- `chance -> competitiveness -> status -> score` fallback 유지
+- `report.finance`, `report.strategy`, `node5.agent_result`, `warnings` 표시 대응 유지
+
+### 검증
+
+- `corepack pnpm test`: 7/7 통과
+- `corepack pnpm run build`: 통과

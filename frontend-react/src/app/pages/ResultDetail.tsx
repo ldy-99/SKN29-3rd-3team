@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Card, PageTitle, StatusBadge, WarningBox, Button, ErrorNotice, SettingsList } from "../components/UI";
 import { api } from "../api/client";
-import { CheckCircle2, FileText, Info } from "lucide-react";
+import { CheckCircle2, ChevronDown, FileText, Info } from "lucide-react";
+import { getAnnouncementPresentation } from "../utils/announcementPresentation";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -75,6 +76,30 @@ export function ResultDetail() {
         <WarningBox type="error" title="진단이 완료되지 않았습니다">
           {viewModel.failureMessage}
         </WarningBox>
+      )}
+
+      {viewModel.announcementInfo.length > 0 && (
+        <Card className="mb-8 p-6 !rounded-[20px] !border-[#e6e0d6]">
+          <div className="mb-4">
+            <p className="text-[12px] font-bold tracking-[0.05em] text-[#b86a12]">
+              ANNOUNCEMENT
+            </p>
+            <h3 className="mt-1 text-[19px] font-bold text-[#152846]">공고 기본 정보</h3>
+          </div>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {viewModel.announcementInfo.map((item) => (
+              <div
+                key={`${item.label}-${item.value}`}
+                className="min-w-0 rounded-[14px] bg-[#f7f8fa] px-4 py-3"
+              >
+                <dt className="text-[12px] font-semibold text-[#7a818c]">{item.label}</dt>
+                <dd className="mt-1 break-words text-[14px] font-semibold text-[#26364e]">
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
       )}
 
       <Card className="mb-8 overflow-hidden border-none bg-gradient-to-br from-[#007aff] to-[#005bb5] text-white">
@@ -167,28 +192,20 @@ export function ResultDetail() {
 
       <div className="mb-10">
         <h3 className="text-[20px] font-bold mb-4 px-2">상세 확인 사항</h3>
-        <SettingsList>
-          <div className="py-4 border-b border-[#e5e5e7]">
-            <h4 className="font-semibold text-[15px] mb-2 text-[#34c759]">분석 결과</h4>
-            <ul className="space-y-2 text-[14px] text-[#6e6e73] leading-relaxed">
-              {viewModel.analysisItems.length > 0 ? (
-                viewModel.analysisItems.map((item) => <li key={item}>• {item}</li>)
-              ) : (
-                <li>• 현재 진단 응답에 별도로 분류된 분석 항목이 없습니다.</li>
-              )}
-            </ul>
-          </div>
-          <div className="py-4">
-            <h4 className="font-semibold text-[15px] mb-2 text-[#ff9f0a]">확인 필요한 항목</h4>
-            <ul className="space-y-2 text-[14px] text-[#6e6e73] leading-relaxed">
-              {viewModel.missingItems.length > 0 ? (
-                viewModel.missingItems.map((item) => <li key={item}>• {item}</li>)
-              ) : (
-                <li>• 현재 진단 응답에는 추가 확인이 필요한 항목이 없습니다.</li>
-              )}
-            </ul>
-          </div>
-        </SettingsList>
+        <div className="space-y-3">
+          <CheckDetailsToggle
+            title="분석 결과"
+            items={viewModel.analysisItems}
+            emptyMessage="현재 진단 응답에 별도로 분류된 분석 항목이 없습니다."
+            tone="success"
+          />
+          <CheckDetailsToggle
+            title="확인 필요한 항목"
+            items={viewModel.missingItems}
+            emptyMessage="현재 진단 응답에는 추가 확인이 필요한 항목이 없습니다."
+            tone="warning"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -203,6 +220,128 @@ export function ResultDetail() {
   );
 }
 
+const checkFieldLabels: Record<string, string> = {
+  has_income_tax_5_years: "소득세 납부 이력",
+  monthly_household_income_krw: "월평균 가구소득",
+  is_dual_income: "맞벌이 여부",
+  total_assets_krw: "총자산",
+  real_estate_assets_krw: "부동산 자산",
+  vehicle_value_krw: "차량 가액",
+  dependent_family_count: "부양가족 수",
+  household_member_count: "세대원 수",
+  homeless_period_years: "무주택 기간",
+  residence_period_years: "거주 기간",
+  bankbook_join_date: "청약통장 가입일",
+  bankbook_payment_count: "청약통장 납입 횟수",
+  bankbook_balance_krw: "청약통장 예치금",
+  marriage_period_years: "혼인 기간",
+  minor_child_count: "미성년 자녀 수",
+};
+
+function CheckDetailsToggle({
+  title,
+  items,
+  emptyMessage,
+  tone,
+}: {
+  title: string;
+  items: string[];
+  emptyMessage: string;
+  tone: "success" | "warning";
+}) {
+  const keywords = uniqueStrings(
+    items.flatMap((item) => extractCheckKeywords(item)),
+  ).slice(0, 8);
+  const toneClass =
+    tone === "success"
+      ? "border-[#bfe5ca] bg-[#f4fbf6] text-[#237a3f]"
+      : "border-[#f1d5a6] bg-[#fff9ef] text-[#a45f0b]";
+
+  return (
+    <details className="group overflow-hidden rounded-[18px] border border-[#e1e5ea] bg-white">
+      <summary className="list-none cursor-pointer px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="font-bold text-[15px] text-[#26364e]">{title}</h4>
+              <span className="rounded-full bg-[#f0f2f5] px-2.5 py-1 text-[11px] font-semibold text-[#68717d]">
+                {items.length}개
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {keywords.length > 0 ? (
+                keywords.map((keyword) => (
+                  <span
+                    key={keyword}
+                    className={`rounded-[9px] border px-2.5 py-1.5 text-[12px] font-semibold ${toneClass}`}
+                  >
+                    {keyword}
+                  </span>
+                ))
+              ) : (
+                <span className="text-[12px] text-[#8a9099]">추가 항목 없음</span>
+              )}
+            </div>
+          </div>
+          <ChevronDown className="h-5 w-5 shrink-0 text-[#7a818c] transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <div className="border-t border-[#eceff3] px-5 py-4">
+        {items.length > 0 ? (
+          <ul className="space-y-3">
+            {items.map((item) => (
+              <li key={item} className="flex items-start gap-2.5 text-[14px] leading-6 text-[#596273]">
+                <CheckCircle2 className={`mt-1 h-4 w-4 shrink-0 ${tone === "success" ? "text-[#2d8a54]" : "text-[#d98216]"}`} />
+                <span>{formatCheckDescription(item)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[14px] text-[#7a818c]">{emptyMessage}</p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function extractCheckKeywords(item: string) {
+  const normalized = item.toLowerCase();
+  const fieldKeywords = Object.entries(checkFieldLabels)
+    .filter(([field]) => normalized.includes(field.toLowerCase()))
+    .map(([, label]) => label);
+
+  if (fieldKeywords.length > 0) return fieldKeywords;
+
+  const semanticKeywords = [
+    "청약통장",
+    "무주택",
+    "거주",
+    "소득",
+    "자산",
+    "부양가족",
+    "세대주",
+    "특별공급",
+    "대출",
+    "분양가",
+  ].filter((keyword) => item.includes(keyword));
+
+  if (semanticKeywords.length > 0) return semanticKeywords;
+
+  const prefix = stripMarkdown(item)
+    .replace(/^[-*•]\s*/, "")
+    .split(/[:：,]/)[0]
+    .trim();
+  return prefix ? [prefix.length > 18 ? `${prefix.slice(0, 18)}…` : prefix] : [];
+}
+
+function formatCheckDescription(item: string) {
+  return Object.entries(checkFieldLabels).reduce(
+    (text, [field, label]) => text.replaceAll(field, label),
+    stripMarkdown(item),
+  );
+}
+
 function buildResultViewModel(result: UnknownRecord | null) {
   const payload = asRecord(result?.result_payload) ?? {};
   const report = asRecord(result?.report) ?? asRecord(payload.report) ?? asRecord(asRecord(payload.node6)?.final_report) ?? {};
@@ -212,6 +351,11 @@ function buildResultViewModel(result: UnknownRecord | null) {
   const analysisItems = collectAnalysisItems(report, payload, supplyRank);
   const resultStatus = stringValue(payload.status) ?? stringValue(result?.overall_analysis_status);
   const finance = normalizeFinance(report, payload);
+  const announcementPresentation = getAnnouncementPresentation({
+    diagnosis_mode: result?.diagnosis_mode,
+    announcement_confirmed: announcement,
+    input_snapshot: result?.input_snapshot,
+  });
   const strategy =
     stringValue(report.strategy) ??
     stringValue(payload.strategy) ??
@@ -225,7 +369,8 @@ function buildResultViewModel(result: UnknownRecord | null) {
       : undefined;
 
   return {
-    title: stringValue(announcement.announcement_name) ?? "청약 전략 진단 결과",
+    title: announcementPresentation.title,
+    announcementInfo: announcementPresentation.info,
     createdAt: stringValue(result?.created_at) ?? "방금",
     statuses: uniqueStrings([
       stringValue(result?.status),
