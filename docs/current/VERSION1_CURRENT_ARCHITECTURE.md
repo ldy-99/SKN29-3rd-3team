@@ -89,9 +89,9 @@ sequenceDiagram
 
     React->>Django: POST /api/pdf/analyze (multipart PDF)
     Django->>FastAPI: POST /api/pdf/analyze
-    FastAPI-->>Django: extracted combined_text
+    FastAPI-->>Django: diagnosis_text, summary_text, extracted_fields
     Django-->>React: pdf analysis result
-    React->>React: navigate /strategy with combined_text
+    React->>React: navigate /strategy with diagnosis_text + PDF metadata
     React->>Django: POST /api/strategy
     Django->>FastAPI: /api/profile
     Django->>FastAPI: /api/simulate

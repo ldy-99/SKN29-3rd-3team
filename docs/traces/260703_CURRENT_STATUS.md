@@ -113,7 +113,7 @@ flowchart TD
     class start,choose point;
 ```
 
-PDF 업로드 화면은 원본 파일을 저장하지 않고 추출된 `combined_text`를 사용자가 확인한 뒤 전략 진단 입력으로 넘긴다.
+PDF 업로드 화면은 원본 파일을 저장하지 않고 `diagnosis_text` 정리본을 사용자가 확인한 뒤 전략 진단 입력으로 넘긴다. `summary_text`와 `extracted_fields`는 이력 식별용 메타데이터로 함께 저장한다.
 
 ## 4. 기능별 상태
 
@@ -125,7 +125,7 @@ PDF 업로드 화면은 원본 파일을 저장하지 않고 추출된 `combined
 | 수동 공고문 전략 진단 | 완료 | Django가 FastAPI를 순차 호출 |
 | 결과 목록/상세 조회 | 완료 | StrategyRun 저장 결과 조회 |
 | RAG 챗봇 | 완료 | React -> Django -> FastAPI `/api/chat` |
-| PDF 업로드 분석 | 완료 | pdfplumber/PyMuPDF로 텍스트·표 추출, 원본 저장 없음 |
+| PDF 업로드 분석 | 완료 | 텍스트·표 추출 후 요약/구조화 필드 생성, 원본 저장 없음 |
 | Result 응답 단일화 | 미완료 | 현재 React가 과도기 응답 형태를 둘 다 처리 |
 | 표준 CSRF | 미완료 | 배포 전 CSRF token 구조 필요 |
 | Docker/CI/AWS | 미완료 | 새 clone 기준 재현 자동화 필요 |
@@ -222,10 +222,11 @@ PdfAnalysis.tsx
   -> strategy.services.FastAPIClient.proxy_pdf_analysis
   -> FastAPI /api/pdf/analyze
   -> pdf_service.analyze_pdf_bytes
-  -> combined_text를 StrategyRun.tsx announcement_text로 전달
+  -> diagnosis_text를 StrategyRun.tsx announcement_text로 전달
+  -> pdf_summary_text/pdf_extracted_fields를 input_snapshot에 저장
 ```
 
-현재 PDF MVP는 구조화된 청약 조건 자동 확정이 아니라 텍스트/표 추출과 사용자 확인 후 전략 진단 입력 연결에 집중한다.
+현재 PDF 흐름은 구조화 필드를 DB 모델에 자동 확정하지는 않지만, PDF 분석 단계에서 공고명·위치·주택형·공급금액·일정 등을 `extracted_fields`로 분리해 마이페이지/상세 표시와 진단 이력 추적에 활용한다.
 
 ## 6. 주요 파일 지도
 
@@ -285,7 +286,7 @@ PdfAnalysis.tsx
 | 우선순위 | 작업 | 이유 |
 |---:|---|---|
 | 1 | Result 응답 adapter 단일화 | React가 과도기 응답 형태를 둘 다 처리 중 |
-| 2 | PDF 추출 결과 구조화 고도화 | 현재는 텍스트/표 추출 MVP이며 필드 자동 확정은 후속 |
+| 2 | PDF 추출 결과 구조화 고도화 | 현재는 `extracted_fields`를 이력/표시에 활용하며 DB 모델 자동 확정은 후속 |
 | 3 | 표준 CSRF 적용 | 운영 배포 전 필수 보안 작업 |
 | 4 | Node/Python 버전 고정 | 팀원별 실행 오류 감소 |
 | 5 | Docker Compose 구성 | React/Django/FastAPI/환경변수 재현성 확보 |
@@ -295,9 +296,9 @@ PdfAnalysis.tsx
 
 | 목적 | 문서 |
 |---|---|
-| MVP 범위/원칙 | `docs/current/PROJECT_SPEC.md` |
-| API 입출력 계약 | `docs/current/API_CONTRACT.md` |
-| 실행 명령 | `README.md`, `docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md` |
+| MVP 범위/원칙 | `docs/traces/260703_PROJECT_SPEC.md` |
+| API 입출력 계약 | `docs/traces/260703_API_CONTRACT.md` |
+| 실행 명령 | `README.md`, `docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md` |
 | 팀 작업 규칙 | `docs/guides/TEAM_GUIDE.md` |
 | 변경 이력 | `docs/traces/CHANGELOG.md` |
 

@@ -35,7 +35,7 @@
 
 ### B — Tech Lead·Integration
 
-- `docs/current/API_CONTRACT.md`와 fixture를 단일 계약으로 관리
+- `docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md`와 fixture를 단일 계약으로 관리
 - PDF 원본 미저장, 추출 텍스트 저장 범위, 구조화 고도화 범위 관리
 - Result payload를 `result_payload` 내부 또는 최상위 중 하나로 확정
 - 새 clone QA 시나리오와 통과 기준 관리
@@ -137,9 +137,9 @@ Pop-Location
 
 ## 8. 완료 Gate
 
-- `docs/current/API_CONTRACT.md`와 실제 응답이 일치합니다.
+- `docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md`와 실제 응답이 일치합니다.
 - Django 테스트와 React build가 통과합니다.
 - FastAPI import와 `/health`가 정상입니다.
 - 신규 사용자 전체 플로우가 한 번 이상 통과합니다.
 - 미완료 PDF 경로가 정상 기능처럼 노출되지 않습니다.
-- 새 환경에서 필요한 비밀값과 실행 순서는 루트 `README.md`와 `docs/current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md`를 기준으로 확인합니다.
+- 새 환경에서 필요한 비밀값과 실행 순서는 루트 `README.md`와 `docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md`를 기준으로 확인합니다.

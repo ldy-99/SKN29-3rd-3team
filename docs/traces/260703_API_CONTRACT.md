@@ -215,6 +215,8 @@ React 업로드 화면과 Django `POST /api/pdf/analyze`는 존재합니다. Dja
 
 FastAPI는 PDF 원본을 저장하지 않고 요청 처리 중 메모리에서만 읽습니다. `pdfplumber.dedupe_chars()` 기반으로 텍스트와 표를 추출하고, 추출 텍스트가 너무 짧으면 PyMuPDF fallback을 사용합니다.
 
+추출 속도를 위해 긴 PDF는 앞쪽 핵심 페이지를 우선 분석하고, 표 추출도 초반 페이지와 개수에 제한을 둡니다. 추출된 원문은 그대로 진단에 넣지 않고, 규칙 기반 정리본을 먼저 만든 뒤 `OPENAI_API_KEY`가 있으면 LLM 요약으로 사용자 검토용/진단 입력용 공고문을 생성합니다. LLM 요약이 실패하면 규칙 기반 정리본으로 계속 진행합니다.
+
 응답:
 
 ```json
@@ -228,6 +230,21 @@ FastAPI는 PDF 원본을 저장하지 않고 요청 처리 중 메모리에서�
   "table_count": 101,
   "truncated": true,
   "preview": "미리보기 텍스트",
+  "raw_preview": "PDF 원문 추출 일부",
+  "summary_text": "사용자 이력/확인용 짧은 공고문 핵심 요약",
+  "diagnosis_text": "전략 진단 입력용 구조화 공고문 정리본",
+  "summary_source": "llm",
+  "extracted_fields": {
+    "announcement_name": "동작 센트럴 동문 디 이스트 입주자모집공고",
+    "location": "서울특별시 동작구 상도동 363-10번지 일원",
+    "housing_category": "민영주택",
+    "regulated_area": "투기과열지구, 청약과열지역",
+    "housing_types": [],
+    "price_summary": {
+      "min_krw": 1206000000,
+      "max_krw": 1707000000
+    }
+  },
   "combined_text": "전략 진단 입력용 텍스트",
   "tables": [
     {
@@ -239,7 +256,7 @@ FastAPI는 PDF 원본을 저장하지 않고 요청 처리 중 메모리에서�
 }
 ```
 
-`combined_text`는 React에서 사용자가 확인한 뒤 기존 전략 진단의 `announcement_text`로 전달합니다. 원본 PDF 파일은 저장하지 않습니다.
+`summary_source`는 `llm` 또는 `rule`입니다. `combined_text`는 하위 호환 필드이며 현재는 `diagnosis_text`와 같은 정리본을 담습니다. React는 사용자가 `diagnosis_text`를 확인/수정한 뒤 기존 전략 진단의 `announcement_text`로 전달합니다. `summary_text`와 `extracted_fields`는 PDF 기반 진단 이력 식별을 위해 `POST /api/strategy` 요청에도 함께 전달할 수 있습니다. 원본 PDF 파일은 저장하지 않습니다.
 
 ## 10. 오류 코드
 

@@ -55,10 +55,11 @@ React POST /api/strategy
 React POST /api/pdf/analyze
 -> Django PDFAnalyzeAPIView
 -> FastAPI POST /api/pdf/analyze
--> React가 preview/combined_text 표시
+-> FastAPI가 raw 추출문을 규칙 기반/LLM으로 정리
+-> React가 diagnosis_text를 편집 가능한 공고문 정리본으로 표시
 -> React POST /api/strategy
   body: {
-    "announcement_text": combined_text,
+    "announcement_text": 사용자가 확인한 diagnosis_text,
     "input_method": "pdf",
     "source_filename": "...pdf",
     "pdf_analysis_id": "uuid"
@@ -114,11 +115,16 @@ React POST /api/chatbot
 
 ```json
 {
-  "announcement_text": "모집공고문 텍스트 또는 PDF combined_text",
+  "announcement_text": "모집공고문 텍스트 또는 사용자가 확인한 PDF diagnosis_text",
   "profile_only": false,
   "input_method": "pdf",
   "source_filename": "notice.pdf",
-  "pdf_analysis_id": "uuid"
+  "pdf_analysis_id": "uuid",
+  "pdf_summary_text": "사용자 이력/확인용 짧은 요약",
+  "pdf_extracted_fields": {
+    "announcement_name": "공고명",
+    "location": "공급 위치"
+  }
 }
 ```
 
@@ -205,7 +211,22 @@ file: PDF, 15MB 이하
   "table_count": 101,
   "truncated": true,
   "preview": "미리보기 텍스트",
-  "combined_text": "전략 진단 입력용 텍스트",
+  "raw_preview": "PDF 원문 추출 일부",
+  "summary_text": "사용자 이력/확인용 짧은 공고문 핵심 요약",
+  "diagnosis_text": "전략 진단 입력용 구조화 공고문 정리본",
+  "summary_source": "llm",
+  "extracted_fields": {
+    "announcement_name": "notice title",
+    "location": "공급 위치",
+    "housing_category": "민영주택",
+    "regulated_area": "투기과열지구, 청약과열지역",
+    "housing_types": [],
+    "price_summary": {
+      "min_krw": 1206000000,
+      "max_krw": 1707000000
+    }
+  },
+  "combined_text": "전략 진단 입력용 공고문 정리본",
   "tables": [
     {
       "page": 1,
@@ -216,7 +237,7 @@ file: PDF, 15MB 이하
 }
 ```
 
-`combined_text`는 이후 `POST /api/strategy`의 `announcement_text`로 전달한다. PDF 원본 파일은 저장하지 않는다.
+`summary_source`는 `llm` 또는 `rule`이다. `combined_text`는 하위 호환 필드이며 현재는 `diagnosis_text`와 같은 정리본을 담는다. React는 사용자가 확인/수정한 `diagnosis_text`를 이후 `POST /api/strategy`의 `announcement_text`로 전달한다. `summary_text`와 `extracted_fields`는 PDF 기반 진단 이력 식별을 위해 `POST /api/strategy` 요청에도 함께 전달할 수 있다. PDF 원본 파일은 저장하지 않는다.
 
 ### 4.3 `POST /api/chatbot`
 
