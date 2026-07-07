@@ -39,6 +39,21 @@ const supplyLabels: Record<string, string> = {
   PUBLIC_HOUSING: "공공주택",
 };
 
+const titleCutoffPatterns = [
+  /\s*입주자\s*모집공고.*$/i,
+  /\s*입주자모집공고.*$/i,
+  /\s*분양\s*공고.*$/i,
+  /\s*모집공고문.*$/i,
+  /\s*선착순.*$/i,
+  /\s*잔여\s*세대.*$/i,
+  /\s*잔여세대.*$/i,
+  /\s*일반\s*매각.*$/i,
+  /\s*일반매각.*$/i,
+  /\s*미분양\s*매입.*$/i,
+  /\s*미분양매입.*$/i,
+  /\s*공고문.*$/i,
+];
+
 export function getAnnouncementPresentation(
   strategy: AnnouncementSource,
 ): AnnouncementPresentation {
@@ -179,6 +194,16 @@ function extractTitleFromText(text?: string) {
     }
   }
 
+  const apartmentNameLine = lines.find(
+    (line) =>
+      line.length <= 80 &&
+      /(아파트|자이|힐스테이트|푸르지오|래미안|아이파크|롯데캐슬|더샵|e편한세상|해피포유|센트럴|파크|리버|가든|캐슬|타워)/i.test(line) &&
+      !/(위치|주소|문의|전화|접수|기간|일정|자격|대상|공급세대|전용면적)/i.test(line),
+  );
+
+  const cleanedApartmentName = cleanAnnouncementTitle(apartmentNameLine);
+  if (cleanedApartmentName) return cleanedApartmentName;
+
   const announcementLine = lines.find(
     (line) =>
       line.length <= 100 &&
@@ -251,6 +276,8 @@ function cleanFilename(filename?: string) {
     filename
       .replace(/\.(pdf|hwp|hwpx|docx?)$/i, "")
       .replace(/[_-]+/g, " ")
+      .replace(/([가-힣])([A-Za-z0-9])/g, "$1 $2")
+      .replace(/([A-Za-z0-9])([가-힣])/g, "$1 $2")
       .replace(/^(공고문|입주자\s*모집공고)\s*/i, ""),
   );
 }
@@ -260,11 +287,18 @@ function cleanAnnouncementTitle(value?: string) {
 
   const cleaned = value
     .replace(/\.(pdf|hwp|hwpx|docx?)$/i, "")
-    .replace(/\s*(?:입주자\s*모집공고|분양\s*공고|모집공고문)\s*$/i, "")
+    .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  return cleaned || undefined;
+  const titleOnly = titleCutoffPatterns.reduce(
+    (current, pattern) => current.replace(pattern, ""),
+    cleaned,
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return titleOnly || cleaned || undefined;
 }
 
 function formatRegion(value?: string) {
