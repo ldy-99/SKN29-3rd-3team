@@ -82,10 +82,14 @@ test("장시간 작업에 중복 요청 방지·로딩·타임아웃 처리가 �
   const pdf = readSource("pages/PdfAnalysis.tsx");
   const ui = readSource("components/UI.tsx");
 
-  assert.match(strategy, /if \(isRunning\) return/);
+  assert.match(strategy, /if \(isBusy\) return/);
   assert.match(strategy, /new AbortController\(\)/);
   assert.match(strategy, /controller\.abort\(\)/);
-  assert.match(strategy, /disabled=\{isRunning/);
+  assert.match(strategy, /disabled=\{isBusy/);
+  assert.match(strategy, /STRATEGY_DRAFT_STORAGE_KEY/);
+  assert.match(strategy, /sessionStorage\.setItem\(STRATEGY_DRAFT_STORAGE_KEY/);
+  assert.match(strategy, /api\.analyzePdf\(file\)/);
+  assert.match(strategy, /onDrop=\{handlePdfDrop\}/);
   assert.match(pdf, /isUploading/);
   assert.match(pdf, /ProcessingIndicator/);
   assert.match(ui, /animate-spin/);

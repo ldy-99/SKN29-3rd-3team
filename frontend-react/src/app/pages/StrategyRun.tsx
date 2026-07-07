@@ -3,24 +3,44 @@
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
 import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator, WarningBox } from "../components/UI";
-import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, User } from "lucide-react";
+import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, Upload, User } from "lucide-react";
 import { api } from "../api/client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+
+const STRATEGY_DRAFT_STORAGE_KEY = "strategy-run-draft-v1";
+
+type StrategyDraft = {
+  noticeText: string;
+  isBasicOnly: boolean;
+  inputMethod: "manual" | "pdf";
+  sourceFilename: string | null;
+  pdfAnalysisId: string | null;
+  pdfSummaryText: string | null;
+  pdfExtractedFields: Record<string, unknown> | null;
+};
 
 export function StrategyRun() {
-  const [noticeText, setNoticeText] = useState("");
-  const [isBasicOnly, setIsBasicOnly] = useState(false);
+  const [initialDraft] = useState(() => readStrategyDraft());
+  const [noticeText, setNoticeText] = useState(initialDraft?.noticeText ?? "");
+  const [isBasicOnly, setIsBasicOnly] = useState(initialDraft?.isBasicOnly ?? false);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPdfUploading, setIsPdfUploading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [inputMethod, setInputMethod] = useState<"manual" | "pdf">("manual");
-  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
-  const [pdfAnalysisId, setPdfAnalysisId] = useState<string | null>(null);
-  const [pdfSummaryText, setPdfSummaryText] = useState<string | null>(null);
-  const [pdfExtractedFields, setPdfExtractedFields] = useState<Record<string, unknown> | null>(null);
+  const [pdfElapsedSeconds, setPdfElapsedSeconds] = useState(0);
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [inputMethod, setInputMethod] = useState<"manual" | "pdf">(initialDraft?.inputMethod ?? "manual");
+  const [sourceFilename, setSourceFilename] = useState<string | null>(initialDraft?.sourceFilename ?? null);
+  const [pdfAnalysisId, setPdfAnalysisId] = useState<string | null>(initialDraft?.pdfAnalysisId ?? null);
+  const [pdfSummaryText, setPdfSummaryText] = useState<string | null>(initialDraft?.pdfSummaryText ?? null);
+  const [pdfExtractedFields, setPdfExtractedFields] = useState<Record<string, unknown> | null>(
+    initialDraft?.pdfExtractedFields ?? null,
+  );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const runningStage = getStrategyRunningStage(elapsedSeconds);
+  const isBusy = isRunning || isPdfUploading;
 
   useEffect(() => {
     // PdfAnalysis에서 전달한 정리본을 기존 수동 공고문 입력 흐름에 태웁니다.
@@ -36,16 +56,30 @@ export function StrategyRun() {
       | null;
 
     if (state?.announcementText) {
-      setNoticeText(state.announcementText);
-      setIsBasicOnly(false);
-      setInputMethod(state.inputMethod === "pdf" ? "pdf" : "manual");
-      setSourceFilename(state.sourceFilename ?? null);
-      setPdfAnalysisId(state.pdfAnalysisId ?? null);
-      setPdfSummaryText(state.pdfSummaryText ?? null);
-      setPdfExtractedFields(state.pdfExtractedFields ?? null);
+      applyDraft({
+        noticeText: state.announcementText,
+        isBasicOnly: false,
+        inputMethod: state.inputMethod === "pdf" ? "pdf" : "manual",
+        sourceFilename: state.sourceFilename ?? null,
+        pdfAnalysisId: state.pdfAnalysisId ?? null,
+        pdfSummaryText: state.pdfSummaryText ?? null,
+        pdfExtractedFields: state.pdfExtractedFields ?? null,
+      });
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    writeStrategyDraft({
+      noticeText,
+      isBasicOnly,
+      inputMethod,
+      sourceFilename,
+      pdfAnalysisId,
+      pdfSummaryText,
+      pdfExtractedFields,
+    });
+  }, [noticeText, isBasicOnly, inputMethod, sourceFilename, pdfAnalysisId, pdfSummaryText, pdfExtractedFields]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -57,8 +91,76 @@ export function StrategyRun() {
     return () => window.clearInterval(timer);
   }, [isRunning]);
 
+  useEffect(() => {
+    if (!isPdfUploading) return;
+
+    const timer = window.setInterval(() => {
+      setPdfElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isPdfUploading]);
+
+  const applyDraft = (draft: StrategyDraft) => {
+    setNoticeText(draft.noticeText);
+    setIsBasicOnly(draft.isBasicOnly);
+    setInputMethod(draft.inputMethod);
+    setSourceFilename(draft.sourceFilename);
+    setPdfAnalysisId(draft.pdfAnalysisId);
+    setPdfSummaryText(draft.pdfSummaryText);
+    setPdfExtractedFields(draft.pdfExtractedFields);
+    writeStrategyDraft(draft);
+  };
+
+  const clearAnnouncementDraft = () => {
+    applyDraft({
+      noticeText: "",
+      isBasicOnly: true,
+      inputMethod: "manual",
+      sourceFilename: null,
+      pdfAnalysisId: null,
+      pdfSummaryText: null,
+      pdfExtractedFields: null,
+    });
+  };
+
+  const handlePdfFileSelect = async (file?: File | null) => {
+    if (!file || isBusy) return;
+    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      setError("PDF 파일만 업로드할 수 있습니다.");
+      return;
+    }
+
+    setSelectedPdfFile(file);
+    setIsPdfUploading(true);
+    setPdfElapsedSeconds(0);
+    setError(null);
+
+    try {
+      const data = await api.analyzePdf(file);
+      applyDraft({
+        noticeText: data.diagnosis_text || data.summary_text || data.combined_text || "",
+        isBasicOnly: false,
+        inputMethod: "pdf",
+        sourceFilename: data.filename,
+        pdfAnalysisId: data.pdf_analysis_id,
+        pdfSummaryText: data.summary_text ?? null,
+        pdfExtractedFields: data.extracted_fields ?? null,
+      });
+    } catch (error) {
+      setError(error);
+    } finally {
+      setIsPdfUploading(false);
+    }
+  };
+
+  const handlePdfDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    void handlePdfFileSelect(event.dataTransfer.files?.[0]);
+  };
+
   const handleRun = async () => {
-    if (isRunning) return;
+    if (isBusy) return;
 
     setElapsedSeconds(0);
     setIsRunning(true);
@@ -83,6 +185,7 @@ export function StrategyRun() {
         },
         controller.signal,
       );
+      clearStrategyDraft();
       navigate(`/results/${result.strategy_id}`);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -109,6 +212,22 @@ export function StrategyRun() {
 
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
 
+      {isPdfUploading && (
+        <ProcessingIndicator
+          title={
+            pdfElapsedSeconds < 8
+              ? "PDF 파일을 확인하고 있습니다"
+              : pdfElapsedSeconds < 22
+                ? "본문과 표를 추출하고 있습니다"
+                : "추출 결과를 정리하고 있습니다"
+          }
+          description={`${selectedPdfFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
+          elapsedSeconds={pdfElapsedSeconds}
+          steps={["파일 확인", "내용 추출", "결과 정리"]}
+          currentStep={pdfElapsedSeconds < 8 ? 0 : pdfElapsedSeconds < 22 ? 1 : 2}
+        />
+      )}
+
       {isRunning && (
         <ProcessingIndicator
           title={runningStage.title}
@@ -134,7 +253,7 @@ export function StrategyRun() {
             </h3>
             <button
               onClick={() => navigate("/profile")}
-              disabled={isRunning}
+              disabled={isBusy}
               className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#0b5bd3] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
             >
               <Pencil className="w-4 h-4" />
@@ -169,19 +288,61 @@ export function StrategyRun() {
         </Card>
 
         <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(event) => {
+              void handlePdfFileSelect(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
           <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">아파트 분양 모집공고 입력</h3>
-              <p className="text-[14px] text-[#69717d]">아파트 입주자모집공고의 주요 내용을 복사해서 붙여넣어 주세요.</p>
+              <p className="text-[14px] text-[#69717d]">아파트 입주자모집공고의 주요 내용을 붙여넣거나 PDF로 바로 분석하세요.</p>
             </div>
             <Button
               variant="outline"
               className="text-[13px] py-2 px-4 h-auto shrink-0"
-              onClick={() => navigate("/pdf")}
-              disabled={isRunning}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isBusy}
             >
               PDF 파일로 분석하기
             </Button>
+          </div>
+
+          <div
+            className={`mb-5 rounded-[16px] border border-dashed px-5 py-4 transition-colors ${
+              isBusy
+                ? "border-[#e4ded4] bg-[#f6f3ee]"
+                : "border-[#cfd8e6] bg-[#f8fbff] hover:border-[#245ea8]/50"
+            }`}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handlePdfDrop}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#245ea8] shadow-sm">
+                  <Upload className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[14px] font-semibold text-[#26364e]">PDF를 여기에 드래그하거나 바로 선택하세요</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[#737b87]">
+                    분석 후 정리본이 아래 입력창에 채워지고, 다른 탭에 다녀와도 현재 브라우저 탭에서는 유지됩니다.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="h-auto shrink-0 px-4 py-2 text-[13px]"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isBusy}
+              >
+                파일 선택
+              </Button>
+            </div>
           </div>
 
           {noticeText && !isBasicOnly && (
@@ -200,7 +361,7 @@ export function StrategyRun() {
             placeholder="아파트 분양 입주자모집공고를 여기에 붙여넣으세요..."
             value={noticeText}
             onChange={(e) => setNoticeText(e.target.value)}
-            disabled={isBasicOnly || isRunning}
+            disabled={isBasicOnly || isBusy}
           ></textarea>
 
           <label className="flex items-center gap-3 mb-8 cursor-pointer group">
@@ -212,15 +373,10 @@ export function StrategyRun() {
                 onChange={(e) => {
                   setIsBasicOnly(e.target.checked);
                   if (e.target.checked) {
-                    setNoticeText("");
-                    setInputMethod("manual");
-                    setSourceFilename(null);
-                    setPdfAnalysisId(null);
-                    setPdfSummaryText(null);
-                    setPdfExtractedFields(null);
+                    clearAnnouncementDraft();
                   }
                 }}
-                disabled={isRunning}
+                disabled={isBusy}
               />
               <span className="w-6 h-6 rounded-[8px] border-2 border-[#dcd6ca] peer-checked:bg-[#102e5a] peer-checked:border-[#102e5a] transition-colors flex items-center justify-center group-hover:border-[#102e5a]/60">
                 <Check className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
@@ -237,7 +393,7 @@ export function StrategyRun() {
           <Button
             className="w-full py-4 text-[17px]"
             onClick={handleRun}
-            disabled={isRunning || (!isBasicOnly && noticeText.trim() === "")}
+            disabled={isBusy || (!isBasicOnly && noticeText.trim() === "")}
           >
             {isRunning ? (
               <span className="flex items-center justify-center gap-2">
@@ -279,6 +435,44 @@ function getStrategyRunningStage(elapsedSeconds: number) {
     currentStep: 2,
     progressPercent: Math.min(84 + Math.floor((elapsedSeconds - 35) * 0.4), 96),
   };
+}
+
+function readStrategyDraft(): StrategyDraft | null {
+  try {
+    const stored = sessionStorage.getItem(STRATEGY_DRAFT_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<StrategyDraft>;
+    return {
+      noticeText: typeof parsed.noticeText === "string" ? parsed.noticeText : "",
+      isBasicOnly: parsed.isBasicOnly === true,
+      inputMethod: parsed.inputMethod === "pdf" ? "pdf" : "manual",
+      sourceFilename: typeof parsed.sourceFilename === "string" ? parsed.sourceFilename : null,
+      pdfAnalysisId: typeof parsed.pdfAnalysisId === "string" ? parsed.pdfAnalysisId : null,
+      pdfSummaryText: typeof parsed.pdfSummaryText === "string" ? parsed.pdfSummaryText : null,
+      pdfExtractedFields:
+        parsed.pdfExtractedFields && typeof parsed.pdfExtractedFields === "object" && !Array.isArray(parsed.pdfExtractedFields)
+          ? parsed.pdfExtractedFields as Record<string, unknown>
+          : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStrategyDraft(draft: StrategyDraft) {
+  try {
+    sessionStorage.setItem(STRATEGY_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // 브라우저 저장소를 사용할 수 없어도 진단 실행 흐름은 계속 유지합니다.
+  }
+}
+
+function clearStrategyDraft() {
+  try {
+    sessionStorage.removeItem(STRATEGY_DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 function SpinnerIcon({ className }: { className?: string }) {

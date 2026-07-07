@@ -341,8 +341,9 @@ def _summarize_notice_with_llm(user_summary: str, diagnosis_text: str, raw_text:
 def _extract_title(file_name: str, text: str) -> str:
     for label in ["공고명", "단지명", "아파트명", "주택명", "사업명"]:
         value = _find_labeled_value(text, [label])
-        if value:
-            return _clean_title(value)
+        cleaned = _clean_title(value) if value else ""
+        if cleaned:
+            return cleaned
 
     lines = [
         line.strip()
@@ -351,15 +352,33 @@ def _extract_title(file_name: str, text: str) -> str:
     ][:80]
     for line in lines:
         if len(line) <= 120 and re.search(r"(아파트|자이|힐스테이트|푸르지오|래미안|아이파크|롯데캐슬|더샵|e편한세상).*(모집공고|분양)", line):
-            return _clean_title(line)
+            cleaned = _clean_title(line)
+            if cleaned:
+                return cleaned
         if len(line) <= 120 and "입주자모집공고" in line:
-            return _clean_title(line)
+            cleaned = _clean_title(line)
+            if cleaned:
+                return cleaned
 
     return _clean_title(file_name)
 
 
 def _clean_title(value: str) -> str:
-    return re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", value, flags=re.I).replace("_", " ").strip()
+    cleaned = re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", value, flags=re.I)
+    cleaned = re.sub(r"^[\s■●ㆍ\-•]+", "", cleaned)
+    cleaned = cleaned.replace("_", " ").replace("-", " ")
+    cleaned = re.sub(r"\s*(?:입주자\s*모집공고|분양\s*공고|모집공고문|공고문)\s*$", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*(?:미분양|매입|잔여세대|선착순|일반매각|일반분양|임대주택).*$", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if _is_unusable_title(cleaned):
+        return ""
+    return cleaned
+
+
+def _is_unusable_title(value: str) -> bool:
+    if len(value) < 2 or len(value) > 60:
+        return True
+    return bool(re.search(r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택", value))
 
 
 def _find_labeled_value(text: str, labels: list[str]) -> str | None:
