@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. Django 백엔드 서비스
+  django-backend:
+    build:
+      context: ./django_backend
+      dockerfile: Dockerfile
+    container_name: django-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./django_backend:/app
+      - django-db:/app/data  # SQLite db 보존을 위해 볼륨 바인딩 가능 (필요시)
+    environment:
+      - DEBUG=True
+      - FASTAPI_API_URL=http://fastapi-backend:8080
+    env_file:
+      - .env
+    depends_on:
+      - fastapi-backend
+
+  # 2. FastAPI 백엔드 서비스 (AI / RAG)
+  fastapi-backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: fastapi-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Backend:/app
+    env_file:
+      - .env
+
+  # 3. React 프론트엔드 서비스 (Nginx)
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: frontend-react
+    ports:
+      - "3000:80"  # 브라우저에서 http://localhost:3000 으로 접속
+    depends_on:
+      - django-backend
+      - fastapi-backend
+
+volumes:
+  django-db:
