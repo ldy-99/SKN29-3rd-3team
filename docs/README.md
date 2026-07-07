@@ -1,4 +1,4 @@
-# 프로젝트 문서 색인
+﻿# 프로젝트 문서 색인
 
 문서는 용도별 폴더로 나누어 관리합니다. 처음 보는 사람은 아래 순서대로 보면 현재 브랜치의 구조와 통합 상황을 가장 빠르게 파악할 수 있습니다.
 
@@ -6,10 +6,9 @@
 
 | 순서 | 목적 | 문서 |
 |---|---|---|
-| 1 | 2026-07-06 통합 현황, 서비스 흐름, 동윤님/은진님 전달 메모 | [current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md](current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md) |
-| 2 | FastAPI/Django/React가 맞춰야 하는 응답 필드 기준 | [current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md](current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md) |
-| 3 | 현재 `version-1` 계열 구조와 실행 체크포인트 | [current/VERSION1_CURRENT_ARCHITECTURE.md](current/VERSION1_CURRENT_ARCHITECTURE.md) |
-| 4 | 기존 공개 API 계약 | [current/API_CONTRACT.md](current/API_CONTRACT.md) |
+| 1 | 현재 `version-1` 계열 구조와 실행 체크포인트 | [current/VERSION1_CURRENT_ARCHITECTURE.md](current/VERSION1_CURRENT_ARCHITECTURE.md) |
+| 2 | FastAPI/Django/React가 맞춰야 하는 응답 필드 기준 | [current/260706_VERSION1_API_RESPONSE_CONTRACT.md](current/260706_VERSION1_API_RESPONSE_CONTRACT.md) |
+| 3 | PDF 분석 개선 현황과 팀 공유 요약 | [current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](current/260707_VERSION1_PDF_ANALYSIS_STATUS.md) |
 
 ## 폴더 구성
 
@@ -26,12 +25,10 @@
 
 | 확인하려는 내용 | 문서 |
 |---|---|
-| 현재 통합 브랜치 구조와 전달 메모 | [current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md](current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md) |
-| 2026-07-06 기준 FastAPI 응답 계약 | [current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md](current/VERSION1_API_RESPONSE_CONTRACT_2026_07_06.md) |
+| 현재 통합 브랜치 구조와 전달 메모 | [current/260706_VERSION1_INTEGRATION_HANDOFF.md](current/260706_VERSION1_INTEGRATION_HANDOFF.md) |
+| 2026-07-06 기준 FastAPI 응답 계약 | [current/260706_VERSION1_API_RESPONSE_CONTRACT.md](current/260706_VERSION1_API_RESPONSE_CONTRACT.md) |
 | `version-1` 통합 브랜치의 현재 구조와 정상화 요약 | [current/VERSION1_CURRENT_ARCHITECTURE.md](current/VERSION1_CURRENT_ARCHITECTURE.md) |
-| 지금 전체 현황을 빠르게 파악 | [current/CURRENT_STATUS.md](current/CURRENT_STATUS.md) |
-| MVP 범위, 구조, 현재 상태 | [current/PROJECT_SPEC.md](current/PROJECT_SPEC.md) |
-| API 경로, 요청·응답, 필드 | [current/API_CONTRACT.md](current/API_CONTRACT.md) |
+| PDF 분석 개선 현황, 필드, 검증 결과 | [current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](current/260707_VERSION1_PDF_ANALYSIS_STATUS.md) |
 
 ## 실행·협업 가이드
 
@@ -46,6 +43,10 @@
 |---|---|
 | 통합·정리 작업 이력 | [traces/CHANGELOG.md](traces/CHANGELOG.md) |
 | 문제 원인과 수정 근거 중심 기록 | [traces/fix-log.md](traces/fix-log.md) |
+| PDF 개선 판단 과정과 작업 추적 | [traces/260707_PDF_IMPROVEMENT_TRACKING.md](traces/260707_PDF_IMPROVEMENT_TRACKING.md) |
+| 2026-07-03 전체 현황 스냅샷 | [traces/260703_CURRENT_STATUS.md](traces/260703_CURRENT_STATUS.md) |
+| 2026-07-03 MVP 명세 스냅샷 | [traces/260703_PROJECT_SPEC.md](traces/260703_PROJECT_SPEC.md) |
+| 2026-07-03 API 계약 스냅샷 | [traces/260703_API_CONTRACT.md](traces/260703_API_CONTRACT.md) |
 
 ## 프론트 문서
 
@@ -53,14 +54,14 @@
 |---|---|
 | 화면설계서 | [frontend/SCREEN_DESIGN.md](frontend/SCREEN_DESIGN.md) |
 | 요구사항 추적표 | [frontend/REQUIREMENTS_TRACEABILITY.md](frontend/REQUIREMENTS_TRACEABILITY.md) |
-| 테스트 결과 보고서 | [frontend/TEST_REPORT_2026-07-06.md](frontend/TEST_REPORT_2026-07-06.md) |
-| 수정·개선 기록 | [frontend/FRONTEND_CHANGELOG_2026-07-06.md](frontend/FRONTEND_CHANGELOG_2026-07-06.md) |
+| 테스트 결과 보고서 | [frontend/260706_TEST_REPORT.md](frontend/260706_TEST_REPORT.md) |
+| 수정·개선 기록 | [frontend/260706_FRONTEND_CHANGELOG.md](frontend/260706_FRONTEND_CHANGELOG.md) |
 
 ## 문서 관리 원칙
 
-- 새로 합류한 팀원에게는 먼저 `docs/README.md`와 `current/VERSION1_INTEGRATION_HANDOFF_2026_07_06.md`를 안내합니다.
-- 공개 API 변경은 코드, [current/API_CONTRACT.md](current/API_CONTRACT.md), `fixture_examples/`를 함께 수정합니다.
-- 제품 범위나 아키텍처 결정은 [current/PROJECT_SPEC.md](current/PROJECT_SPEC.md)에 반영합니다.
+- 새로 합류한 팀원에게는 먼저 `docs/README.md`와 [current/VERSION1_CURRENT_ARCHITECTURE.md](current/VERSION1_CURRENT_ARCHITECTURE.md)를 안내합니다.
+- 공개 API 변경은 코드와 [current/260706_VERSION1_API_RESPONSE_CONTRACT.md](current/260706_VERSION1_API_RESPONSE_CONTRACT.md)를 함께 수정합니다.
+- 제품 범위나 아키텍처 결정은 [current/VERSION1_CURRENT_ARCHITECTURE.md](current/VERSION1_CURRENT_ARCHITECTURE.md)에 반영합니다.
 - 완료된 작업의 핵심 결과는 [traces/CHANGELOG.md](traces/CHANGELOG.md)에 기록합니다.
 - 세부 판단 과정은 `traces/`에 남기되, 현재 기준 문서와 섞지 않습니다.
 - 분석 보고서는 과거 설계 근거이므로 현재 운영 명세와 구분해서 사용합니다.

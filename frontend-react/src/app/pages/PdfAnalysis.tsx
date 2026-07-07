@@ -1,6 +1,6 @@
 // 역할: 모집공고 PDF 업로드 화면입니다.
 // 흐름: PdfAnalysis.tsx -> api.analyzePdf -> Django PDFAnalyzeAPIView -> FastAPI /api/pdf/analyze.
-// 추출된 원본 PDF는 저장하지 않고 combined_text만 전략 진단 입력으로 넘깁니다.
+// PDF 원본은 저장하지 않고, 사용자가 확인한 diagnosis_text와 PDF 메타데이터만 전략 진단으로 넘깁니다.
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator, SettingsList, WarningBox } from "../components/UI";
@@ -17,6 +17,11 @@ type PdfAnalysisResult = {
   table_count: number;
   truncated: boolean;
   preview: string;
+  raw_preview?: string;
+  summary_text?: string;
+  diagnosis_text?: string;
+  summary_source?: "llm" | "rule";
+  extracted_fields?: Record<string, unknown>;
   combined_text: string;
   warnings: string[];
 };
@@ -25,6 +30,7 @@ export function PdfAnalysis() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [result, setResult] = useState<PdfAnalysisResult | null>(null);
+  const [editableNoticeText, setEditableNoticeText] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -51,10 +57,12 @@ export function PdfAnalysis() {
     setElapsedSeconds(0);
     setError(null);
     setResult(null);
+    setEditableNoticeText("");
 
     try {
       const data = await api.analyzePdf(file);
       setResult(data);
+      setEditableNoticeText(data.diagnosis_text || data.summary_text || data.combined_text || "");
     } catch (error) {
       setError(error);
     } finally {
@@ -63,14 +71,18 @@ export function PdfAnalysis() {
   };
 
   const handleUseForStrategy = () => {
-    if (!result?.combined_text) return;
+    const announcementText = editableNoticeText.trim();
+    if (!result || !announcementText) return;
 
-    // PDF 원본이 아니라 추출된 진단용 텍스트만 StrategyRun 화면 state로 넘깁니다.
+    // PDF 원본이 아니라 사용자가 확인한 정리본만 StrategyRun 화면 state로 넘깁니다.
     navigate("/strategy", {
       state: {
-        announcementText: result.combined_text,
+        announcementText,
         sourceFilename: result.filename,
         inputMethod: "pdf",
+        pdfAnalysisId: result.pdf_analysis_id,
+        pdfSummaryText: result.summary_text,
+        pdfExtractedFields: result.extracted_fields,
       },
     });
   };
@@ -157,7 +169,13 @@ export function PdfAnalysis() {
               </div>
               <div className="py-3 flex justify-between border-b border-[#e5e5e7]">
                 <span className="text-[#6e6e73] text-[15px]">진단 입력 길이</span>
-                <span className="font-semibold text-[15px]">{result.combined_text_length.toLocaleString()}자</span>
+                <span className="font-semibold text-[15px]">{editableNoticeText.length.toLocaleString()}자</span>
+              </div>
+              <div className="py-3 flex justify-between border-b border-[#e5e5e7]">
+                <span className="text-[#6e6e73] text-[15px]">정리 방식</span>
+                <span className="font-semibold text-[15px]">
+                  {result.summary_source === "llm" ? "LLM 요약" : "규칙 기반 정리"}
+                </span>
               </div>
               <div className="py-3 flex justify-between">
                 <span className="text-[#6e6e73] text-[15px]">상태</span>
@@ -178,18 +196,31 @@ export function PdfAnalysis() {
             <Card className="mt-6 p-6">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-5 h-5 text-[#007aff]" />
-                <h4 className="font-semibold text-[17px]">미리보기</h4>
+                <h4 className="font-semibold text-[17px]">진단에 사용할 공고문 정리본</h4>
               </div>
-              <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap break-words bg-[#f5f5f7] rounded-[16px] p-4 text-[13px] leading-relaxed text-[#1d1d1f]">
-                {result.preview || "추출된 텍스트가 없습니다."}
-              </pre>
+              <textarea
+                className="w-full min-h-[360px] bg-[#f5f5f7] rounded-[16px] p-4 text-[13px] leading-relaxed text-[#1d1d1f] border border-transparent focus:outline-none focus:border-[#007aff]/50 focus:ring-2 focus:ring-[#007aff]/10 resize-y"
+                value={editableNoticeText}
+                onChange={(event) => setEditableNoticeText(event.target.value)}
+                placeholder="PDF에서 정리된 공고문 내용이 여기에 표시됩니다."
+              />
+              {result.raw_preview && (
+                <details className="mt-4 rounded-[14px] border border-[#e5e5e7] bg-white">
+                  <summary className="cursor-pointer px-4 py-3 text-[13px] font-semibold text-[#6e6e73]">
+                    원문 추출 일부 보기
+                  </summary>
+                  <pre className="max-h-[260px] overflow-auto whitespace-pre-wrap break-words px-4 pb-4 text-[12px] leading-relaxed text-[#6e6e73]">
+                    {result.raw_preview}
+                  </pre>
+                </details>
+              )}
             </Card>
 
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                 다른 파일 선택
               </Button>
-              <Button onClick={handleUseForStrategy} disabled={!result.combined_text}>
+              <Button onClick={handleUseForStrategy} disabled={!editableNoticeText.trim()}>
                 <span className="flex items-center gap-2">
                   전략 진단에 사용
                   <ArrowRight className="w-5 h-5" />

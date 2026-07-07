@@ -46,6 +46,11 @@ export type PdfAnalysisResponse = {
   table_count: number;
   truncated: boolean;
   preview: string;
+  raw_preview?: string;
+  summary_text?: string;
+  diagnosis_text?: string;
+  summary_source?: "llm" | "rule";
+  extracted_fields?: Record<string, unknown>;
   combined_text: string;
   warnings: string[];
 };
@@ -172,6 +177,8 @@ export const api = {
       input_method?: "manual" | "pdf" | null;
       source_filename?: string | null;
       pdf_analysis_id?: string | null;
+      pdf_summary_text?: string | null;
+      pdf_extracted_fields?: Record<string, unknown> | null;
     },
     signal?: AbortSignal,
   ) {

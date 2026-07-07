@@ -1,9 +1,10 @@
 # version-1 0706 통합 현황 및 팀원 전달 메모
 
-기준일: 2026-07-06
-기준 브랜치: `version-1-integrate-0706`
-대상 PR: `version-1` 병합 후보
-목적: jihun 백엔드 개선, dongyoon_v1 Django 개선, eunjin/frontend 프론트 개선을 한 통합 흐름으로 묶고, 팀원이 현재 구조와 확인 방법을 빠르게 파악하게 한다.
+기준일: 2026-07-07
+기준 브랜치: `final`
+현재 작업 브랜치: `integrate-eunjin-v2-0707`
+대상 PR: `final` 병합 후보
+목적: `version-1-integrate-0706`이 `final`에 병합된 이후, `eunjin/frontend-v2`의 추가 UI 개선을 API 계약 기준으로 선별 반영하고 팀원이 현재 구조와 확인 방법을 빠르게 파악하게 한다.
 
 ## 1. 현재 통합 기준
 
@@ -17,6 +18,8 @@ origin/version-1
       └─ version-1-api-contract 문서 기준 추가
           └─ dongyoon_v1 Django 로그인 throttle + Vite proxy 선반영
               └─ eunjin/frontend 프론트 개선 통합
+                  └─ version-1-integrate-0706 -> final 병합 완료
+                      └─ eunjin/frontend-v2 추가 UI 개선 선별 반영
 ```
 
 핵심 판단:
@@ -25,6 +28,8 @@ origin/version-1
 - dongyoon_v1은 Django 로그인 throttle/test와 Vite proxy만 먼저 반영했다.
 - eunjin/frontend는 UI/UX, AuthContext, mock 제거, MyPage, ChatbotPage, 결과 상세 개선을 통합했다.
 - `ResultDetail.tsx`는 충돌이 있었고, API 계약 기준으로 수동 해결했다.
+- 2026-07-07 기준 `version-1-integrate-0706`은 `final`에 PR #9로 병합되었다.
+- `eunjin/frontend-v2`는 `final`에 아직 포함되지 않은 1개 커밋이므로, 현재 작업 브랜치에서 해당 커밋만 cherry-pick했다.
 
 ## 2. 전체 서비스 흐름
 
@@ -128,7 +133,7 @@ React POST /api/chatbot
 
 ## 4. ResultDetail 통합 기준
 
-`ResultDetail.tsx`는 이번 통합의 핵심 충돌 파일이었다.
+`ResultDetail.tsx`는 이번 통합의 핵심 충돌 파일이며, 2026-07-07 `eunjin/frontend-v2` 반영 때도 가장 주의해서 검토한 파일이다.
 
 수동 해결 기준:
 
@@ -155,6 +160,8 @@ node5.agent_result
 - FastAPI 내부는 `missing_items`를 주로 사용한다.
 - Django 공개 응답 계약은 `missing_fields`를 사용한다.
 - 통합 과도기에는 React가 둘 다 읽도록 했다.
+- `eunjin/frontend-v2`에서 추가된 `announcementPresentation.ts`는 공고명, 공급 지역, 공급 유형, 면적, 분양가, 접수 기간 등을 화면용으로 정리한다.
+- 이 유틸은 `announcement_confirmed`와 `input_snapshot.announcement`를 함께 읽도록 되어 있어 Django 저장 응답과 PDF/수동 공고 입력 흐름을 모두 보존한다.
 
 ## 5. 현재 검증 결과
 
@@ -165,23 +172,28 @@ Django accounts + strategy tests: 26 passed
 FastAPI app import: OK
 React frontend tests: 7 passed
 React production build: OK
-ChromaDB collection count: []
+ChromaDB collection count: 6 collections verified
 ```
 
 ChromaDB 상태:
 
-- 현재 worktree의 ChromaDB collection은 비어 있다.
-- RAG/챗봇 실동작 확인 전 `build_all.py` 재실행이 필요하다.
+- 현재 로컬 worktree에서는 `build_all.py` 실행 후 6개 collection이 정상 생성됨을 확인했다.
+- 팀원 새 환경에서는 ChromaDB가 Git에 포함되지 않으므로 각자 최초 1회 재구축이 필요하다.
 
 ```cmd
 python -X utf8 Backend\src\preprocessing\build_all.py
 python -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
 ```
 
-기대 collection:
+현재 확인한 collection:
 
 ```text
-faq_chunks, guide_chunks, law_chunks, lh_guide_chunks, manual_chunks, web_faq_chunks
+faq_chunks: 480
+guide_chunks: 76
+law_chunks: 163
+lh_guide_chunks: 18
+manual_chunks: 144
+web_faq_chunks: 120
 ```
 
 ## 6. 현재 상황을 확인하는 방법
@@ -190,36 +202,36 @@ faq_chunks, guide_chunks, law_chunks, lh_guide_chunks, manual_chunks, web_faq_ch
 
 ```cmd
 git fetch origin
-git switch version-1-integrate-0706
+git switch final
+git pull origin final
 ```
 
 의존성 갱신:
 
 ```cmd
-pip install -r requirements.txt
-pip install -r django_backend/requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
 cd frontend-react
-pnpm.cmd install
+corepack pnpm install --frozen-lockfile
 ```
 
 검증:
 
 ```cmd
-python django_backend\manage.py check
-python django_backend\manage.py test accounts strategy
-python -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print('fastapi import ok')"
+.\.venv\Scripts\python.exe django_backend\manage.py check
+.\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print('fastapi import ok')"
 cd frontend-react
-pnpm.cmd test
-pnpm.cmd run build
+corepack pnpm test
+corepack pnpm run build
 ```
 
 로컬 실행:
 
 ```cmd
-python -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
-python django_backend\manage.py runserver 127.0.0.1:8000
+.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
+.\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8000
 cd frontend-react
-pnpm.cmd dev -- --host 127.0.0.1 --port 5173
+corepack pnpm dev -- --host 127.0.0.1 --port 5173
 ```
 
 프론트 API 설정:
@@ -298,16 +310,38 @@ React build: OK
 - MyPage에서 `/api/strategy/me` 응답이 비어 있거나 실패할 때 사용자 안내가 충분한지
 - 모바일 상단 탭과 챗봇 전용 화면이 실제 사용 흐름에서 자연스러운지
 
+### 2026-07-07 `eunjin/frontend-v2` 추가 반영
+
+`eunjin/frontend-v2`의 최신 1개 커밋(`8a05300`)을 `final` 기준 작업 브랜치 `integrate-eunjin-v2-0707`에 cherry-pick했다.
+
+추가 반영 내용:
+
+- 마이페이지 진단 기록 카드 제목을 공고명/아파트명 중심으로 표시
+- 결과 상세 화면 상단에 공고 기본 정보 카드 추가
+- 상세 확인 사항을 접고 펼칠 수 있는 UI로 정리
+- 공고명, 공급 지역, 공급 유형, 면적, 분양가, 접수 기간을 표시하기 위한 `announcementPresentation.ts` 추가
+- 챗봇의 "새로고침하면 사라집니다" 안내 문구 제거
+- "오피스텔, 임대주택, 토지 및 상가 청약은 추후 지원 예정" 문구로 범위 안내 완화
+
+검토 결과:
+
+- `ResultDetail.tsx`의 API 계약 fallback은 유지됨
+- `missing_fields + missing_items` 동시 대응 유지
+- `chance -> competitiveness -> status -> score` fallback 유지
+- `report.finance`, `report.strategy`, `node5.agent_result`, `warnings` 대응 유지
+- `announcement_confirmed`와 `input_snapshot.announcement`를 함께 읽어 PDF/수동 공고 흐름을 보존
+
 ## 9. PM/팀 공통 공유 요약
 
 ```text
-version-1-integrate-0706 브랜치에 0706 통합본을 올렸습니다.
+final 브랜치에 0706 통합본이 병합되었고, 0707 기준 eunjin/frontend-v2 추가 개선을 별도 작업 브랜치에서 검토했습니다.
 
 포함 내용:
 - jihun 백엔드 개선이 들어간 최신 version-1 기준 유지
 - dongyoon_v1 로그인 throttle/test + Vite proxy 반영
 - eunjin/frontend 프론트 개선 통합
 - ResultDetail.tsx는 FastAPI/Django API 계약 기준으로 수동 병합
+- eunjin/frontend-v2의 공고 표시/진단 기록/상세 확인사항 UI 개선 선별 반영
 
 검증:
 - Django check OK
@@ -315,7 +349,8 @@ version-1-integrate-0706 브랜치에 0706 통합본을 올렸습니다.
 - FastAPI import OK
 - React tests 7개 OK
 - React production build OK
+- ChromaDB 6개 collection 확인
 
 주의:
-ChromaDB collection은 현재 로컬 worktree에서 비어 있으므로 RAG/챗봇 실검증 전 build_all.py 재실행이 필요합니다.
+ChromaDB는 Git에 포함되지 않으므로 팀원 새 환경에서는 build_all.py를 각자 1회 실행해야 합니다.
 ```
