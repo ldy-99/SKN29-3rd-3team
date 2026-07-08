@@ -61,6 +61,7 @@ export function getAnnouncementPresentation(
   const inputAnnouncement = asRecord(inputSnapshot?.announcement) ?? {};
   const announcement = asRecord(strategy.announcement_confirmed) ?? {};
   const pdfFields = asRecord(inputAnnouncement.pdf_extracted_fields) ?? {};
+  const displayTitle = stringValue(inputAnnouncement.display_title);
   const sourceFilename = stringValue(inputAnnouncement.source_filename);
   const announcementText = stringValue(inputAnnouncement.announcement_text);
   const pdfSummaryText = stringValue(inputAnnouncement.pdf_summary_text);
@@ -72,6 +73,7 @@ export function getAnnouncementPresentation(
   const title = isProfileOnly
     ? "청약 가능성 분석"
     : firstDefined(
+        cleanAnnouncementTitle(displayTitle),
         cleanAnnouncementTitle(stringValue(pdfFields.announcement_name)),
         cleanAnnouncementTitle(stringValue(announcement.announcement_name)),
         cleanAnnouncementTitle(stringValue(inputAnnouncement.announcement_name)),
@@ -310,7 +312,7 @@ function cleanAnnouncementTitle(value?: string) {
 function isUnusableAnnouncementTitle(value: string) {
   if (!value || value.length < 2) return true;
   if (value.length > 60) return true;
-  return /금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택/.test(value);
+  return /금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택|아파트\s*청약\s*진단용|PDF\s*공고문\s*핵심\s*요약|공고명\s*[:：]?\s*확인\s*필요/i.test(value);
 }
 
 function formatRegion(value?: string) {

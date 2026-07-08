@@ -19,8 +19,84 @@ from strategy.serializers import (
 from strategy.adapters import ProfileAdapter
 from strategy.services import FastAPIClient
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def _build_announcement_display_title(
+    *,
+    profile_only=False,
+    announcement_name=None,
+    source_filename=None,
+    announcement_text=None,
+):
+    if profile_only:
+        return "청약 가능성 분석"
+
+    for value in [announcement_name, _extract_title_from_text(announcement_text), _clean_filename_title(source_filename)]:
+        title = _clean_display_title(value)
+        if title:
+            return title
+
+    return "아파트 분양 공고 진단"
+
+
+def _extract_title_from_text(text):
+    if not text:
+        return None
+
+    for line in str(text).replace("\r", "").split("\n")[:30]:
+        cleaned = _clean_display_title(line)
+        if cleaned:
+            return cleaned
+    return None
+
+
+def _clean_filename_title(filename):
+    if not filename:
+        return None
+    cleaned = re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", str(filename), flags=re.I)
+    cleaned = cleaned.replace("_", " ").replace("-", " ")
+    return re.sub(r"^(공고문|입주자\s*모집공고)\s*", "", cleaned, flags=re.I)
+
+
+def _clean_display_title(value):
+    if not value:
+        return None
+
+    cleaned = re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", str(value), flags=re.I)
+    cleaned = re.sub(r"^[\s■●ㆍ\-•]+", "", cleaned)
+    cleaned = cleaned.replace("_", " ").replace("-", " ")
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    cutoff_patterns = [
+        r"\s*입주자\s*모집공고.*$",
+        r"\s*입주자모집공고.*$",
+        r"\s*분양\s*공고.*$",
+        r"\s*모집공고문.*$",
+        r"\s*선착순.*$",
+        r"\s*잔여\s*세대.*$",
+        r"\s*잔여세대.*$",
+        r"\s*일반\s*매각.*$",
+        r"\s*일반매각.*$",
+        r"\s*미분양\s*매입.*$",
+        r"\s*미분양매입.*$",
+        r"\s*공고문.*$",
+    ]
+    for pattern in cutoff_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.I).strip()
+
+    if len(cleaned) < 2 or len(cleaned) > 60:
+        return None
+    if re.search(
+        r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택|아파트\s*청약\s*진단용|PDF\s*공고문\s*핵심\s*요약|공고명\s*[:：]?\s*확인\s*필요",
+        cleaned,
+        flags=re.I,
+    ):
+        return None
+
+    return cleaned
 
 class StrategyRunAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -60,6 +136,14 @@ class StrategyRunAPIView(APIView):
 
         announcement_data = req_serializer.validated_data.get('announcement')
         top_level_announcement_text = req_serializer.validated_data.get('announcement_text')
+        profile_only = req_serializer.validated_data.get('profile_only', False)
+        source_filename = req_serializer.validated_data.get('source_filename')
+        pdf_extracted_fields = req_serializer.validated_data.get('pdf_extracted_fields')
+        pdf_announcement_name = (
+            pdf_extracted_fields.get('announcement_name')
+            if isinstance(pdf_extracted_fields, dict)
+            else None
+        )
         announcement_instance = None
         if announcement_data:
             announcement_serializer = AnnouncementInputSerializer(data=announcement_data)
@@ -74,17 +158,32 @@ class StrategyRunAPIView(APIView):
 
         # 5. 입력값 스냅샷 딕셔너리 생성
         # PDF 원본은 저장하지 않고, 사용자가 확인한 정리본과 요약/구조화 메타데이터만 이력에 남깁니다.
-        input_snapshot = {
-            "profile": profile_serializer.data,
-            "announcement": AnnouncementInputSerializer(announcement_instance).data if announcement_instance else {
+        if announcement_instance:
+            announcement_snapshot = dict(AnnouncementInputSerializer(announcement_instance).data)
+            announcement_snapshot["display_title"] = _build_announcement_display_title(
+                announcement_name=announcement_snapshot.get("announcement_name"),
+                announcement_text=announcement_snapshot.get("announcement_text"),
+            )
+        else:
+            announcement_snapshot = {
                 "announcement_text": top_level_announcement_text,
+                "display_title": _build_announcement_display_title(
+                    profile_only=profile_only,
+                    announcement_name=pdf_announcement_name,
+                    source_filename=source_filename,
+                    announcement_text=top_level_announcement_text,
+                ),
                 "pdf_analysis_id": req_serializer.validated_data.get('pdf_analysis_id'),
                 "input_method": req_serializer.validated_data.get('input_method') or ("manual" if top_level_announcement_text else None),
-                "source_filename": req_serializer.validated_data.get('source_filename'),
+                "source_filename": source_filename,
                 "pdf_summary_text": req_serializer.validated_data.get('pdf_summary_text'),
-                "pdf_extracted_fields": req_serializer.validated_data.get('pdf_extracted_fields'),
-                "profile_only": req_serializer.validated_data.get('profile_only', False),
+                "pdf_extracted_fields": pdf_extracted_fields,
+                "profile_only": profile_only,
             }
+
+        input_snapshot = {
+            "profile": profile_serializer.data,
+            "announcement": announcement_snapshot,
         }
         strategy_run.input_snapshot = input_snapshot
         strategy_run.save()
