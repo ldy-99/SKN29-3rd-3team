@@ -56,7 +56,9 @@ def _extract_title_from_text(text):
 def _clean_filename_title(filename):
     if not filename:
         return None
-    return re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", str(filename), flags=re.I)
+    cleaned = re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", str(filename), flags=re.I)
+    cleaned = cleaned.replace("_", " ").replace("-", " ")
+    return re.sub(r"^(공고문|입주자\s*모집공고)\s*", "", cleaned, flags=re.I)
 
 
 def _clean_display_title(value):
@@ -87,7 +89,11 @@ def _clean_display_title(value):
 
     if len(cleaned) < 2 or len(cleaned) > 60:
         return None
-    if re.search(r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택", cleaned):
+    if re.search(
+        r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택|아파트\s*청약\s*진단용|PDF\s*공고문\s*핵심\s*요약|공고명\s*[:：]?\s*확인\s*필요",
+        cleaned,
+        flags=re.I,
+    ):
         return None
 
     return cleaned

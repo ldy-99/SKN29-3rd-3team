@@ -7,6 +7,7 @@ from django.core.cache import cache
 from accounts.models import Profile
 from strategy.models import StrategyRun
 from strategy.services import FastAPIClient
+from strategy.views import _build_announcement_display_title
 
 User = get_user_model()
 
@@ -162,6 +163,17 @@ class StrategyAPITests(APITestCase):
             announcement["pdf_extracted_fields"]["price_summary"]["max_krw"],
             1707000000,
         )
+
+    def test_pdf_display_title_ignores_diagnosis_helper_heading(self):
+        """
+        PDF 진단용 정리 헤더가 공고 제목으로 저장되지 않고 파일명 후보로 fallback되는지 검증
+        """
+        title = _build_announcement_display_title(
+            source_filename="공고문_영천해피포유미분양매입잔여세대선착순일반매각공고.pdf",
+            announcement_text="[아파트 청약 진단용 공고문 정리]\n- 공고명: 확인 필요",
+        )
+
+        self.assertEqual(title, "영천해피포유")
 
     def test_strategy_list_and_detail(self):
         """

@@ -312,7 +312,7 @@ function cleanAnnouncementTitle(value?: string) {
 function isUnusableAnnouncementTitle(value: string) {
   if (!value || value.length < 2) return true;
   if (value.length > 60) return true;
-  return /금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택/.test(value);
+  return /금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택|아파트\s*청약\s*진단용|PDF\s*공고문\s*핵심\s*요약|공고명\s*[:：]?\s*확인\s*필요/i.test(value);
 }
 
 function formatRegion(value?: string) {
