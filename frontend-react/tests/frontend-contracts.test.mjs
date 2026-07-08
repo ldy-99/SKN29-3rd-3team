@@ -40,6 +40,11 @@ test("profile form exposes dependent fields from base values", () => {
   assert.match(source, /\{showMarriageDetails && \(/);
   assert.match(source, /\{showChildDetails && \(/);
   assert.match(source, /next\.marriage_period_years = null/);
+  assert.match(source, /예치금 \(만원\)/);
+  assert.match(source, /만원 단위로 입력하면 원 단위로 저장됩니다/);
+  assert.match(source, /Math\.round\(value \/ 10000\)/);
+  assert.match(source, /Number\(tenThousandWon\) \* 10000/);
+  assert.match(source, /aria-label="만원 단위 금액"/);
 });
 
 test("API errors are presented with user-facing field details", () => {
@@ -82,9 +87,10 @@ test("my page groups announcement reports into cards with a history dialog", () 
   assert.match(source, /ReportCarousel/);
   assert.match(source, /CarouselItemCard/);
   assert.match(source, /AnnouncementCarouselCard/);
-  assert.match(source, /ProfileOnlySection/);
+  assert.match(source, /ProfileSummaryBar/);
   assert.match(source, /buildProfileSnapshotKey/);
   assert.match(source, /buildProfileTags/);
+  assert.match(source, /buildProfileChangeBadges/);
   assert.match(source, /AfitCardBack/);
   assert.match(source, /HistoryDialog/);
   assert.match(source, /History/);
@@ -115,14 +121,21 @@ test("my page groups announcement reports into cards with a history dialog", () 
   assert.match(source, /overflow-y-auto/);
   assert.match(source, /formatCompactLocation/);
   assert.match(source, /같은 공고문으로 생성된 분석 내역을 최근순으로 정리했습니다/);
-  assert.match(source, /기본 조건 분석/);
-  assert.match(source, /최근 분석 \{formatDateTime\(group\.latestCreatedAt\)\}/);
+  assert.match(source, /기본 정보 진단/);
+  assert.match(source, /tags\.slice\(0, 4\)/);
+  assert.match(source, /latestProfileOnlyGroup \? formatDateOnly\(latestProfileOnlyGroup\.latestCreatedAt\) : "현재 기준"/);
   assert.match(source, /결과 보기/);
+  assert.match(source, /분석 실행/);
+  assert.match(source, /공고 기반 분석은 아파트명 단위로 묶어 확인합니다/);
+  assert.match(source, /공고 기반 분석 기록이 없습니다/);
+  assert.match(source, /조건 변경/);
+  assert.match(source, /변경: \{change\}/);
   assert.doesNotMatch(source, /Basic Report/);
+  assert.doesNotMatch(source, /function ProfileOnlySection/);
   assert.match(source, /role="dialog"/);
   assert.doesNotMatch(source, /overflow-x-auto/);
   assert.doesNotMatch(source, /snap-x/);
-  assert.doesNotMatch(source, /PDF 공고/);
+  assert.doesNotMatch(source, /PDF 공고 기반/);
 });
 
 test("long-running work has duplicate-request guards, loading UI, and timeout handling", () => {
@@ -130,6 +143,7 @@ test("long-running work has duplicate-request guards, loading UI, and timeout ha
   const pdf = readSource("pages/PdfAnalysis.tsx");
   const ui = readSource("components/UI.tsx");
   const announcementPresentation = readSource("utils/announcementPresentation.ts");
+  const resultDetail = readSource("pages/ResultDetail.tsx");
 
   assert.match(strategy, /if \(isBusy\) return/);
   assert.match(strategy, /new AbortController\(\)/);
@@ -157,4 +171,9 @@ test("long-running work has duplicate-request guards, loading UI, and timeout ha
   assert.match(pdf, /isUploading/);
   assert.match(pdf, /ProcessingIndicator/);
   assert.match(ui, /animate-spin/);
+  assert.match(resultDetail, /PDF로 저장/);
+  assert.match(resultDetail, /window\.print\(\)/);
+  assert.match(resultDetail, /이용 안내 및 면책 조항/);
+  assert.match(resultDetail, /참고용 진단/);
+  assert.match(resultDetail, /no-print/);
 });

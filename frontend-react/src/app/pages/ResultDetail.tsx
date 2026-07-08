@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Card, PageTitle, StatusBadge, WarningBox, Button, ErrorNotice, SettingsList } from "../components/UI";
 import { api } from "../api/client";
-import { CheckCircle2, ChevronDown, FileText, Info } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, FileText, Info } from "lucide-react";
 import { getAnnouncementPresentation } from "../utils/announcementPresentation";
 
 type UnknownRecord = Record<string, unknown>;
@@ -33,10 +33,22 @@ export function ResultDetail() {
   }, [id]);
 
   const viewModel = useMemo(() => buildResultViewModel(result), [result]);
+  const handleDownloadPdf = () => {
+    window.print();
+  };
 
   return (
     <div className="pb-20">
-      <div className="flex items-center gap-2 mb-6">
+      <style>
+        {`
+          @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+          }
+        `}
+      </style>
+
+      <div className="no-print flex items-center gap-2 mb-6">
         <button
           className="text-[14px] text-[#6e6e73] hover:text-[#1d1d1f] flex items-center gap-1 transition-colors"
           onClick={() => navigate("/mypage")}
@@ -48,6 +60,12 @@ export function ResultDetail() {
       <PageTitle
         title={viewModel.title}
         description={`${viewModel.createdAt} 기준 · 아파트 분양 청약 진단 결과`}
+        action={
+          <Button variant="outline" className="gap-2" onClick={handleDownloadPdf}>
+            <Download className="h-4 w-4" />
+            PDF로 저장
+          </Button>
+        }
       />
 
       <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2 rounded-[16px] border border-[#e4d8c5] bg-[#fffaf1] px-5 py-4 text-[13px] text-[#6f5737]">
@@ -208,7 +226,12 @@ export function ResultDetail() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <WarningBox type="info" title="이용 안내 및 면책 조항">
+        본 리포트는 입력한 프로필과 공고 정보를 바탕으로 정리한 참고용 진단입니다.
+        실제 청약 가능 여부와 최종 자격은 반드시 해당 입주자모집공고문, 청약홈, 사업주체 또는 관계 기관의 공식 안내로 확인해주세요.
+      </WarningBox>
+
+      <div className="no-print flex flex-col sm:flex-row gap-3">
         <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
           프로필 보완하기
         </Button>

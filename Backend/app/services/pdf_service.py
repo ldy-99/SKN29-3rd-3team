@@ -24,10 +24,10 @@ MAX_PREVIEW_CHARS = 2_000
 MAX_RAW_TEXT_CHARS_FOR_SUMMARY = 35_000
 MAX_RULE_SUMMARY_CHARS = 8_000
 MAX_LLM_INPUT_CHARS = 12_000
-MAX_PAGES_TO_SCAN = 40
-MAX_TABLE_PAGES_TO_SCAN = 15
-MAX_TABLES_FOR_DIAGNOSIS = 18
-MAX_TABLE_ROWS_FOR_DIAGNOSIS = 220
+MAX_PAGES_TO_SCAN = 16
+MAX_TABLE_PAGES_TO_SCAN = 8
+MAX_TABLES_FOR_DIAGNOSIS = 10
+MAX_TABLE_ROWS_FOR_DIAGNOSIS = 160
 
 
 @dataclass
@@ -186,20 +186,25 @@ def _clean_text(text: str) -> str:
 def _extract_notice_fields(file_name: str, text: str) -> dict[str, Any]:
     # LLM 요약 전에 규칙 기반 핵심값을 먼저 확보해 숫자/일정 누락을 줄입니다.
     title = _extract_title(file_name, text)
+    notice_kind = _detect_notice_kind(file_name, text, title)
     schedule = _extract_schedule(text)
     price_summary = _extract_price_summary(text)
+    rent_summary = _extract_rent_summary(text)
     housing_types = _extract_housing_types(text)
     supply_counts = _extract_supply_counts(text)
 
     return {
         "announcement_name": title,
-        "location": _find_labeled_value(text, ["공급 위치", "공급위치", "건설 위치", "건설위치", "위치"]),
-        "housing_category": _detect_housing_category(text),
+        "location": _extract_location(text) or _extract_region_from_title(title),
+        "notice_kind": notice_kind,
+        "support_note": _build_support_note(notice_kind),
+        "housing_category": _detect_housing_category(text, notice_kind),
         "regulated_area": _detect_regulated_area(text),
         "announcement_date": _find_announcement_date(text),
         "supply_summary": supply_counts,
         "housing_types": housing_types,
         "price_summary": price_summary,
+        "rent_summary": rent_summary,
         "schedule": schedule,
         "residence_requirement": _extract_residence_requirement(text),
         "rewinning_restriction": _extract_restriction(text, ["재당첨제한", "재당첨 제한"]),
@@ -221,6 +226,7 @@ def _build_user_notice_summary(fields: dict[str, Any]) -> str:
         chunks.append(str(fields["location"]))
 
     tags = [
+        fields.get("notice_kind"),
         fields.get("housing_category"),
         fields.get("regulated_area"),
     ]
@@ -229,6 +235,8 @@ def _build_user_notice_summary(fields: dict[str, Any]) -> str:
         chunks.append(tag_line)
     if fields.get("announcement_date"):
         chunks.append(f"모집공고일 {fields['announcement_date']}")
+    if fields.get("support_note"):
+        chunks.append(str(fields["support_note"]))
 
     supply_line = _format_supply_summary(supply)
     if supply_line:
@@ -239,6 +247,9 @@ def _build_user_notice_summary(fields: dict[str, Any]) -> str:
         chunks.append(
             f"공급금액: 약 {_format_eok(price['min_krw'])}~{_format_eok(price['max_krw'])}"
         )
+    rent_line = _format_rent_summary(fields.get("rent_summary") or {})
+    if rent_line:
+        chunks.append(f"임대조건: {rent_line}")
 
     schedule_lines = _format_schedule_lines(schedule)
     if schedule_lines:
@@ -270,6 +281,7 @@ def _build_diagnosis_notice_text(fields: dict[str, Any]) -> str:
     items = [
         ("공고명", fields.get("announcement_name")),
         ("공급위치", fields.get("location")),
+        ("공고유형", fields.get("notice_kind")),
         ("주택유형", fields.get("housing_category")),
         ("규제지역", fields.get("regulated_area")),
         ("입주자모집공고일", fields.get("announcement_date")),
@@ -281,11 +293,14 @@ def _build_diagnosis_notice_text(fields: dict[str, Any]) -> str:
             if price.get("min_krw") and price.get("max_krw")
             else None,
         ),
+        ("임대조건", _format_rent_summary(fields.get("rent_summary") or {})),
         ("거주요건", fields.get("residence_requirement")),
         ("재당첨제한", fields.get("rewinning_restriction")),
         ("전매제한", fields.get("resale_restriction")),
         ("거주의무", fields.get("residence_obligation")),
     ]
+    if fields.get("support_note"):
+        items.insert(3, ("지원범위", fields.get("support_note")))
     for label, value in items:
         chunks.append(f"- {label}: {value or '확인 필요'}")
 
@@ -339,6 +354,10 @@ def _summarize_notice_with_llm(user_summary: str, diagnosis_text: str, raw_text:
 
 
 def _extract_title(file_name: str, text: str) -> str:
+    file_title = _clean_title(file_name)
+    if file_title and re.search(r"(국민임대|영구임대|행복주택|통합공공임대)", file_title):
+        return file_title
+
     for label in ["공고명", "단지명", "아파트명", "주택명", "사업명"]:
         value = _find_labeled_value(text, [label])
         cleaned = _clean_title(value) if value else ""
@@ -351,6 +370,10 @@ def _extract_title(file_name: str, text: str) -> str:
         if line.strip()
     ][:80]
     for line in lines:
+        if len(line) <= 140 and re.search(r"(입주자\s*모집|예비입주자\s*모집|입주자모집공고)", line):
+            cleaned = _clean_title(line)
+            if cleaned:
+                return cleaned
         if len(line) <= 120 and re.search(r"(아파트|자이|힐스테이트|푸르지오|래미안|아이파크|롯데캐슬|더샵|e편한세상).*(모집공고|분양)", line):
             cleaned = _clean_title(line)
             if cleaned:
@@ -365,27 +388,37 @@ def _extract_title(file_name: str, text: str) -> str:
 
 def _clean_title(value: str) -> str:
     cleaned = re.sub(r"\.(pdf|hwp|hwpx|docx?)$", "", value, flags=re.I)
+    cleaned = re.sub(r"^\{?공고문(?:\(PDF\))?\}?\s*", "", cleaned, flags=re.I)
     cleaned = re.sub(r"^[\s■●ㆍ\-•]+", "", cleaned)
     cleaned = cleaned.replace("_", " ").replace("-", " ")
-    cleaned = re.sub(r"\s*(?:입주자\s*모집공고|분양\s*공고|모집공고문|공고문)\s*$", "", cleaned, flags=re.I)
-    cleaned = re.sub(r"\s*(?:미분양|매입|잔여세대|선착순|일반매각|일반분양|임대주택).*$", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"([가-힣]+(?:시|군|구))지역", r"\1 지역 ", cleaned)
+    cleaned = re.sub(r"\s*(?:예비입주자\s*모집공고문|예비입주자\s*모집|예비입주자|입주자\s*모집공고|입주자모집공고|분양\s*공고|모집공고문|공고문)\s*$", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*(?:미분양매입|미분양|매입|잔여세대|선착순|일반매각|일반분양).*$", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*및\s*신청문의\s*안내.*$", "", cleaned, flags=re.I)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if _is_unusable_title(cleaned):
         return ""
     return cleaned
 
 
+def _extract_region_from_title(title: str) -> str | None:
+    match = re.search(r"([가-힣]+(?:시|군|구)\s*지역)", title)
+    if match:
+        return re.sub(r"\s+", " ", match.group(1)).strip()
+    return None
+
+
 def _is_unusable_title(value: str) -> bool:
     if len(value) < 2 or len(value) > 60:
         return True
-    return bool(re.search(r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택", value))
+    return bool(re.search(r"금회|정부의|방안|마련|협조|따라|우리\s*공사|공급하는\s*주택|관할\s*사무소|신청문의", value))
 
 
 def _find_labeled_value(text: str, labels: list[str]) -> str | None:
     escaped_labels = [re.escape(label) for label in labels]
     label_pattern = "|".join(escaped_labels)
     patterns = [
-        rf"(?:^|\n)\s*[■●ㆍ\-•]?\s*(?:{label_pattern})\s*[:：]\s*([^\n]+)",
+        rf"(?:^|\n)\s*[■●ㆍ\-•❚▪※○▶□]?\s*(?:{label_pattern})\s*[:：]\s*([^\n]+)",
         rf"(?:{label_pattern})\s*[|]\s*([^|\n]+)",
     ]
     for pattern in patterns:
@@ -397,23 +430,60 @@ def _find_labeled_value(text: str, labels: list[str]) -> str | None:
     return None
 
 
-def _detect_housing_category(text: str) -> str | None:
-    if re.search(r"(민영|민간택지|민간분양)", text):
+def _detect_notice_kind(file_name: str, text: str, title: str = "") -> str | None:
+    title_scope = re.sub(r"\s+", "", f"{file_name}\n{title}")
+    early_scope = text[:4_000]
+    if re.search(r"국민임대|영구임대|행복주택|통합공공임대", title_scope):
+        return "국민임대주택"
+    if re.search(r"(국민임대|영구임대|행복주택|통합공공임대).{0,40}예비입주자", early_scope, flags=re.S):
+        return "국민임대주택"
+    if re.search(r"분양전환공공임대|6년분양전환", title_scope):
+        return "분양전환공공임대주택"
+    if re.search(r"(?:공급대상|공급규모).{0,100}(?:분양전환\s*공공임대|분양전환공공임대|6년\s*분양전환)", early_scope, flags=re.S):
+        return "분양전환공공임대주택"
+    if re.search(r"선착순|일반매각|잔여세대|미분양매입|공가세대", title_scope):
+        return "미분양 매각/선착순 공급"
+    if re.search(r"선착순|일반매각|잔여세대|미분양\s*매입|공가세대", early_scope):
+        return "미분양 매각/선착순 공급"
+    if re.search(r"공공분양|국민주택", early_scope):
+        return "공공분양"
+    if re.search(r"민영|민간택지|민간분양", early_scope):
+        return "민영분양"
+    return None
+
+
+def _build_support_note(notice_kind: str | None) -> str | None:
+    if notice_kind in ["국민임대주택", "분양전환공공임대주택"]:
+        return "임대주택 계열 공고로 현재 서비스의 아파트 분양 청약 진단 범위 밖입니다."
+    if notice_kind == "미분양 매각/선착순 공급":
+        return "일반 청약 접수가 아닌 매각/선착순 공급 공고입니다."
+    return None
+
+
+def _detect_housing_category(text: str, notice_kind: str | None = None) -> str | None:
+    if notice_kind in ["국민임대주택", "분양전환공공임대주택"]:
+        return "공공임대주택"
+    if notice_kind == "민영분양":
         return "민영주택"
-    if re.search(r"(공공분양|국민주택|LH|SH)", text):
+    if re.search(r"(공공분양|국민주택|LH|SH|공공주택)", text[:12_000]):
         return "공공주택"
+    if re.search(r"(민영|민간택지|민간분양)", text[:5_000]):
+        return "민영주택"
     return None
 
 
 def _detect_regulated_area(text: str) -> str | None:
+    first_page_like = text[:8_000]
+    if re.search(r"규제지역여부.{0,120}비규제지역", first_page_like, flags=re.S):
+        return "비규제지역"
     labels: list[str] = []
-    if "투기과열지구" in text:
+    if "투기과열지구" in first_page_like:
         labels.append("투기과열지구")
-    if "청약과열지역" in text:
+    if "청약과열지역" in first_page_like:
         labels.append("청약과열지역")
-    if "조정대상지역" in text:
+    if "조정대상지역" in first_page_like:
         labels.append("조정대상지역")
-    if "비규제" in text and not labels:
+    if "비규제" in first_page_like and not labels:
         return "비규제지역"
     return ", ".join(dict.fromkeys(labels)) if labels else None
 
@@ -424,48 +494,105 @@ def _find_announcement_date(text: str) -> str | None:
         date = _find_date(value)
         if date:
             return date
+    bracket_match = re.search(
+        r"(?:입주자\s*모집공고일|입주자모집공고일|모집공고일)\s*(?:은|은\s*)?\s*[\[\(‘']?\s*([0-9]{2,4}[.년]\s*[0-9]{1,2}[.월]\s*[0-9]{1,2})",
+        text,
+    )
+    if bracket_match:
+        return _find_date(bracket_match.group(1))
     match = re.search(r"최초\s*입주자모집공고일은\s*([0-9]{4}[.년]\s*[0-9]{1,2}[.월]\s*[0-9]{1,2})", text)
     if match:
         return _find_date(match.group(1))
     return None
 
 
+def _extract_location(text: str) -> str | None:
+    value = _find_labeled_value(text, ["공급 위치", "공급위치", "건설 위치", "건설위치", "단지 위치", "단 지 위 치", "주소"])
+    if value:
+        return _clean_location(value)
+
+    province_pattern = (
+        r"(?:서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|"
+        r"경기도|강원특별자치도|충청북도|충청남도|전북특별자치도|전라남도|경상북도|경상남도|제주특별자치도|"
+        r"서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)"
+    )
+    address_patterns = [
+        rf"({province_pattern}[^\n]{{0,90}}?(?:일원|번지|길\s*\d+|로\s*\d+)(?:\s*\([^)]{{1,40}}\))?)",
+        rf"({province_pattern}[^\n]{{0,70}}?(?:동\s*\d+|면\s*[가-힣0-9]+)(?:\s*\([^)]{{1,40}}\))?)",
+    ]
+    for pattern in address_patterns:
+        for match in re.finditer(pattern, text):
+            candidate = _clean_location(match.group(1))
+            if candidate and not re.search(r"콜센터|문의|사무소|본부|전시관", candidate):
+                return candidate
+    return None
+
+
+def _clean_location(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value).strip(" -|")
+    cleaned = re.sub(r"\s*(?:공급대상|공급규모|건설호수|최초입주).*$", "", cleaned).strip()
+    return cleaned[:160]
+
+
 def _extract_schedule(text: str) -> dict[str, str]:
     schedule: dict[str, str] = {}
     normalized = text.replace("‘", "'").replace("’", "'").replace("`", "'")
+    date_pattern = r"[0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2}"
 
     patterns = {
-        "special_supply": [r"특별공급\s*(?:접수일)?\s*[:：]?\s*'?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2})"],
-        "first_priority": [r"1순위\s*(?:접수일)?\s*[:：]?\s*'?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2})"],
-        "second_priority": [r"2순위\s*(?:접수일)?\s*[:：]?\s*'?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2})"],
-        "winner_announcement": [r"당첨자\s*발표(?:일)?\s*[:：]?\s*'?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2})"],
+        "special_supply": [rf"특별공급\s*(?:접수일)?\s*[:：]?\s*'?({date_pattern})"],
+        "first_priority": [rf"1순위\s*(?:접수일)?\s*[:：]?\s*'?({date_pattern})"],
+        "second_priority": [rf"2순위\s*(?:접수일)?\s*[:：]?\s*'?({date_pattern})"],
+        "winner_announcement": [rf"당첨자\s*발표(?:일)?\s*[:：]?\s*'?({date_pattern})"],
     }
 
     # 청약홈 PDF의 첫 일정표는 한 줄에 날짜가 순서대로 붙는 경우가 많다.
-    schedule_line = next(
+    lines = normalized.splitlines()
+    schedule_line_index = next(
         (
-            line
-            for line in normalized.splitlines()
-            if "일정" in line and "특별공급" not in line and len(re.findall(r"[0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2}", line)) >= 5
+            index
+            for index, line in enumerate(lines)
+            if "일정" in line and "특별공급" not in line and len(re.findall(date_pattern, line)) >= 5
         ),
         None,
     )
+    schedule_line = lines[schedule_line_index] if schedule_line_index is not None else None
     if schedule_line:
-        dates = [_normalize_date(date) for date in re.findall(r"[0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2}", schedule_line)]
-        keys = [
-            "announcement_date",
-            "special_supply",
-            "first_priority_local",
-            "first_priority_other",
-            "second_priority",
-            "winner_announcement",
-        ]
-        for key, date in zip(keys, dates):
-            schedule[key] = date
+        dates = [_normalize_date(date) for date in re.findall(date_pattern, schedule_line)]
+        has_split_first_priority = "해당지역" in schedule_line or "기타지역" in schedule_line
+        if dates:
+            schedule["announcement_date"] = dates[0]
+        if len(dates) >= 2:
+            schedule["special_supply"] = dates[1]
+        if (has_split_first_priority or len(dates) >= 10) and len(dates) >= 6:
+            keys = ["first_priority_local", "first_priority_other", "second_priority", "winner_announcement"]
+            for key, date in zip(keys, dates[2:6]):
+                schedule[key] = date
+        elif len(dates) >= 5:
+            schedule["first_priority"] = dates[2]
+            schedule["second_priority"] = dates[3]
+            schedule["winner_announcement"] = dates[4]
         if len(dates) >= 8:
             schedule["document_submission"] = f"{dates[6]} ~ {dates[7]}"
         if len(dates) >= 10:
             schedule["contract_period"] = f"{dates[8]} ~ {dates[9]}"
+        if len(dates) == 5 and schedule_line_index is not None:
+            previous_dates = (
+                [_normalize_date(date) for date in re.findall(date_pattern, lines[schedule_line_index - 1])]
+                if schedule_line_index > 0
+                else []
+            )
+            next_dates = (
+                [_normalize_date(date) for date in re.findall(date_pattern, lines[schedule_line_index + 1])]
+                if schedule_line_index + 1 < len(lines)
+                else []
+            )
+            if len(previous_dates) >= 2 and len(next_dates) >= 2:
+                schedule["document_submission"] = f"{previous_dates[0]} ~ {next_dates[0]}"
+                schedule["contract_period"] = f"{previous_dates[1]} ~ {next_dates[1]}"
+            elif len(next_dates) >= 4:
+                schedule["document_submission"] = f"{next_dates[0]} ~ {next_dates[1]}"
+                schedule["contract_period"] = f"{next_dates[2]} ~ {next_dates[3]}"
 
     for key, key_patterns in patterns.items():
         if key in schedule:
@@ -477,7 +604,7 @@ def _extract_schedule(text: str) -> dict[str, str]:
                 break
 
     contract_match = re.search(
-        r"계약체결.*?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2}).{0,20}?~\s*'?([0-9]{2,4}[.][0-9]{1,2}[.][0-9]{1,2})",
+        rf"계약체결.*?({date_pattern}).{{0,20}}?~\s*'?({date_pattern})",
         normalized,
         flags=re.S,
     )
@@ -489,14 +616,20 @@ def _extract_schedule(text: str) -> dict[str, str]:
 
 def _extract_supply_counts(text: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
-    supply_line = _find_labeled_value(text, ["공급규모", "공급 규모"])
+    supply_line = _find_labeled_value(text, ["공급규모", "공급 규모", "공급대상", "공급 대상"])
     if supply_line:
         result["text"] = supply_line
+        line_counts = [_parse_int(value) for value in re.findall(r"([0-9,]+)\s*세대", supply_line)]
+        line_counts = [value for value in line_counts if value]
+        if line_counts:
+            result["total_households"] = max(line_counts)
 
     total_match = re.search(r"총\s*([0-9,]+)\s*세대", text)
     general_match = re.search(r"일반분양\s*([0-9,]+)\s*세대", text)
+    if not general_match:
+        general_match = re.search(r"일반공급\s*([0-9,]+)\s*세대", text)
     special_match = re.search(r"특별공급\s*([0-9,]+)\s*세대", text)
-    if total_match:
+    if total_match and not result.get("total_households"):
         result["total_households"] = _parse_int(total_match.group(1))
     if general_match:
         result["general_supply_households"] = _parse_int(general_match.group(1))
@@ -512,7 +645,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
     for line in text.splitlines():
         line = re.sub(r"\s+", " ", line).strip()
         match = re.search(
-            r"(?:^|\s)(\d{1,2})\s+([0-9]{3}[.][0-9]{4}[A-Z]?)\s+([0-9]{2}[A-Z]?)\s+([0-9]{2}[.][0-9]{4})\s+.*?\s([0-9,]+)\s+(?:\d+|-)",
+            r"(?:^|\s)(\d{1,2})\s+([0-9]{3}[.][0-9]{4}[A-Z]?)\s+([0-9]{2,3}[A-Z]?)\s+([0-9]{2,3}[.][0-9]{4})\s+.*?\s([0-9,]+)\s+(?:\d+|-)",
             line,
         )
         if not match:
@@ -533,6 +666,77 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
     if housing_types:
         return housing_types
 
+    for line in text.splitlines():
+        if "전용면적" not in line or "세대" not in line:
+            continue
+        for area, count in re.findall(r"([0-9]{2,3})\s*㎡(?!\s*이하)\s*([0-9,]+)\s*세대", line):
+            short_type = area.lstrip("0") or area
+            if short_type not in seen:
+                housing_types.append({
+                    "type": short_type,
+                    "exclusive_area_sqm": float(short_type),
+                    "supply_household_count": _parse_int(count),
+                })
+                seen.add(short_type)
+
+    for full_type, short_type in re.findall(r"([0-9]{3}[.][0-9]{4}[A-Z]?)\s+([0-9]{2,3}[A-Z][0-9]?)\s+", text):
+        base_type = re.match(r"[0-9]{2,3}", short_type)
+        if base_type and base_type.group(0) in seen:
+            continue
+        if short_type not in seen:
+            housing_types.append({"type": short_type, "full_type": full_type})
+            seen.add(short_type)
+
+    for match in re.finditer(r"(?:^|\n)\s*[가-힣A-Za-z0-9-]*[가-힣][가-힣A-Za-z0-9-]*\s+([0-9]{2,3}[A-Z]?)\s+([0-9]{2,3}[.][0-9]{1,4})\s+([0-9,]+)(?=\s|$)", text):
+        short_type, area_text, count_text = match.groups()
+        if short_type not in seen:
+            housing_types.append({
+                "type": short_type,
+                "exclusive_area_sqm": float(area_text),
+                "supply_household_count": _parse_int(count_text),
+            })
+            seen.add(short_type)
+
+    if "국민임대" in text or "모집할 예비자수" in text:
+        for match in re.finditer(r"(?:^|\n)\s*([0-9]{2,3}[A-Z]?)\s+\d{1,3}\s+([0-9,]+)(?=\s|$)", text):
+            short_type, count_text = match.groups()
+            if short_type not in seen:
+                housing_types.append({
+                    "type": short_type,
+                    "supply_household_count": _parse_int(count_text),
+                })
+                seen.add(short_type)
+
+    if not housing_types or "국민임대" in text or "모집할 예비자수" in text:
+        for match in re.finditer(r"(?:^|\n)\s*([0-9]{2,3}[A-Z]?)\s+([0-9]{2,3}[.][0-9]{2,4})\s+", text):
+            short_type, area = match.groups()
+            if short_type not in seen:
+                housing_types.append({
+                    "type": short_type,
+                    "exclusive_area_sqm": float(area),
+                })
+                seen.add(short_type)
+
+    if not housing_types:
+        province_pattern = (
+            r"(?:서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|"
+            r"경기도|강원특별자치도|충청북도|충청남도|전북특별자치도|전라남도|경상북도|경상남도|제주특별자치도|"
+            r"서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)"
+        )
+        for match in re.finditer(rf"\s([0-9,]+)\s+([0-9]{{2,3}}[.][0-9]{{1,4}})\s+(?={province_pattern})", text):
+            count_text, area_text = match.groups()
+            short_type = str(int(float(area_text)))
+            if short_type not in seen:
+                housing_types.append({
+                    "type": short_type,
+                    "exclusive_area_sqm": float(area_text),
+                    "supply_household_count": _parse_int(count_text),
+                })
+                seen.add(short_type)
+
+    if housing_types:
+        return housing_types
+
     type_line_match = re.search(r"공고상\(청약시\)\s*주택형\s+([0-9A-Z.\s]+)", text)
     if type_line_match:
         for token in re.findall(r"[0-9]{3}[.][0-9]{4}[A-Z]?", type_line_match.group(1)):
@@ -544,21 +748,25 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
 
 
 def _extract_price_summary(text: str) -> dict[str, Any]:
-    section = _section_after(text, "공급금액 및 납부일정", max_chars=9000)
+    section = _section_after_any(
+        text,
+        ["공급금액 및 납부일정", "공급금액", "공급가격", "분양가격", "분양금액", "분양대금", "주택가격"],
+        max_chars=30_000,
+    )
     price_values: list[int] = []
 
     for line in section.splitlines():
         money_values = [_parse_int(value) for value in re.findall(r"\d{1,3}(?:,\d{3}){2,}", line)]
         money_values = [value for value in money_values if value]
         if len(money_values) >= 3:
-            # 공급금액 표는 대지비, 건축비, 공급금액 순서로 숫자가 나온다.
-            supply_amount = money_values[2]
-            if supply_amount >= 100_000_000:
-                price_values.append(supply_amount)
+            # 표마다 공급금액 위치가 다르므로 억 단위 후보 중 가장 큰 값을 세대 공급금액으로 본다.
+            supply_candidates = [value for value in money_values if 100_000_000 <= value <= 3_000_000_000]
+            if supply_candidates:
+                price_values.append(max(supply_candidates))
 
     if not price_values:
         all_values = [_parse_int(value) for value in re.findall(r"\d{1,3}(?:,\d{3}){2,}", section)]
-        price_values = [value for value in all_values if value and value >= 500_000_000]
+        price_values = [value for value in all_values if value and 100_000_000 <= value <= 3_000_000_000]
 
     if not price_values:
         return {}
@@ -569,6 +777,39 @@ def _extract_price_summary(text: str) -> dict[str, Any]:
         "count": len(price_values),
         "note": "주택형/층별 공급금액 기준",
     }
+
+
+def _extract_rent_summary(text: str) -> dict[str, Any]:
+    markers = ["임대조건", "임대보증금", "월임대료", "임대조건(임대보증금 및 월임대료)"]
+    if not any(marker in text for marker in markers):
+        return {}
+
+    section = _section_after_any(
+        text,
+        markers,
+        max_chars=12_000,
+    )
+    deposits: list[int] = []
+    monthly_rents: list[int] = []
+
+    for line in section.splitlines():
+        values = [_parse_int(value) for value in re.findall(r"\d{1,3}(?:,\d{3}){1,}", line)]
+        values = [value for value in values if value]
+        if len(values) < 2:
+            continue
+        deposits.extend(value for value in values if 10_000_000 <= value <= 200_000_000)
+        last_value = values[-1]
+        if 50_000 <= last_value <= 2_000_000:
+            monthly_rents.append(last_value)
+
+    result: dict[str, Any] = {}
+    if deposits:
+        result["deposit_min_krw"] = min(deposits)
+        result["deposit_max_krw"] = max(deposits)
+    if monthly_rents:
+        result["monthly_rent_min_krw"] = min(monthly_rents)
+        result["monthly_rent_max_krw"] = max(monthly_rents)
+    return result
 
 
 def _extract_residence_requirement(text: str) -> str | None:
@@ -657,6 +898,24 @@ def _format_housing_types_for_diagnosis(housing_types: list[dict[str, Any]]) -> 
     return ", ".join(chunks)
 
 
+def _format_rent_summary(rent: dict[str, Any]) -> str | None:
+    if not rent:
+        return None
+
+    parts: list[str] = []
+    deposit_min = rent.get("deposit_min_krw")
+    deposit_max = rent.get("deposit_max_krw")
+    if deposit_min and deposit_max:
+        parts.append(f"보증금 약 {_format_eok(deposit_min)}~{_format_eok(deposit_max)}")
+
+    rent_min = rent.get("monthly_rent_min_krw")
+    rent_max = rent.get("monthly_rent_max_krw")
+    if rent_min and rent_max:
+        parts.append(f"월임대료 {rent_min:,}원~{rent_max:,}원")
+
+    return ", ".join(parts) if parts else None
+
+
 def _format_schedule_lines(schedule: dict[str, str]) -> list[str]:
     labels = {
         "special_supply": "특별공급",
@@ -711,6 +970,14 @@ def _section_after(text: str, marker: str, *, max_chars: int) -> str:
     index = text.find(marker)
     if index < 0:
         return text[:max_chars]
+    return text[index:index + max_chars]
+
+
+def _section_after_any(text: str, markers: list[str], *, max_chars: int) -> str:
+    indexes = [text.find(marker) for marker in markers if text.find(marker) >= 0]
+    if not indexes:
+        return text[:max_chars]
+    index = min(indexes)
     return text[index:index + max_chars]
 
 

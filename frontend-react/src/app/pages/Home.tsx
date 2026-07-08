@@ -57,7 +57,7 @@ export function Home() {
                 청약 프로필과 아파트 입주자모집공고를 바탕으로 자격, 가점, 위험 요소와 준비 전략을 확인합니다.
               </p>
               <div className="mt-5 max-w-[620px] rounded-[14px] border border-[#e4d8c5] bg-[#fffaf1]/90 px-4 py-3 text-[14px] leading-relaxed text-[#6f5737]">
-                현재 데모 버전은 아파트 분양 청약만 지원합니다. 오피스텔·임대주택·토지·상가 청약은 추후 지원 예정입니다.
+                현재는 아파트 분양 청약만 지원합니다. 오피스텔·임대주택·토지·상가 청약은 추후 지원 예정입니다.
               </div>
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
                 <Link

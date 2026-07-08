@@ -297,6 +297,18 @@ PDF 분석은 원본 파일을 저장하지 않습니다. 현재는 PDF에서 �
 
 회원가입은 현재 `email`, `password`만 필요합니다. `username`은 선택이고 `nickname` 필드는 없습니다.
 
+## 11. 배포 Nginx 설정 메모
+
+프론트 정적 파일을 Nginx로 서빙하고 `/api/` 요청을 Django로 프록시하는 기준 설정은 [deploy/nginx/default.conf](deploy/nginx/default.conf)에 둡니다.
+
+PDF 업로드는 브라우저에서 `multipart/form-data`로 전송되므로 실제 PDF 파일보다 요청 본문이 조금 커집니다. 그래서 Nginx edge 제한은 아래처럼 `20m`으로 여유 있게 열어두고, 서비스 정책상 PDF 파일 크기 제한은 Django `PDFAnalyzeAPIView`의 15MB 검증에서 처리합니다.
+
+```nginx
+client_max_body_size 20m;
+```
+
+배포 컨테이너에서 이 파일은 보통 `/etc/nginx/conf.d/default.conf`로 마운트합니다. `proxy_pass http://django:8000;`의 `django` 호스트명은 Docker Compose나 배포 환경의 Django 서비스 이름에 맞춰 조정하면 됩니다.
+
 ## 내가 로컬에서 실험할 때 쓰는 명령 모음
 
 ### 가상환경
