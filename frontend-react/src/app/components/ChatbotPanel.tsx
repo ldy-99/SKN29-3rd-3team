@@ -16,6 +16,13 @@ type Message = {
 
 const CHAT_MESSAGES_STORAGE_KEY = "subscription-chatbot-messages";
 const CHAT_SESSION_STORAGE_KEY = "subscription-chatbot-session-id";
+const DEPOSIT_SAVINGS_QUESTION = "청약에서 예치금과 저축액의 차이는 무엇인가요?";
+
+function withDepositSavingsQuestion(questions: string[]) {
+  return questions.includes(DEPOSIT_SAVINGS_QUESTION)
+    ? questions
+    : [...questions, DEPOSIT_SAVINGS_QUESTION];
+}
 
 function readStoredMessages(): Message[] | null {
   try {
@@ -59,36 +66,36 @@ export function ChatbotPanel() {
 
   const getRecommendedQuestions = () => {
     if (location.pathname.includes("/profile")) {
-      return [
+      return withDepositSavingsQuestion([
         "무주택 기간은 어떤 기준으로 계산하나요?",
         "부양가족 수에 포함되는 가족 범위는 무엇인가요?",
-      ];
+      ]);
     }
     if (location.pathname.includes("/strategy")) {
-      return [
+      return withDepositSavingsQuestion([
         "민영주택 일반공급 1순위 조건은 무엇인가요?",
         "신혼부부 특별공급의 기본 자격은 무엇인가요?",
-      ];
+      ]);
     }
     if (location.pathname.includes("/pdf")) {
-      return [
+      return withDepositSavingsQuestion([
         "입주자모집공고에서 꼭 확인할 항목은 무엇인가요?",
         "공고문의 소득 기준은 어떻게 확인하나요?",
-      ];
+      ]);
     }
     if (location.pathname.includes("/results")) {
-      return [
+      return withDepositSavingsQuestion([
         "청약 가점은 어떤 항목으로 계산하나요?",
         "특별공급 유형별 기본 자격 차이를 알려주세요.",
-      ];
+      ]);
     }
     if (location.pathname.includes("/mypage")) {
-      return [
+      return withDepositSavingsQuestion([
         "청약통장 가입기간은 언제부터 계산하나요?",
         "재당첨 제한은 어떤 경우에 적용되나요?",
-      ];
+      ]);
     }
-    return ["청약 1순위 조건이 무엇인가요?", "생애최초 특별공급이란?"];
+    return withDepositSavingsQuestion(["청약 1순위 조건이 무엇인가요?", "생애최초 특별공급이란?"]);
   };
 
   const [messages, setMessages] = useState<Message[]>(

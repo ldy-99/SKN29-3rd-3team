@@ -67,6 +67,9 @@ test("chatbot keeps messages and backend session id in browser session storage",
 
   assert.match(source, /CHAT_MESSAGES_STORAGE_KEY/);
   assert.match(source, /CHAT_SESSION_STORAGE_KEY/);
+  assert.match(source, /DEPOSIT_SAVINGS_QUESTION/);
+  assert.match(source, /청약에서 예치금과 저축액의 차이는 무엇인가요\?/);
+  assert.match(source, /withDepositSavingsQuestion/);
   assert.match(source, /sessionStorage\.setItem\(CHAT_MESSAGES_STORAGE_KEY/);
   assert.match(source, /sessionStorage\.setItem\(CHAT_SESSION_STORAGE_KEY/);
   assert.match(source, /session_id: chatSessionId/);
@@ -181,4 +184,10 @@ test("long-running work has duplicate-request guards, loading UI, and timeout ha
   assert.match(resultDetail, /이용 안내 및 면책 조항/);
   assert.match(resultDetail, /참고용 진단/);
   assert.match(resultDetail, /no-print/);
+  assert.match(resultDetail, /isProfileDialogOpen/);
+  assert.match(resultDetail, /내 프로필 보기/);
+  assert.match(resultDetail, /ProfileSnapshotDialog/);
+  assert.match(resultDetail, /role="dialog"/);
+  assert.match(resultDetail, /input_snapshot\)\?\.profile/);
+  assert.match(resultDetail, /buildProfileSummaryItems/);
 });

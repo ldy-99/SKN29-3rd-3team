@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Card, PageTitle, StatusBadge, WarningBox, Button, ErrorNotice, SettingsList } from "../components/UI";
 import { api } from "../api/client";
-import { CheckCircle2, ChevronDown, Download, FileText, Info } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, FileText, Info, X } from "lucide-react";
 import { getAnnouncementPresentation } from "../utils/announcementPresentation";
 
 type UnknownRecord = Record<string, unknown>;
@@ -20,11 +20,17 @@ type SupplyRankItem = {
   sourceRefs: string[];
 };
 
+type ProfileSummaryItem = {
+  label: string;
+  value: string;
+};
+
 export function ResultDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [result, setResult] = useState<UnknownRecord | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   useEffect(() => {
     api.getStrategy(id ?? "")
@@ -232,6 +238,9 @@ export function ResultDetail() {
       </WarningBox>
 
       <div className="no-print flex flex-col sm:flex-row gap-3">
+        <Button variant="outline" className="flex-1" onClick={() => setIsProfileDialogOpen(true)}>
+          내 프로필 보기
+        </Button>
         <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
           프로필 보완하기
         </Button>
@@ -239,6 +248,13 @@ export function ResultDetail() {
           PDF 분석하기
         </Button>
       </div>
+
+      {isProfileDialogOpen && (
+        <ProfileSnapshotDialog
+          items={viewModel.profileSummaryItems}
+          onClose={() => setIsProfileDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -260,6 +276,66 @@ const checkFieldLabels: Record<string, string> = {
   marriage_period_years: "혼인 기간",
   minor_child_count: "미성년 자녀 수",
 };
+
+function ProfileSnapshotDialog({
+  items,
+  onClose,
+}: {
+  items: ProfileSummaryItem[];
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-snapshot-title"
+      onMouseDown={onClose}
+    >
+      <div
+        className="w-full max-w-2xl overflow-hidden rounded-[20px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#eceff3] px-6 py-5">
+          <div>
+            <p className="text-[12px] font-bold text-[#0b5bd3]">PROFILE SNAPSHOT</p>
+            <h3 id="profile-snapshot-title" className="mt-1 text-[20px] font-bold text-[#1d1d1f]">
+              내 프로필
+            </h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#6e6e73]">
+              이 진단 결과를 만들 때 저장된 프로필 기준입니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f4f5f7] text-[#4d5562] transition-colors hover:bg-[#e8ebef]"
+            onClick={onClose}
+            aria-label="프로필 팝업 닫기"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <dl className="grid max-h-[62vh] grid-cols-1 gap-3 overflow-y-auto p-6 sm:grid-cols-2">
+          {items.map((item) => (
+            <div key={item.label} className="min-w-0 rounded-[14px] bg-[#f7f8fa] px-4 py-3">
+              <dt className="text-[12px] font-semibold text-[#7a818c]">{item.label}</dt>
+              <dd className="mt-1 break-words text-[14px] font-semibold text-[#26364e]">
+                {item.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="flex justify-end border-t border-[#eceff3] px-6 py-4">
+          <Button variant="outline" onClick={onClose}>
+            닫기
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CheckDetailsToggle({
   title,
@@ -369,6 +445,7 @@ function buildResultViewModel(result: UnknownRecord | null) {
   const payload = asRecord(result?.result_payload) ?? {};
   const report = asRecord(result?.report) ?? asRecord(payload.report) ?? asRecord(asRecord(payload.node6)?.final_report) ?? {};
   const announcement = asRecord(result?.announcement_confirmed) ?? asRecord(payload.announcement) ?? {};
+  const profileSnapshot = asRecord(asRecord(result?.input_snapshot)?.profile) ?? asRecord(result?.profile) ?? {};
   const supplyRank = normalizeSupplyRank(payload.supply_rank ?? report.supply_rank ?? result?.supply_rank);
   const missingItems = collectMissingItems(result, payload, supplyRank);
   const analysisItems = collectAnalysisItems(report, payload, supplyRank);
@@ -411,6 +488,7 @@ function buildResultViewModel(result: UnknownRecord | null) {
     finance,
     strategy,
     failureMessage,
+    profileSummaryItems: buildProfileSummaryItems(profileSnapshot),
   };
 }
 
@@ -767,6 +845,91 @@ function collectSummary(report: UnknownRecord, payload: UnknownRecord) {
     stringValue(report.message) ??
     stringValue(payload.message)
   );
+}
+
+function buildProfileSummaryItems(profile: UnknownRecord): ProfileSummaryItem[] {
+  return [
+    { label: "거주 지역", value: formatProfileText(formatRegionTag(stringValue(profile.residence_region))) },
+    { label: "주택 상태", value: formatProfileText(booleanText(profile.is_homeless, "무주택", "유주택")) },
+    { label: "세대주 여부", value: formatProfileText(booleanText(profile.is_household_head, "세대주", "세대원")) },
+    { label: "세대원 수", value: formatProfileText(formatCount(profile.household_member_count, "명")) },
+    { label: "출생 연도", value: formatProfileText(formatYearValue(profile.birth_year)) },
+    { label: "혼인 상태", value: formatProfileText(formatMaritalStatus(stringValue(profile.marital_status))) },
+    { label: "미성년 자녀 수", value: formatProfileText(formatCount(profile.minor_child_count, "명")) },
+    { label: "부양가족 수", value: formatProfileText(formatCount(profile.dependent_family_count, "명")) },
+    { label: "무주택 기간", value: formatProfileText(formatCount(profile.homeless_period_years, "년")) },
+    { label: "거주 기간", value: formatProfileText(formatCount(profile.residence_period_years, "년")) },
+    { label: "청약통장 유형", value: formatProfileText(formatBankbookType(stringValue(profile.bankbook_type))) },
+    { label: "통장 가입일", value: formatProfileText(stringValue(profile.bankbook_join_date)) },
+    { label: "납입 횟수", value: formatProfileText(formatCount(profile.bankbook_payment_count, "회")) },
+    { label: "예치금", value: formatProfileText(formatProfileWon(profile.bankbook_balance_krw)) },
+    { label: "월평균 가구소득", value: formatProfileText(formatProfileWon(profile.monthly_household_income_krw)) },
+    { label: "총자산", value: formatProfileText(formatProfileWon(profile.total_assets_krw)) },
+  ];
+}
+
+function formatProfileText(value?: string) {
+  return value ?? "미입력";
+}
+
+function booleanText(value: unknown, trueText: string, falseText: string) {
+  if (value === true) return trueText;
+  if (value === false) return falseText;
+  return undefined;
+}
+
+function formatRegionTag(value?: string) {
+  if (!value) return undefined;
+  const regionMap: Record<string, string> = {
+    SEOUL: "서울특별시",
+    GYEONGGI: "경기도",
+    INCHEON: "인천광역시",
+    BUSAN: "부산광역시",
+    DAEGU: "대구광역시",
+    DAEJEON: "대전광역시",
+    GWANGJU: "광주광역시",
+    ULSAN: "울산광역시",
+    SEJONG: "세종특별자치시",
+    OTHER: "그 외 지역",
+  };
+  return regionMap[value] ?? value.replace(/_/g, " ");
+}
+
+function formatMaritalStatus(value?: string) {
+  if (!value) return undefined;
+  const maritalStatusMap: Record<string, string> = {
+    SINGLE: "미혼",
+    MARRIED: "기혼",
+    UNKNOWN: "기타",
+  };
+  return maritalStatusMap[value] ?? value.replace(/_/g, " ");
+}
+
+function formatBankbookType(value?: string) {
+  if (!value) return undefined;
+  const bankbookTypeMap: Record<string, string> = {
+    HOUSING_SUBSCRIPTION_COMPREHENSIVE: "주택청약종합저축",
+    SUBSCRIPTION_SAVINGS: "청약저축",
+    SUBSCRIPTION_DEPOSIT: "청약예금",
+    SUBSCRIPTION_INSTALLMENT: "청약부금",
+    UNKNOWN: "모름",
+  };
+  return bankbookTypeMap[value] ?? value.replace(/_/g, " ");
+}
+
+function formatYearValue(value: unknown) {
+  const year = numberValue(value);
+  return year !== undefined ? `${year}년` : undefined;
+}
+
+function formatCount(value: unknown, unit: string) {
+  const count = numberValue(value);
+  return count !== undefined ? `${count}${unit}` : undefined;
+}
+
+function formatProfileWon(value: unknown) {
+  const amount = numberValue(value);
+  return amount !== undefined ? formatWon(amount) : undefined;
 }
 
 function chanceClassName(chance: string) {
