@@ -78,7 +78,7 @@ export function Home() {
                     isLoading ? "pointer-events-none opacity-70" : ""
                   }`}
                 >
-                  진단 기록 보기
+                  마이페이지 보기
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </div>

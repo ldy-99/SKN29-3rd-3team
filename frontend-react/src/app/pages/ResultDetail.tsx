@@ -1,12 +1,13 @@
 // 역할: 저장된 전략 진단 결과를 조회하고 사용자에게 요약/상세 결과를 보여주는 화면입니다.
 // 흐름: ResultDetail.tsx -> api.getStrategy -> Django StrategyDetailAPIView -> StrategyRun.result_payload.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
-import { useEffect, useMemo, useState } from "react";
+import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Card, PageTitle, StatusBadge, WarningBox, Button, ErrorNotice, SettingsList } from "../components/UI";
+import { Card, StatusBadge, WarningBox, Button, ErrorNotice } from "../components/UI";
 import { api } from "../api/client";
 import { CheckCircle2, ChevronDown, Download, FileText, Info, X } from "lucide-react";
 import { getAnnouncementPresentation } from "../utils/announcementPresentation";
+import type { AnnouncementPresentation } from "../utils/announcementPresentation";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -44,12 +45,95 @@ export function ResultDetail() {
   };
 
   return (
-    <div className="pb-20">
+    <div className="result-print-page pb-20">
       <style>
         {`
+          @page {
+            size: A4;
+            margin: 14mm 12mm;
+          }
+
           @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; }
+            html,
+            body,
+            #root {
+              background: white !important;
+            }
+
+            body {
+              margin: 0 !important;
+              color: #152846 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            body header,
+            body aside,
+            .no-print {
+              display: none !important;
+            }
+
+            main,
+            main > div,
+            main > div > div {
+              max-width: none !important;
+              width: auto !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            .result-print-page {
+              padding: 0 !important;
+              font-size: 10.5pt !important;
+              line-height: 1.55 !important;
+              color: #152846 !important;
+            }
+
+            .result-print-page h1 {
+              font-size: 25pt !important;
+              line-height: 1.18 !important;
+              letter-spacing: 0 !important;
+              color: #102e5a !important;
+            }
+
+            .result-print-page h2,
+            .result-print-page h3 {
+              color: #102e5a !important;
+              break-after: avoid;
+            }
+
+            .result-print-page button {
+              display: none !important;
+            }
+
+            .result-print-page [class*="shadow-"] {
+              box-shadow: none !important;
+            }
+
+            .result-print-page [class*="rounded-"] {
+              border-radius: 12px !important;
+            }
+
+            .result-print-page [class*="bg-gradient"] {
+              background: #102e5a !important;
+            }
+
+            .result-print-page .print-section,
+            .result-print-page details,
+            .result-print-page dl,
+            .result-print-page ul {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+
+            .result-print-page .print-muted-card {
+              border: 1px solid #d8cfc1 !important;
+              background: #fbfaf7 !important;
+            }
+
+            .result-print-page .print-hide {
+              display: none !important;
+            }
           }
         `}
       </style>
@@ -59,36 +143,27 @@ export function ResultDetail() {
           className="text-[14px] text-[#6e6e73] hover:text-[#1d1d1f] flex items-center gap-1 transition-colors"
           onClick={() => navigate("/mypage")}
         >
-          ← 진단 기록으로
+          ← 마이페이지로
         </button>
       </div>
 
-      <PageTitle
+      <ReportHeader
         title={viewModel.title}
-        description={`${viewModel.createdAt} 기준 · 아파트 분양 청약 진단 결과`}
-        action={
-          <Button variant="outline" className="gap-2" onClick={handleDownloadPdf}>
-            <Download className="h-4 w-4" />
-            PDF로 저장
-          </Button>
-        }
+        createdAt={viewModel.createdAt}
+        recommendedSupply={viewModel.recommendedSupply}
+        resultLabel={viewModel.resultLabel}
+        isProfileOnly={viewModel.isProfileOnly}
+        statuses={viewModel.statuses}
+        onDownloadPdf={handleDownloadPdf}
       />
 
-      <div className="mb-6 flex flex-wrap gap-x-5 gap-y-2 rounded-[16px] border border-[#e4d8c5] bg-[#fffaf1] px-5 py-4 text-[13px] text-[#6f5737]">
+      <div className="print-section print-muted-card mb-6 flex flex-wrap gap-x-5 gap-y-2 rounded-[16px] border border-[#e4d8c5] bg-[#fffaf1] px-5 py-4 text-[13px] text-[#6f5737]">
         <span><strong className="text-[#49351f]">진단 범위</strong> 아파트 분양 청약</span>
         <span><strong className="text-[#49351f]">결과 성격</strong> 참고용 진단</span>
         <span>최종 자격은 해당 입주자모집공고문에서 확인해야 합니다.</span>
       </div>
 
       <ErrorNotice error={error} fallbackMessage="전략 상세 조회에 실패했습니다." />
-
-      {result && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {viewModel.statuses.map((status) => (
-            <StatusBadge key={status} status={status} />
-          ))}
-        </div>
-      )}
 
       {viewModel.isPartial && (
         <WarningBox type="warning" title="일부 정보가 부족합니다">
@@ -102,101 +177,24 @@ export function ResultDetail() {
         </WarningBox>
       )}
 
-      {viewModel.announcementInfo.length > 0 && (
-        <Card className="mb-8 p-6 !rounded-[20px] !border-[#e6e0d6]">
-          <div className="mb-4">
-            <p className="text-[12px] font-bold tracking-[0.05em] text-[#b86a12]">
-              ANNOUNCEMENT
-            </p>
-            <h3 className="mt-1 text-[19px] font-bold text-[#152846]">공고 기본 정보</h3>
-          </div>
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {viewModel.announcementInfo.map((item) => (
-              <div
-                key={`${item.label}-${item.value}`}
-                className="min-w-0 rounded-[14px] bg-[#f7f8fa] px-4 py-3"
-              >
-                <dt className="text-[12px] font-semibold text-[#7a818c]">{item.label}</dt>
-                <dd className="mt-1 break-words text-[14px] font-semibold text-[#26364e]">
-                  {item.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Card>
-      )}
-
-      <Card className="mb-8 overflow-hidden border-none bg-gradient-to-br from-[#007aff] to-[#005bb5] text-white">
-        <div className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
-            <div className="text-white/80 text-[15px] font-medium mb-2">추천 공급유형</div>
-            <div className="text-[40px] md:text-[56px] font-bold leading-tight tracking-tight break-keep">
-              {viewModel.recommendedSupply}
-            </div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-[24px] p-6 text-center min-w-[160px]">
-            <div className="text-white/80 text-[13px] mb-1">진단 상태</div>
-            <div className="text-[28px] font-bold">{viewModel.resultLabel}</div>
-          </div>
-        </div>
-      </Card>
-
       {viewModel.summary && (
-        <SummaryReport
-          content={viewModel.summary}
-          isProfileOnly={viewModel.isProfileOnly}
-        />
+        <div className="print-section">
+          <SummaryReport
+            content={viewModel.summary}
+            isProfileOnly={viewModel.isProfileOnly}
+          />
+        </div>
       )}
 
-      <div className="mb-8">
-        <h3 className="text-[20px] font-bold mb-4 px-2">추천 공급유형</h3>
-        <SettingsList>
-          {viewModel.supplyRank.length > 0 ? (
-            viewModel.supplyRank.map((item, idx) => (
-              <div key={`${item.rank}-${item.type}`} className={`py-4 flex items-center gap-4 ${idx !== viewModel.supplyRank.length - 1 ? "border-b border-[#e5e5e7]" : ""}`}>
-                <div className="w-8 h-8 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold flex items-center justify-center shrink-0 text-[15px]">
-                  {item.rank}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-[16px] break-keep">{item.type}</h4>
-                    <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full self-start sm:self-auto ${chanceClassName(item.chance)}`}>
-                      {item.chance}
-                    </span>
-                  </div>
-                  <p className="text-[14px] text-[#6e6e73] leading-relaxed">{item.desc}</p>
-                  {item.matchedItems.length > 0 && (
-                    <p className="mt-2 text-[12px] text-[#86868b] leading-relaxed">
-                      충족·반영 항목: {item.matchedItems.join(", ")}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-5 text-[14px] text-[#6e6e73]">추천 공급유형 데이터가 아직 없습니다.</div>
-          )}
-        </SettingsList>
-      </div>
+      <SupplyRecommendationSection items={viewModel.supplyRank} />
+
+      {viewModel.announcementInfo.length > 0 && (
+        <AnnouncementInfoPanel items={viewModel.announcementInfo} />
+      )}
 
       {viewModel.finance && (
-        <div className="mb-8">
-          <h3 className="text-[20px] font-bold mb-4 px-2">재무 분석</h3>
-          <SettingsList>
-            <ResultRow label="분양가" value={formatWon(viewModel.finance.price)} />
-            <ResultRow label="대출 가능 금액" value={formatWon(viewModel.finance.loanAmount)} />
-            <ResultRow label="적용 LTV" value={formatRatio(viewModel.finance.ltvRate)} />
-            <ResultRow label="실투자금" value={formatWon(viewModel.finance.realInvestment)} />
-            <ResultRow label="지역 구분" value={viewModel.finance.areaType ?? "확인 필요"} />
-            <ResultRow
-              label="자금 위험도"
-              value={[
-                viewModel.finance.riskLevel,
-                formatRatio(viewModel.finance.riskRatio),
-              ].filter(Boolean).join(" · ") || "확인 필요"}
-              last
-            />
-          </SettingsList>
+        <div className="print-section mb-8">
+          <FinancePanel finance={viewModel.finance} />
           {viewModel.finance.riskDescription && (
             <div className="mt-3">
               <WarningBox type="warning" title="자금 위험 안내">
@@ -208,14 +206,14 @@ export function ResultDetail() {
       )}
 
       {viewModel.strategy && (
-        <div className="mb-8">
-          <h3 className="text-[20px] font-bold mb-4 px-2">상세 전략</h3>
+        <div className="print-section mb-8">
+          <SectionHeading title="상세 전략" description="조건별 판단 근거와 다음 행동을 정리했습니다." />
           <StrategyReport content={viewModel.strategy} />
         </div>
       )}
 
-      <div className="mb-10">
-        <h3 className="text-[20px] font-bold mb-4 px-2">상세 확인 사항</h3>
+      <div className="print-section mb-10">
+        <SectionHeading title="상세 확인 사항" description="진단에 반영된 항목과 추가 확인이 필요한 항목입니다." />
         <div className="space-y-3">
           <CheckDetailsToggle
             title="분석 결과"
@@ -232,17 +230,32 @@ export function ResultDetail() {
         </div>
       </div>
 
-      <WarningBox type="info" title="이용 안내 및 면책 조항">
-        본 리포트는 입력한 프로필과 공고 정보를 바탕으로 정리한 참고용 진단입니다.
-        실제 청약 가능 여부와 최종 자격은 반드시 해당 입주자모집공고문, 청약홈, 사업주체 또는 관계 기관의 공식 안내로 확인해주세요.
-      </WarningBox>
+      <div className="print-section">
+        <WarningBox type="info" title="이용 안내 및 면책 조항">
+          본 리포트는 입력한 프로필과 공고 정보를 바탕으로 정리한 참고용 진단입니다.
+          실제 청약 가능 여부와 최종 자격은 반드시 해당 입주자모집공고문, 청약홈, 사업주체 또는 관계 기관의 공식 안내로 확인해주세요.
+        </WarningBox>
+      </div>
+
+      <button
+        type="button"
+        className="no-print fixed bottom-24 right-5 z-30 inline-flex items-center gap-2 rounded-full border border-[#d9d3c8] bg-white px-4 py-3 text-[13px] font-bold text-[#26364e] shadow-[0_16px_42px_rgba(24,31,43,0.14)] transition-all hover:-translate-y-0.5 hover:bg-[#f7f8fb] sm:right-6"
+        onClick={() => setIsProfileDialogOpen(true)}
+      >
+        <UserFloatingIcon />
+        내 프로필
+      </button>
 
       <div className="no-print flex flex-col sm:flex-row gap-3">
-        <Button variant="outline" className="flex-1" onClick={() => setIsProfileDialogOpen(true)}>
-          내 프로필 보기
-        </Button>
-        <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
-          프로필 보완하기
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => {
+            navigate("/profile");
+            window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+          }}
+        >
+          다시 진단하기
         </Button>
         <Button variant="outline" className="flex-1" onClick={() => navigate("/pdf")}>
           PDF 분석하기
@@ -255,6 +268,302 @@ export function ResultDetail() {
           onClose={() => setIsProfileDialogOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+function UserFloatingIcon() {
+  return (
+    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eef4ff] text-[#245ea8]">
+      <Info className="h-4 w-4" />
+    </span>
+  );
+}
+
+function ReportHeader({
+  title,
+  createdAt,
+  recommendedSupply,
+  resultLabel,
+  isProfileOnly,
+  statuses,
+  onDownloadPdf,
+}: {
+  title: string;
+  createdAt: string;
+  recommendedSupply: string;
+  resultLabel: string;
+  isProfileOnly: boolean;
+  statuses: string[];
+  onDownloadPdf: () => void;
+}) {
+  return (
+    <Card className="print-section mb-7 !rounded-[24px] !border-[#e2dbcf] bg-[#fffefa] p-6 shadow-[0_16px_48px_rgba(35,45,60,0.06)] md:p-7">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[#e2d7c8] bg-white px-3 py-1 text-[12px] font-extrabold tracking-[0.12em] text-[#b86a12]">
+              AFIT REPORT
+            </span>
+            <span className="rounded-full bg-[#f3f5f8] px-3 py-1 text-[12px] font-bold text-[#667085]">
+              {isProfileOnly ? "기본 조건 분석" : "공고 기반 분석"}
+            </span>
+          </div>
+          <h1 className="text-[34px] font-black leading-tight tracking-[-0.01em] text-[#152846] break-keep md:text-[42px]">
+            {title}
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#69717d]">
+            {formatDateTime(createdAt)} 기준 · 아파트 분양 청약 진단 결과
+          </p>
+        </div>
+
+        <Button variant="outline" className="no-print shrink-0 gap-2 !rounded-full !border-[#d9d3c8] bg-white" onClick={onDownloadPdf}>
+          <Download className="h-4 w-4" />
+          PDF로 저장
+        </Button>
+      </div>
+
+      <div className="mt-7 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <ReportMetric label="추천 공급유형" value={recommendedSupply} emphasis />
+        <ReportMetric label="진단 상태" value={resultLabel} />
+        <div className="rounded-[18px] border border-[#ece6dc] bg-white px-4 py-4">
+          <p className="text-[12px] font-bold text-[#7a818c]">처리 상태</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {statuses.length > 0 ? (
+              statuses.map((status) => <StatusBadge key={status} status={status} />)
+            ) : (
+              <span className="text-[14px] font-bold text-[#152846]">확인 중</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ReportMetric({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className={`rounded-[18px] border px-4 py-4 ${emphasis ? "border-[#d8c9b5] bg-[#f8f4ec]" : "border-[#ece6dc] bg-white"}`}>
+      <p className="text-[12px] font-bold text-[#7a818c]">{label}</p>
+      <p className={`mt-2 break-keep font-black leading-tight ${emphasis ? "text-[24px] text-[#102e5a]" : "text-[21px] text-[#152846]"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function AnnouncementInfoPanel({ items }: { items: AnnouncementPresentation["info"] }) {
+  const grouped = groupAnnouncementInfo(items);
+
+  return (
+    <div className="print-section mb-8">
+      <SectionHeading eyebrow="Announcement" title="공고 기본 정보" description="진단에 반영된 핵심 공고 정보만 정리했습니다." />
+      <Card className="mt-4 !rounded-[22px] !border-[#e3ded4] bg-white p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.85fr)]">
+          <div>
+            <p className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#b86a12]">
+              Supply Summary
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {grouped.supply.length > 0 ? (
+                grouped.supply.map((item, index) => (
+                  <AnnouncementMetric
+                    key={`${item.label}-${item.value}`}
+                    label={item.label}
+                    value={item.value}
+                    strong={index < 2}
+                  />
+                ))
+              ) : (
+                <AnnouncementMetric label="공급 정보" value="확인 필요" />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[18px] border border-[#ece6dc] bg-[#fffefa] p-4">
+            <p className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#b86a12]">
+              Schedule
+            </p>
+            {grouped.schedule.length > 0 ? (
+              <div className="space-y-2">
+                {grouped.schedule.map((item) => (
+                  <AnnouncementMetric
+                    key={`${item.label}-${item.value}`}
+                    label={item.label}
+                    value={item.value}
+                    compact
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-[16px] border border-[#ece6dc] bg-white px-4 py-3 text-[13px] font-bold text-[#69717d]">
+                주요 일정은 공고문 원문 확인이 필요합니다.
+              </p>
+            )}
+
+            {grouped.source.length > 0 && (
+              <div className="mt-3 space-y-2 rounded-[16px] border border-dashed border-[#ddd7cb] bg-[#fbfaf7] px-4 py-3">
+                {grouped.source.map((item) => (
+                  <p key={`${item.label}-${item.value}`} className="text-[12px] leading-relaxed text-[#69717d]">
+                    <span className="font-bold text-[#344258]">{item.label}</span>
+                    <span className="mx-2 text-[#c0b7a8]">/</span>
+                    <span className="break-words">{item.value}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function AnnouncementMetric({
+  label,
+  value,
+  strong = false,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`rounded-[16px] border px-4 ${strong ? "border-[#d8c9b5] bg-[#fbf7ef]" : "border-[#ece6dc] bg-white"} ${compact ? "py-3 sm:flex sm:items-center sm:justify-between sm:gap-4" : "py-3.5"}`}>
+      <p className="text-[12px] font-bold text-[#7a818c]">{label}</p>
+      <p className={`mt-1 break-words font-black leading-relaxed ${strong ? "text-[19px] text-[#102e5a]" : compact ? "text-[14px] text-[#26364e] sm:mt-0 sm:text-right" : "text-[16px] text-[#26364e]"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function groupAnnouncementInfo(items: AnnouncementPresentation["info"]) {
+  const scheduleLabels = new Set(["청약 접수", "당첨자 발표", "모집공고일"]);
+  const sourceLabels = new Set(["공고 파일"]);
+
+  return {
+    supply: items.filter((item) => !scheduleLabels.has(item.label) && !sourceLabels.has(item.label)),
+    schedule: items.filter((item) => scheduleLabels.has(item.label)),
+    source: items.filter((item) => sourceLabels.has(item.label)),
+  };
+}
+
+function SupplyRecommendationSection({ items }: { items: SupplyRankItem[] }) {
+  return (
+    <div className="print-section mb-8">
+      <SectionHeading title="추천 공급유형" description="입력 조건과 공고 정보를 바탕으로 우선 검토할 공급유형입니다." />
+      <Card className="mt-4 !rounded-[22px] !border-[#e3ded4] bg-white">
+        {items.length > 0 ? (
+          <div className="divide-y divide-[#ece6dc]">
+            {items.map((item) => (
+              <SupplyRankRow key={`${item.rank}-${item.type}`} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="px-5 py-6 text-[14px] text-[#6e6e73]">추천 공급유형 데이터가 아직 없습니다.</div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function SupplyRankRow({ item }: { item: SupplyRankItem }) {
+  return (
+    <div className="grid gap-4 px-5 py-5 md:grid-cols-[48px_minmax(0,1fr)_auto] md:items-start">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f5ff] text-[14px] font-black text-[#0b5bd3]">
+        {item.rank}
+      </div>
+      <div className="min-w-0">
+        <h4 className="text-[17px] font-black text-[#152846] break-keep">{item.type}</h4>
+        <p className="mt-1 text-[14px] leading-7 text-[#596273]">{item.desc}</p>
+        {item.matchedItems.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {item.matchedItems.slice(0, 5).map((matched) => (
+              <span key={matched} className="rounded-full bg-[#f4fbf6] px-2.5 py-1 text-[11px] font-bold text-[#237a3f]">
+                {matched}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <span className={`self-start rounded-full px-3 py-1.5 text-[12px] font-black ${chanceClassName(item.chance)}`}>
+        {item.chance}
+      </span>
+    </div>
+  );
+}
+
+function FinancePanel({ finance }: { finance: NonNullable<ReturnType<typeof normalizeFinance>> }) {
+  const riskText = [
+    finance.riskLevel,
+    formatRatio(finance.riskRatio),
+  ].filter(Boolean).join(" · ") || "확인 필요";
+
+  return (
+    <div>
+      <SectionHeading title="재무 분석" description="분양가와 예상 자금 부담을 요약했습니다." />
+      <Card className="mt-4 !rounded-[22px] !border-[#e3ded4] bg-white p-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FinanceMetric label="분양가" value={formatWon(finance.price)} strong />
+          <FinanceMetric label="실투자금" value={formatWon(finance.realInvestment)} strong />
+          <FinanceMetric label="대출 가능 금액" value={formatWon(finance.loanAmount)} />
+          <FinanceMetric label="적용 LTV" value={formatRatio(finance.ltvRate) ?? "확인 필요"} />
+          <FinanceMetric label="지역 구분" value={finance.areaType ?? "확인 필요"} />
+          <FinanceMetric label="자금 위험도" value={riskText} />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function FinanceMetric({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className={`rounded-[16px] border px-4 py-3.5 ${strong ? "border-[#d8c9b5] bg-[#fbf7ef]" : "border-[#ece6dc] bg-[#fffefa]"}`}>
+      <p className="text-[12px] font-bold text-[#7a818c]">{label}</p>
+      <p className={`mt-1 break-words font-black ${strong ? "text-[20px] text-[#102e5a]" : "text-[17px] text-[#26364e]"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="px-1">
+      {eyebrow && (
+        <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#b86a12]">
+          {eyebrow}
+        </p>
+      )}
+      <h3 className={`${eyebrow ? "mt-1" : ""} text-[21px] font-black text-[#152846]`}>{title}</h3>
+      {description && <p className="mt-1 text-[13px] leading-relaxed text-[#69717d]">{description}</p>}
     </div>
   );
 }
@@ -284,6 +593,43 @@ function ProfileSnapshotDialog({
   items: ProfileSummaryItem[];
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    firstFocusable?.focus();
+  }, []);
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const focusableElements = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).filter((element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true");
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    if (!firstElement || !lastElement) return;
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6"
@@ -291,8 +637,10 @@ function ProfileSnapshotDialog({
       aria-modal="true"
       aria-labelledby="profile-snapshot-title"
       onMouseDown={onClose}
+      onKeyDown={handleDialogKeyDown}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-2xl overflow-hidden rounded-[20px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -436,7 +784,7 @@ function extractCheckKeywords(item: string) {
 
 function formatCheckDescription(item: string) {
   return Object.entries(checkFieldLabels).reduce(
-    (text, [field, label]) => text.replaceAll(field, label),
+    (text, [field, label]) => text.split(field).join(label),
     stripMarkdown(item),
   );
 }
@@ -974,19 +1322,14 @@ function formatRatio(value: number | undefined) {
   return value === undefined ? undefined : `${Math.round(value * 100)}%`;
 }
 
-function ResultRow({
-  label,
-  value,
-  last = false,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <div className={`py-4 flex items-center justify-between gap-6 ${last ? "" : "border-b border-[#e5e5e7]"}`}>
-      <span className="text-[14px] text-[#6e6e73]">{label}</span>
-      <span className="text-[15px] font-semibold text-right">{value}</span>
-    </div>
-  );
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }

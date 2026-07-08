@@ -10,7 +10,7 @@ const tabs = [
   { path: "/", label: "홈", end: true },
   { path: "/profile", label: "내 청약 조건" },
   { path: "/strategy", label: "전략 진단" },
-  { path: "/mypage", label: "진단 기록" },
+  { path: "/mypage", label: "마이페이지" },
   { path: "/chatbot", label: "챗봇" },
 ];
 

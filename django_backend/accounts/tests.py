@@ -206,7 +206,7 @@ class ProfileAPITests(APITestCase):
 
     def test_delete_user(self):
         """
-        회원 탈퇴 테스트.
+        회원 탈퇴 시 현재 비밀번호 검증 후 계정이 삭제되는지 테스트합니다.
         """
         user = User.objects.create_user(
             username="delete_test_user",
@@ -216,10 +216,41 @@ class ProfileAPITests(APITestCase):
         self.client.force_authenticate(user=user)
         
         url = reverse('delete-auth')
-        response = self.client.delete(url)
+        wrong_response = self.client.delete(url, {"password": "wrongpassword123"}, format='json')
+        self.assertEqual(wrong_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(User.objects.filter(username="delete_test_user").exists())
+
+        response = self.client.delete(url, {"password": "testpassword123"}, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(User.objects.filter(username="delete_test_user").exists())
+
+    def test_password_change(self):
+        """
+        현재 비밀번호 확인 후 새 비밀번호로 변경되는지 검증합니다.
+        """
+        user = User.objects.create_user(
+            username="password_change_user",
+            email="passwordchange@example.com",
+            password="testpassword123"
+        )
+        self.client.force_authenticate(user=user)
+
+        url = reverse('password-change')
+        wrong_response = self.client.post(url, {
+            "current_password": "wrongpassword123",
+            "new_password": "newStrongPassword123",
+        }, format='json')
+        self.assertEqual(wrong_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(url, {
+            "current_password": "testpassword123",
+            "new_password": "newStrongPassword123",
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("newStrongPassword123"))
 
     def test_put_profile_success(self):
         """

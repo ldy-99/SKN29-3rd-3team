@@ -3,7 +3,7 @@
 흐름: React client.ts -> accounts.views -> serializers/models -> 공통 envelope 응답.
 다음 파일: django_backend/accounts/serializers.py, django_backend/accounts/models.py.
 """
-from django.contrib.auth import login, logout, get_user_model
+from django.contrib.auth import login, logout, get_user_model, update_session_auth_hash
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -12,7 +12,12 @@ from rest_framework.exceptions import NotFound
 from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from accounts.models import Profile
 from accounts.serializers import (
-    ProfileSerializer, UserSerializer, SignUpSerializer, LoginSerializer
+    AccountDeleteSerializer,
+    PasswordChangeSerializer,
+    ProfileSerializer,
+    UserSerializer,
+    SignUpSerializer,
+    LoginSerializer,
 )
 from accounts.permissions import IsOwner
 
@@ -101,10 +106,27 @@ class DeleteAuthAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
+        serializer = AccountDeleteSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
         user = request.user
         logout(request)
         user.delete()
         return Response({"message": "계정이 성공적으로 삭제되었습니다."}, status=status.HTTP_200_OK)
+
+
+class PasswordChangeAPIView(APIView):
+    """
+    비밀번호 변경 API.
+    현재 비밀번호 확인 후 새 비밀번호로 교체하고 현재 세션을 유지합니다.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        update_session_auth_hash(request, user)
+        return Response({"message": "비밀번호가 변경되었습니다."}, status=status.HTTP_200_OK)
 
 
 class ProfileDetailAPIView(APIView):

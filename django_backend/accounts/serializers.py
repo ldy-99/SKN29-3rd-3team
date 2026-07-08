@@ -106,8 +106,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
-        read_only_fields = ['id']
+        fields = ['id', 'username', 'email', 'date_joined']
+        read_only_fields = ['id', 'date_joined']
 
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -187,3 +187,37 @@ class LoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    new_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise ValidationError("현재 비밀번호가 올바르지 않습니다.")
+        return value
+
+    def validate_new_password(self, value):
+        try:
+            validate_password(value, user=self.context['request'].user)
+        except DjangoValidationError as e:
+            raise ValidationError(list(e.messages))
+        return value
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return user
+
+
+class AccountDeleteSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise ValidationError("비밀번호가 올바르지 않습니다.")
+        return value

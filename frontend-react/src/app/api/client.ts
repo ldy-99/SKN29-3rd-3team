@@ -16,6 +16,7 @@ export type CurrentUser = {
   id: number;
   username: string;
   email: string;
+  date_joined?: string;
 };
 
 export type StrategyRecord = {
@@ -165,6 +166,20 @@ export const api = {
   getMe() {
     return request<CurrentUser>("/api/auth/me", {
       method: "GET",
+    });
+  },
+
+  changePassword(input: { current_password: string; new_password: string }) {
+    return request<{ message: string }>("/api/auth/password", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  deleteAccount(input: { password: string }) {
+    return request<{ message: string }>("/api/auth", {
+      method: "DELETE",
+      body: JSON.stringify(input),
     });
   },
 
