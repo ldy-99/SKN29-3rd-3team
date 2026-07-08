@@ -7,7 +7,8 @@ class ProfileInput(BaseModel):
     bankbook_type: str                          # 통장 종류
     bankbook_join_date: str                     # 가입일 (YYYY-MM-DD)
     bankbook_payments: int                      # 납입 횟수
-    bankbook_balance: int                       # 예치금
+    bankbook_balance: int                       # 예치금 (지역별 예치금 기준 대조용, 청약예금/부금 성격)
+    bankbook_savings_amount: Optional[int] = None  # 저축액(선납금 포함 누적 납입인정액, 특별공급 판정용)
 
     # 주택/세대 정보
     region: str                                 # 거주지역

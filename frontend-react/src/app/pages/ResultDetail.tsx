@@ -863,6 +863,7 @@ function buildProfileSummaryItems(profile: UnknownRecord): ProfileSummaryItem[] 
     { label: "통장 가입일", value: formatProfileText(stringValue(profile.bankbook_join_date)) },
     { label: "납입 횟수", value: formatProfileText(formatCount(profile.bankbook_payment_count, "회")) },
     { label: "예치금", value: formatProfileText(formatProfileWon(profile.bankbook_balance_krw)) },
+    { label: "저축액", value: formatProfileText(formatProfileWon(profile.savings_amount_krw)) },
     { label: "월평균 가구소득", value: formatProfileText(formatProfileWon(profile.monthly_household_income_krw)) },
     { label: "총자산", value: formatProfileText(formatProfileWon(profile.total_assets_krw)) },
   ];

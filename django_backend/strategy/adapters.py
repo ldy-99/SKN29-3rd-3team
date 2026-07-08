@@ -5,6 +5,26 @@
 """
 from datetime import date
 
+# React의 거주지역 select는 영문 코드(SEOUL, GYEONGGI...)를 값으로 쓰는데,
+# 3차(FastAPI) 엔진은 region을 자연어 지역명으로 취급한다(지역 우선공급 텍스트 매칭,
+# LLM 프롬프트 등). 코드가 그대로 넘어가면 "GYEONGGI"가 결과 문구에 그대로 노출되고,
+# rag_tools.check_regional_priority의 "user_region.split()[0] in announcement_region"
+# 매칭도 항상 실패해 지역 일치 여부가 늘 "불일치"로 잘못 판정된다. 그래서 반드시 여기서
+# 한글 지역명으로 변환해서 3차로 넘긴다.
+REGION_LABELS = {
+    'SEOUL': '서울특별시',
+    'GYEONGGI': '경기도',
+    'INCHEON': '인천광역시',
+    'BUSAN': '부산광역시',
+    'DAEGU': '대구광역시',
+    'DAEJEON': '대전광역시',
+    'GWANGJU': '광주광역시',
+    'ULSAN': '울산광역시',
+    'SEJONG': '세종특별자치시',
+    'OTHER': '기타 지역',
+}
+
+
 class ProfileAdapter:
     @staticmethod
     def to_3rd_spec(profile_4th: dict) -> dict:
@@ -39,9 +59,13 @@ class ProfileAdapter:
 
         result['bankbook_payments'] = profile_4th.get('bankbook_payment_count', 0)
         result['bankbook_balance'] = profile_4th.get('bankbook_balance_krw', 0)
+        # 저축액(누적 납입인정액)은 예치금과 다른 개념이라 별도 필드로 전달한다.
+        # 값이 없는 기존 프로필은 None으로 넘겨 3차 계산기가 예치금으로 대체 판정하도록 둔다.
+        result['bankbook_savings_amount'] = profile_4th.get('savings_amount_krw')
 
         # 2. 주택/세대 정보
-        result['region'] = profile_4th.get('residence_region')
+        residence_region = profile_4th.get('residence_region')
+        result['region'] = REGION_LABELS.get(residence_region, residence_region)
         result['residence_period_years'] = profile_4th.get('residence_period_years')
 
         is_homeless = profile_4th.get('is_homeless', True)

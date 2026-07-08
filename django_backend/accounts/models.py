@@ -25,8 +25,11 @@ class Profile(models.Model):
     bankbook_join_date = models.DateField(null=True, blank=True)
     # 3. 청약통장 납입 횟수
     bankbook_payment_count = models.IntegerField(null=True, blank=True)
-    # 4. 청약통장 잔액 (원화)
+    # 4. 청약통장 잔액/예치금 (원화) - 민영주택 지역별 예치금 기준 대조용
     bankbook_balance_krw = models.BigIntegerField(null=True, blank=True)
+    # 4-1. 저축액 (선납금 포함 누적 납입인정액, 원화) - 생애최초 특별공급 등 저축액 요건 판정용.
+    # bankbook_balance_krw(예치금)와는 다른 개념이라 별도 필드로 분리함. 기존 사용자는 값이 없을 수 있어 optional.
+    savings_amount_krw = models.BigIntegerField(null=True, blank=True)
 
     # 5. 거주 지역
     residence_region = models.CharField(max_length=50, null=True, blank=True)

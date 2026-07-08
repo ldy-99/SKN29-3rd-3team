@@ -248,13 +248,33 @@ export function PageTitle({ title, description, action }: { title: string; descr
   );
 }
 
-export function FormGroup({ label, required, children, helperText }: { label: string; required?: boolean; children: React.ReactNode; helperText?: string }) {
+export function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex group align-middle">
+      <span
+        tabIndex={0}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#34c759] text-[10px] font-bold leading-none text-white cursor-help select-none focus:outline-none focus:ring-2 focus:ring-[#34c759]/40"
+      >
+        ?
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-[10px] bg-[#1d1d1f] px-3 py-2 text-[12px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+export function FormGroup({ label, required, children, helperText, tooltip }: { label: string; required?: boolean; children: React.ReactNode; helperText?: string; tooltip?: string }) {
   return (
     <div className="py-4 border-b border-[#e5e5e7] last:border-0 flex flex-col md:flex-row md:items-center gap-4">
       <div className="md:w-1/3 shrink-0">
         <label className="block text-[15px] font-medium text-[#1d1d1f] flex items-center gap-1.5">
           {label}
           {required && <span className="w-1.5 h-1.5 rounded-full bg-[#007aff]" title="필수"></span>}
+          {tooltip && <InfoTooltip text={tooltip} />}
         </label>
         {helperText && <p className="mt-1 text-[13px] text-[#6e6e73]">{helperText}</p>}
       </div>

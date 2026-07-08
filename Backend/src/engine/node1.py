@@ -170,6 +170,7 @@ def _build_special_supply_payload(profile: Mapping[str, Any]) -> dict[str, Any]:
         "bankbook_joined_months": _bankbook_joined_months(profile),
         "bankbook_payments": _int_value(profile.get("bankbook_payments")),
         "bankbook_balance": _int_value(profile.get("bankbook_balance")),
+        "bankbook_savings_amount": _int_value(profile.get("bankbook_savings_amount")),
         "homeless_period_years": _int_value(profile.get("homeless_period_years")),
         "dependent_family_count": _dependent_family_count(profile),
         "num_household_members": _int_value(profile.get("num_household_members")),

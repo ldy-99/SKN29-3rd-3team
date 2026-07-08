@@ -1,6 +1,7 @@
 """
 역할: 업로드된 모집공고 PDF를 저장하지 않고 텍스트/표 입력값으로 변환합니다.
 흐름: pdf_router -> analyze_pdf_bytes -> pdfplumber/PyMuPDF -> 핵심 필드 추출 -> React 확인/전략 진단 입력.
+비고: 260708 추출 품질 개선 (스캔본 감지, 비공고 가드, 공급금액 오염 방지, 세대수 sanity check 등).
 """
 from __future__ import annotations
 
@@ -87,9 +88,26 @@ def analyze_pdf_bytes(file_name: str, content: bytes) -> dict[str, Any]:
             page_count = fallback_page_count
             warnings.append("pdfplumber 추출 텍스트가 짧아 PyMuPDF fallback 결과를 사용했습니다.")
 
+    # 스캔본 감지: diagnosis_text는 항상 스켈레톤 문구를 포함하므로
+    # combined_text가 아닌 실제 추출 텍스트 길이로 판정해야 한다.
+    if len(text.strip()) < 100:
+        warnings.append(
+            "PDF에서 읽을 수 있는 텍스트를 거의 찾지 못했습니다. "
+            "스캔본(이미지) PDF일 수 있으니 공고 내용을 직접 입력해주세요."
+        )
+
     table_text = _format_tables(tables[:MAX_TABLES_FOR_DIAGNOSIS], max_rows=MAX_TABLE_ROWS_FOR_DIAGNOSIS)
     raw_for_summary = _clean_text("\n\n".join(part for part in [text[:MAX_RAW_TEXT_CHARS_FOR_SUMMARY], table_text] if part.strip()))
     extracted_fields = _extract_notice_fields(file_name, raw_for_summary)
+
+    # 비공고 문서 가드: 매뉴얼/FAQ 등에서 규제지역 키워드가 오탐되면
+    # is_regulated 오판 → 재무 분석까지 오염되므로 공고 시그널을 확인한다.
+    if text.strip() and not _has_notice_signals(file_name, extracted_fields, text):
+        warnings.append(
+            "입주자모집공고 문서의 특징(공고일·청약 일정·공급규모 등)을 찾지 못했습니다. "
+            "청약 모집공고 PDF가 맞는지 확인해주세요. 추출 결과가 부정확할 수 있습니다."
+        )
+
     user_summary = _build_user_notice_summary(extracted_fields)
     diagnosis_text = _build_diagnosis_notice_text(extracted_fields)
     llm_summary = _summarize_notice_with_llm(user_summary, diagnosis_text, raw_for_summary, warnings)
@@ -97,18 +115,22 @@ def analyze_pdf_bytes(file_name: str, content: bytes) -> dict[str, Any]:
     summary_text = _clean_text(llm_summary or user_summary)
     combined_text = _clean_text(diagnosis_text)
 
-    if not combined_text.strip():
-        warnings.append("PDF에서 읽을 수 있는 텍스트를 찾지 못했습니다. 스캔본이면 직접 입력이 필요합니다.")
-
     truncated = False
     if len(combined_text) > MAX_COMBINED_TEXT_CHARS:
         combined_text = combined_text[:MAX_COMBINED_TEXT_CHARS].rstrip()
         truncated = True
         warnings.append("진단 입력용 텍스트가 길어 일부 표/본문은 제외했습니다.")
 
+    # LLM 요약 관련 경고(키 없음/요약 실패)는 추출 품질과 무관하므로 상태 판정에서 제외
+    llm_warning_markers = ("OPENAI_API_KEY", "LLM 공고문 요약")
+    has_extraction_warnings = any(
+        all(marker not in warning for marker in llm_warning_markers)
+        for warning in warnings
+    )
+
     return {
         "pdf_analysis_id": str(uuid4()),
-        "extraction_status": "NEEDS_REVIEW" if warnings else "EXTRACTED",
+        "extraction_status": "NEEDS_REVIEW" if has_extraction_warnings else "EXTRACTED",
         "filename": file_name,
         "page_count": page_count,
         "text_length": len(text),
@@ -181,6 +203,44 @@ def _clean_text(text: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+# 국내 최대 규모 단지도 약 1.2만 세대라, 이를 넘는 값은 금액 등의 오인으로 본다.
+MAX_REASONABLE_HOUSEHOLDS = 20_000
+
+
+def _valid_household_count(value: int | None) -> int | None:
+    """세대수 자리에 공급금액 등 큰 숫자가 잘못 잡히는 것을 걸러낸다."""
+    if value is None or value <= 0 or value > MAX_REASONABLE_HOUSEHOLDS:
+        return None
+    return value
+
+
+def _has_notice_signals(file_name: str, fields: dict[str, Any], text: str) -> bool:
+    """
+    입주자모집공고 문서인지 판정한다.
+    매뉴얼/FAQ/가이드류는 규제지역·공급유형 키워드가 본문에 등장해 오탐되기 쉬우므로,
+    파일명 기반 네거티브 시그널 + 공고 고유 시그널 스코어로 판단한다.
+    """
+    compact_name = re.sub(r"\s+", "", file_name)
+    if re.search(r"매뉴얼|업무편람|FAQ|해설집|안내서|가이드", compact_name, flags=re.I) and not re.search(
+        r"모집공고", compact_name
+    ):
+        return False
+
+    compact_head = re.sub(r"\s+", "", f"{file_name}\n{text[:3000]}")
+    score = 0
+    if re.search(r"(입주자|예비입주자)\s*모집공고|모집공고문", compact_head):
+        score += 1
+    if fields.get("announcement_date"):
+        score += 1
+    if fields.get("schedule"):
+        score += 1
+    if (fields.get("supply_summary") or {}).get("total_households"):
+        score += 1
+    if fields.get("price_summary"):
+        score += 1
+    return score >= 2
 
 
 def _extract_notice_fields(file_name: str, text: str) -> dict[str, Any]:
@@ -472,30 +532,38 @@ def _detect_housing_category(text: str, notice_kind: str | None = None) -> str |
     return None
 
 
+# 재당첨 제한/1순위 제한 등 법령 안내문에 등장하는 규제지역 키워드는 이 공고의 규제 선언이 아님
+_REGULATED_NEGATION_CONTEXT = re.compile(
+    r"아닌\s*지역|제외|재당첨|1순위\s*청약\s*접수|1순위\s*청약접수|당첨일로부터|향후\s*[0-9]+년|규칙"
+)
+
+
 def _detect_regulated_area(text: str) -> str | None:
     first_page_like = text[:8_000]
     if re.search(r"규제지역여부.{0,120}비규제지역", first_page_like, flags=re.S):
         return "비규제지역"
     labels: list[str] = []
-    if "투기과열지구" in first_page_like:
-        labels.append("투기과열지구")
-    if "청약과열지역" in first_page_like:
-        labels.append("청약과열지역")
-    if "조정대상지역" in first_page_like:
-        labels.append("조정대상지역")
+    for keyword in ["투기과열지구", "청약과열지역", "조정대상지역"]:
+        for match in re.finditer(keyword, first_page_like):
+            context = first_page_like[max(0, match.start() - 60):match.end() + 60]
+            if _REGULATED_NEGATION_CONTEXT.search(context):
+                continue
+            labels.append(keyword)
+            break
     if "비규제" in first_page_like and not labels:
         return "비규제지역"
     return ", ".join(dict.fromkeys(labels)) if labels else None
 
 
 def _find_announcement_date(text: str) -> str | None:
-    value = _find_labeled_value(text, ["입주자 모집공고일", "입주자모집공고일", "모집공고일"])
+    value = _find_labeled_value(text, ["입주자 모집공고일", "입주자모집공고일", "모집공고일", "매각공고일"])
     if value:
         date = _find_date(value)
         if date:
             return date
+    # 매각공고(무순위/잔여주택)의 "[공고일 : 2026.07.06.]", "매각공고일은 2026.07.06.(월)" 형태 지원
     bracket_match = re.search(
-        r"(?:입주자\s*모집공고일|입주자모집공고일|모집공고일)\s*(?:은|은\s*)?\s*[\[\(‘']?\s*([0-9]{2,4}[.년]\s*[0-9]{1,2}[.월]\s*[0-9]{1,2})",
+        r"(?:입주자\s*모집공고일|입주자모집공고일|모집공고일|매각공고일|공고일)\s*(?:은)?\s*[:：]?\s*[\[\(‘']?\s*([0-9]{2,4}[.년]\s*[0-9]{1,2}[.월]\s*[0-9]{1,2})",
         text,
     )
     if bracket_match:
@@ -617,14 +685,19 @@ def _extract_schedule(text: str) -> dict[str, str]:
 def _extract_supply_counts(text: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
     supply_line = _find_labeled_value(text, ["공급규모", "공급 규모", "공급대상", "공급 대상"])
+    if not supply_line:
+        # 잔여주택/무순위 공고는 "❚공급위치 ❚공급대상 : ..." 처럼 라벨이 줄 중간에 오는 경우가 있다.
+        inline_match = re.search(r"(?:공급대상|공급규모)\s*[:：]\s*([^\n]+)", text)
+        if inline_match:
+            supply_line = re.sub(r"\s+", " ", inline_match.group(1)).strip()[:220]
     if supply_line:
         result["text"] = supply_line
-        line_counts = [_parse_int(value) for value in re.findall(r"([0-9,]+)\s*세대", supply_line)]
+        line_counts = [_parse_int(value) for value in re.findall(r"([0-9,]+)\s*(?:세대|호)", supply_line)]
         line_counts = [value for value in line_counts if value]
         if line_counts:
             result["total_households"] = max(line_counts)
 
-    total_match = re.search(r"총\s*([0-9,]+)\s*세대", text)
+    total_match = re.search(r"총\s*([0-9,]+)\s*(?:세대|호)", text)
     general_match = re.search(r"일반분양\s*([0-9,]+)\s*세대", text)
     if not general_match:
         general_match = re.search(r"일반공급\s*([0-9,]+)\s*세대", text)
@@ -658,7 +731,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
                 "type": short_type,
                 "full_type": full_type,
                 "exclusive_area_sqm": float(exclusive_area),
-                "supply_household_count": _parse_int(total_count),
+                "supply_household_count": _valid_household_count(_parse_int(total_count)),
             }
         )
         seen.add(short_type)
@@ -675,7 +748,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
                 housing_types.append({
                     "type": short_type,
                     "exclusive_area_sqm": float(short_type),
-                    "supply_household_count": _parse_int(count),
+                    "supply_household_count": _valid_household_count(_parse_int(count)),
                 })
                 seen.add(short_type)
 
@@ -693,7 +766,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
             housing_types.append({
                 "type": short_type,
                 "exclusive_area_sqm": float(area_text),
-                "supply_household_count": _parse_int(count_text),
+                "supply_household_count": _valid_household_count(_parse_int(count_text)),
             })
             seen.add(short_type)
 
@@ -703,7 +776,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
             if short_type not in seen:
                 housing_types.append({
                     "type": short_type,
-                    "supply_household_count": _parse_int(count_text),
+                    "supply_household_count": _valid_household_count(_parse_int(count_text)),
                 })
                 seen.add(short_type)
 
@@ -730,7 +803,7 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
                 housing_types.append({
                     "type": short_type,
                     "exclusive_area_sqm": float(area_text),
-                    "supply_household_count": _parse_int(count_text),
+                    "supply_household_count": _valid_household_count(_parse_int(count_text)),
                 })
                 seen.add(short_type)
 
@@ -747,26 +820,39 @@ def _extract_housing_types(text: str) -> list[dict[str, Any]]:
     return housing_types
 
 
+# 계약금/중도금/잔금/융자 라인의 분할 납부 금액이 공급금액으로 오인되는 것을 방지
+_PRICE_EXCLUDE_LINE = re.compile(r"계약금|중도금|잔금|융자|대출|보증금|임대료")
+# 서울 고가 단지(30억 초과)도 커버하도록 상한을 60억으로 설정 (재무 분석의 25억 초과 대출캡 구간과 정합)
+PRICE_MIN_KRW = 100_000_000
+PRICE_MAX_KRW = 6_000_000_000
+
+
 def _extract_price_summary(text: str) -> dict[str, Any]:
     section = _section_after_any(
         text,
         ["공급금액 및 납부일정", "공급금액", "공급가격", "분양가격", "분양금액", "분양대금", "주택가격"],
         max_chars=30_000,
     )
+    lines = [line for line in section.splitlines() if not _PRICE_EXCLUDE_LINE.search(line)]
     price_values: list[int] = []
 
-    for line in section.splitlines():
+    for line in lines:
         money_values = [_parse_int(value) for value in re.findall(r"\d{1,3}(?:,\d{3}){2,}", line)]
         money_values = [value for value in money_values if value]
         if len(money_values) >= 3:
             # 표마다 공급금액 위치가 다르므로 억 단위 후보 중 가장 큰 값을 세대 공급금액으로 본다.
-            supply_candidates = [value for value in money_values if 100_000_000 <= value <= 3_000_000_000]
+            supply_candidates = [value for value in money_values if PRICE_MIN_KRW <= value <= PRICE_MAX_KRW]
             if supply_candidates:
                 price_values.append(max(supply_candidates))
 
     if not price_values:
-        all_values = [_parse_int(value) for value in re.findall(r"\d{1,3}(?:,\d{3}){2,}", section)]
-        price_values = [value for value in all_values if value and 100_000_000 <= value <= 3_000_000_000]
+        # fallback도 제외 라인을 거친 텍스트만 사용해 분할 납부 금액 오염을 막는다.
+        all_values = [
+            _parse_int(value)
+            for line in lines
+            for value in re.findall(r"\d{1,3}(?:,\d{3}){2,}", line)
+        ]
+        price_values = [value for value in all_values if value and PRICE_MIN_KRW <= value <= PRICE_MAX_KRW]
 
     if not price_values:
         return {}
@@ -812,19 +898,25 @@ def _extract_rent_summary(text: str) -> dict[str, Any]:
     return result
 
 
-def _extract_residence_requirement(text: str) -> str | None:
-    if re.search(r"서울특별시\s*2년\s*이상\s*(?:계속\s*)?거주자", text):
-        return "서울특별시 2년 이상 거주자 우선"
+_RESIDENCE_REGION_PATTERN = (
+    r"(?:서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|"
+    r"경기도|강원특별자치도|충청북도|충청남도|전북특별자치도|전라남도|경상북도|경상남도|제주특별자치도|"
+    r"[가-힣]{1,10}(?:특별시|광역시|도)?\s*[가-힣]{1,10}(?:시|군|구))"
+)
 
+
+def _extract_residence_requirement(text: str) -> str | None:
+    # 서울 하드코딩 대신 전국 지역명 + 거주기간 패턴을 일반화해서 추출한다.
     patterns = [
-        r"서울특별시\s*2년\s*이상\s*거주자[^.\n]*우선",
-        r"서울특별시\s*2년\s*이상\s*계속\s*거주자",
-        r"해당\s*주택건설지역인\s*서울특별시\s*2년\s*이상\s*거주자[^.\n]*우선",
+        rf"({_RESIDENCE_REGION_PATTERN}\s*(?:에\s*)?[0-9]+년\s*이상\s*(?:계속\s*)?거주(?:자|하고|하는|한\s*자)[^.\n]{{0,30}})",
+        rf"(해당\s*주택건설지역[^.\n]{{0,60}}?[0-9]+년\s*이상[^.\n]{{0,20}}?거주(?:자|하고|하는|한\s*자)[^.\n]{{0,20}})",
+        rf"({_RESIDENCE_REGION_PATTERN}\s*(?:에\s*)?거주(?:자|하는\s*자)[^.\n]{{0,20}}우선)",
     ]
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            return re.sub(r"\s+", " ", match.group(0)).strip()
+            cleaned = re.sub(r"\s+", " ", match.group(1)).strip()
+            return cleaned[:100]
     return None
 
 
@@ -845,15 +937,26 @@ def _extract_restriction(text: str, labels: list[str]) -> str | None:
 
     for label in labels:
         escaped = re.escape(label)
-        line_match = re.search(rf"(?:^|\n)[^\n]*{escaped}[^\n]*", text)
-        if line_match:
+        for line_match in re.finditer(rf"(?:^|\n)[^\n]*{escaped}[^\n]*", text):
             line = re.sub(r"\s+", " ", line_match.group(0)).strip()
-            if label.replace(" ", "") in ["거주의무기간", "거주의무"] and "없음" in line:
+            # "청약자격(...재당첨제한...)의 판단기준일" 같은 안내문은 제한 규정이 아니므로 스킵
+            if "판단기준일" in line:
+                continue
+            normalized_label = label.replace(" ", "")
+            if normalized_label in ["거주의무기간", "거주의무"] and "없음" in line:
                 return "없음"
-            if label.replace(" ", "") in ["재당첨제한"] and "10년" in line:
-                return "10년"
-            if label.replace(" ", "") in ["전매제한"] and ("3년" in line or "소유권이전등기" in line):
-                return "소유권이전등기일까지(3년 초과 시 3년)"
+            # 고정값 대신 라인에서 실제 기간을 추출한다 (공고마다 1년/3년/10년 등 상이).
+            period_match = re.search(rf"{escaped}[^0-9]{{0,20}}([0-9]+)\s*년(?:\s*([0-9]+)\s*개월)?", line)
+            if not period_match:
+                period_match = re.search(r"([0-9]+)\s*년(?:\s*([0-9]+)\s*개월)?", line)
+            if period_match:
+                years, months = period_match.groups()
+                period = f"{years}년" + (f" {months}개월" if months else "")
+                if normalized_label == "전매제한" and "소유권이전등기" in line:
+                    return f"소유권이전등기일까지({period} 초과 시 {period})"
+                return period
+            if normalized_label == "전매제한" and "소유권이전등기" in line:
+                return "소유권이전등기일까지"
             return line[:120]
     return None
 
