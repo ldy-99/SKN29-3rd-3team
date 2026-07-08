@@ -22,5 +22,5 @@ COPY . .
 # 6. 포트 노출 (Django 기본 포트: 8000)
 EXPOSE 8000
 
-# 7. 실행 명령 (컨테이너 실행 시 자동 마이그레이션 적용 후 서버 시작)
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+# 7. 실행 명령 (컨테이너 실행 시 자동 마이그레이션 적용, static 수집 후 Gunicorn 서버 시작)
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"]

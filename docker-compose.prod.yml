@@ -8,7 +8,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - django-db:/app/data  # SQLite db 보존용 볼륨
+      - django-db:/app/data # SQLite db 보존용 볼륨
     environment:
       - DJANGO_DEBUG=False
       - DJANGO_DB_PATH=/app/data/db.sqlite3
@@ -32,7 +32,7 @@ services:
     image: dongyoon99/frontend-react:latest
     container_name: frontend-react
     ports:
-      - "3000:80"  # 브라우저에서 http://localhost:3000 으로 접속
+      - "80:80"
     depends_on:
       - django-backend
       - fastapi-backend
