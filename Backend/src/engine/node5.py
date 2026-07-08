@@ -43,6 +43,13 @@ def _format_percent(value) -> str:
     return "계산 불가"
 
 
+def _format_won(value) -> str:
+    """Return a formatted won label without failing on None (계산 불가 케이스)."""
+    if isinstance(value, (int, float)):
+        return f"{value:,.0f}원"
+    return "계산 불가"
+
+
 # ── State 정의 ────────────────────────────────────────────────────
 
 class Node5State(TypedDict, total=False):
@@ -80,19 +87,27 @@ def run_node5(state: Node5State) -> Node5State:
     print("[Node 5] STEP 1: 재무 계산 시작")
 
     # 1) 대출 가능 금액
+    # 생애최초 여부는 공급 유형이 아닌 주택 소유 이력(has_property_history) 기준으로 판정.
+    # region은 수도권 한도 캡 판정용이므로 거주지가 아닌 공고(주택 소재지) 지역을 넘긴다.
     loan_result = calculate_loan_amount.invoke({
         "price": price,
         "is_regulated": is_regulated,
-        "recommended_supply": recommended_supply,
+        "has_property_history": profile.get("has_property_history"),
+        "region": announcement.get("region") or "",
+        "average_monthly_income": profile.get("average_monthly_income"),
     })
-    print(f"  대출 가능 금액: {loan_result['loan_amount']:,}원 (LTV {loan_result['ltv_rate']:.0%})")
+    print(
+        f"  대출 가능 금액: {_format_won(loan_result['loan_amount'])} "
+        f"(LTV {_format_percent(loan_result['ltv_rate'])}, "
+        f"적용 제약: {loan_result.get('applied_constraint') or '없음'})"
+    )
 
     # 2) 실투자금
     investment_result = calculate_real_investment.invoke({
         "price": price,
         "loan_amount": loan_result["loan_amount"],
     })
-    print(f"  실투자금: {investment_result['real_investment']:,}원")
+    print(f"  실투자금: {_format_won(investment_result['real_investment'])}")
 
     # 6) 자금 리스크
     risk_result = analyze_financial_risk.invoke({
@@ -167,6 +182,13 @@ def run_node5(state: Node5State) -> Node5State:
     action_items = risk_result.get("action_items") or []
     action_items_text = "\n".join(f"  - {item}" for item in action_items) if action_items else "  - 없음"
 
+    # 재무 계산 관련 고지 문구 (한도 캡/DSR/정보 누락 등)
+    loan_notices = loan_result.get("notices") or []
+    loan_notices_text = (
+        "\n".join(f"  - {n}" for n in loan_notices) if loan_notices else "  - 없음"
+    )
+    price_text = _format_won(price if isinstance(price, (int, float)) and price > 0 else None)
+
     result_patch: dict = {}
     tools_failed = False
 
@@ -237,14 +259,16 @@ def run_node5(state: Node5State) -> Node5State:
 [공고 정보]
 - 건설지역: {announcement.get('region')}
 - 공급유형: {announcement.get('supply_type')}
-- 분양가: {price:,}원
+- 분양가: {price_text}
 - 희망 평형: {announcement.get('area')}
 - 공급 세대수: {announcement.get('supply_count')}세대
 
 [재무 분석 결과 (사전 계산됨, 다시 계산하지 마세요)]
-- 대출 가능 금액: {loan_result['loan_amount']:,}원 (LTV {loan_result['ltv_rate']:.0%}, {loan_result['area_type']})
-- 실투자금: {investment_result['real_investment']:,}원
+- 대출 가능 금액: {_format_won(loan_result['loan_amount'])} (LTV {_format_percent(loan_result['ltv_rate'])}, {loan_result['area_type']}, 적용 제약: {loan_result.get('applied_constraint') or '확인 불가'})
+- 실투자금: {_format_won(investment_result['real_investment'])}
 - 자금 리스크: {risk_result['risk_level']} ({risk_result['description']})
+- 대출 관련 유의사항 (사전 계산됨, 아래 문구를 재무 설명 마지막에 그대로 포함하세요):
+{loan_notices_text}
 - 자금 관련 행동지침 (사전 계산됨):
 {action_items_text}
 
@@ -293,6 +317,8 @@ def run_node5(state: Node5State) -> Node5State:
     대신 "실투자금 대비 자금 부담이 크므로 중도금 대출이나 추가 자금 조달 계획을 사전에 점검해야 한다"는 방향으로 작성하세요.
   - 자금 리스크가 "중간"인 경우, "자금 여유가 제한적이니 비상 자금을 확보해두는 것을 권장한다"는 균형 잡힌 결론을 작성하세요.
   - 자금 리스크가 "낮음"인 경우에만 "적극적으로 참여하라"는 권고를 사용하세요.
+  - 자금 리스크가 "분석 불가"인 경우, 자금에 대한 판단(부담이 크다/적다)을 하지 말고,
+    분양가 등 누락된 정보를 확인한 뒤 다시 분석해야 한다는 점만 안내하세요.
 - 결론은 반드시 위에서 제시된 자금 리스크 수준({risk_result['risk_level']})과 [자격 확정 여부], 1순위 자격 분석 결과 모두와 논리적으로 일치해야 합니다.
 - 결론 문단이 끝난 뒤, "다음 행동" 섹션을 별도로 만들고 위 [재무 분석 결과]의 "자금 관련 행동지침"을 각각 불릿으로 그대로 나열하세요. 행동지침의 문구를 바꾸거나 요약하지 말고 그대로 전달하세요.
 """
@@ -345,8 +371,8 @@ def _build_fallback_agent_result(
     lines = [
         "[참고] AI 전략 분석 생성에 실패하여, 사전에 계산된 재무 분석 결과만 안내드립니다.",
         f"- 추천 공급 유형: {recommended_supply or '확인 불가'}",
-        f"- 대출 가능 금액: {loan_result.get('loan_amount', 0):,}원 (LTV {ltv_text})",
-        f"- 실투자금: {investment_result.get('real_investment', 0):,}원",
+        f"- 대출 가능 금액: {_format_won(loan_result.get('loan_amount'))} (LTV {ltv_text})",
+        f"- 실투자금: {_format_won(investment_result.get('real_investment'))}",
         f"- 자금 리스크: {risk_result.get('risk_level', '확인 불가')} "
         f"({risk_result.get('description', '상세 설명 없음')})",
         f"- 지역 우선공급: "
@@ -382,6 +408,7 @@ if __name__ == "__main__":
             "bankbook_join_date": "2020-01-01",
             "average_monthly_income": 5000000,
             "total_assets": 100000000,
+            "has_property_history": False,
             "birth_year": 1990,
         },
         "announcement": {
