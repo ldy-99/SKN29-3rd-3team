@@ -14,7 +14,7 @@ services:
       - ./django_backend:/app
       - django-db:/app/data  # SQLite db 보존을 위해 볼륨 바인딩 가능 (필요시)
     environment:
-      - DEBUG=True
+      - DJANGO_DEBUG=True
       - FASTAPI_API_URL=http://fastapi-backend:8080
     env_file:
       - .env

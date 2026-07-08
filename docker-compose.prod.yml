@@ -10,7 +10,7 @@ services:
     volumes:
       - django-db:/app/data  # SQLite db 보존용 볼륨
     environment:
-      - DEBUG=False
+      - DJANGO_DEBUG=False
       - FASTAPI_API_URL=http://fastapi-backend:8080
     env_file:
       - .env
