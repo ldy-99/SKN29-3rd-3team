@@ -1,11 +1,12 @@
 // 역할: 로그인 사용자의 계정 정보와 Django에 저장된 청약 진단 이력을 조회합니다.
 // 흐름: MyPage -> api.getMe/getMyStrategies -> Django /api/auth/me, /api/strategy/me.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, CalendarDays, History, MapPin, RefreshCw, User, X } from "lucide-react";
+import { ArrowRight, CalendarDays, History, KeyRound, Mail, MapPin, Settings, Trash2, User, X } from "lucide-react";
 import { Button, Card, ErrorNotice, PageTitle, StatusBadge } from "../components/UI";
 import { api, CurrentUser, StrategyRecord } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { getAnnouncementPresentation, type AnnouncementPresentation } from "../utils/announcementPresentation";
 
 type UnknownRecord = Record<string, unknown>;
@@ -39,13 +40,16 @@ type CarouselItem = HistoryEntry | CarouselBookend;
 
 export function MyPage() {
   const navigate = useNavigate();
-  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const { refreshUser } = useAuth();
+  const carouselRef = useRef<HTMLDivElement>(null);
   const lastCarouselStepAtRef = useRef(0);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [profile, setProfile] = useState<UnknownRecord | null>(null);
   const [strategies, setStrategies] = useState<StrategyRecord[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<AnnouncementGroup | null>(null);
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(1);
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+  const [isBasicDiagnosisRunning, setIsBasicDiagnosisRunning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -104,6 +108,30 @@ export function MyPage() {
     setSelectedGroup(null);
     navigate(`/results/${strategyId}`);
   };
+
+  const runBasicDiagnosis = useCallback(async () => {
+    if (isBasicDiagnosisRunning) return;
+
+    setIsBasicDiagnosisRunning(true);
+    setError(null);
+
+    try {
+      const result = await api.runStrategy({
+        announcement_text: null,
+        profile_only: true,
+        input_method: null,
+        source_filename: null,
+        pdf_analysis_id: null,
+        pdf_summary_text: null,
+        pdf_extracted_fields: null,
+      });
+      navigate(`/results/${result.strategy_id}`);
+    } catch (error) {
+      setError(error);
+    } finally {
+      setIsBasicDiagnosisRunning(false);
+    }
+  }, [isBasicDiagnosisRunning, navigate]);
 
   const stepCarousel = useCallback((direction: -1 | 1) => {
     setActiveCarouselIndex((current) => Math.min(Math.max(current + direction, 1), carouselItems.length - 2));
@@ -166,10 +194,7 @@ export function MyPage() {
 
     if (item.kind === "announcement") {
       setSelectedGroup(item);
-      return;
     }
-
-    openResult(item.strategy.strategy_id);
   };
 
   return (
@@ -192,44 +217,26 @@ export function MyPage() {
       <PageTitle
         title="마이페이지"
         description="내 계정과 저장된 청약 진단 기록을 확인하고 결과를 다시 조회할 수 있습니다."
-        action={
-          <Button variant="outline" onClick={() => void loadMyPage()} disabled={isLoading} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            새로고침
-          </Button>
-        }
       />
 
       <ErrorNotice error={error} fallbackMessage="마이페이지 정보를 불러오지 못했습니다." />
+
+      <AccountOverviewCard
+        user={user}
+        totalCount={strategies.length}
+        completedCount={completedCount}
+        isLoading={isLoading}
+        onOpenSettings={() => setIsAccountDialogOpen(true)}
+      />
 
       <ProfileSummaryBar
         tags={currentProfileTags}
         latestProfileOnlyGroup={profileOnlyGroups[0]}
         onOpenResult={openResult}
         onEditProfile={() => navigate("/profile")}
-        onRunBasic={() => navigate("/strategy")}
+        onRunBasic={runBasicDiagnosis}
+        isBasicRunning={isBasicDiagnosisRunning}
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-        <SummaryCard
-          icon={<User className="w-5 h-5" />}
-          label="로그인 계정"
-          value={user?.username ?? (isLoading ? "불러오는 중" : "확인 필요")}
-          description={user?.email ?? ""}
-        />
-        <SummaryCard
-          icon={<History className="w-5 h-5" />}
-          label="저장된 진단"
-          value={`${strategies.length}건`}
-          description="Django 저장 기록"
-        />
-        <SummaryCard
-          icon={<CalendarDays className="w-5 h-5" />}
-          label="완료된 진단"
-          value={`${completedCount}건`}
-          description="결과 조회 가능"
-        />
-      </div>
 
       <div className="mb-5 flex items-center justify-between gap-4 px-1">
         <div>
@@ -282,30 +289,360 @@ export function MyPage() {
           onOpenResult={openResult}
         />
       )}
+
+      {isAccountDialogOpen && (
+        <AccountManagementDialog
+          onClose={() => setIsAccountDialogOpen(false)}
+          onPasswordChanged={() => void loadMyPage()}
+          onAccountDeleted={async () => {
+            await refreshUser();
+            navigate("/", { replace: true });
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function SummaryCard({
-  icon,
-  label,
-  value,
-  description,
+function AccountOverviewCard({
+  user,
+  totalCount,
+  completedCount,
+  isLoading,
+  onOpenSettings,
 }: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  description: string;
+  user: CurrentUser | null;
+  totalCount: number;
+  completedCount: number;
+  isLoading: boolean;
+  onOpenSettings: () => void;
 }) {
   return (
-    <Card className="p-5">
-      <div className="w-9 h-9 rounded-[12px] bg-[#102e5a]/8 text-[#102e5a] flex items-center justify-center mb-4">
-        {icon}
+    <Card className="mb-6 !rounded-[26px] !border-[#e3ded5] bg-white/90 p-5 shadow-[0_18px_52px_rgba(24,31,43,0.06)] sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[#102e5a] text-white">
+            <User className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#b86a12]">계정 정보</p>
+            <h2 className="mt-1 truncate text-[24px] font-black tracking-[-0.01em] text-[#152846]">
+              {user?.username ?? (isLoading ? "계정 확인 중" : "계정 정보 없음")}
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[#69717d]">
+              {user?.email && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  {user.email}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                가입 {user?.date_joined ? formatDateOnly(user.date_joined) : "확인 중"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
+          <AccountMiniMetric label="전체 진단" value={`${totalCount}건`} />
+          <AccountMiniMetric label="완료 진단" value={`${completedCount}건`} />
+          <Button variant="outline" className="col-span-2 gap-2 !rounded-full !border-[#d9dee8] bg-[#f7f8fb] sm:col-span-1" onClick={onOpenSettings}>
+            <Settings className="h-4 w-4" />
+            계정 관리
+          </Button>
+        </div>
       </div>
-      <p className="text-[13px] text-[#6e6e73]">{label}</p>
-      <p className="mt-1 text-[20px] font-bold text-[#152846] break-all">{value}</p>
-      {description && <p className="mt-1 text-[12px] text-[#86868b] break-all">{description}</p>}
     </Card>
+  );
+}
+
+function AccountMiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[18px] border border-[#ece6dc] bg-[#fffefa] px-4 py-3">
+      <p className="text-[11px] font-bold text-[#7a818c]">{label}</p>
+      <p className="mt-1 text-[18px] font-black text-[#152846]">{value}</p>
+    </div>
+  );
+}
+
+function AccountManagementDialog({
+  onClose,
+  onPasswordChanged,
+  onAccountDeleted,
+}: {
+  onClose: () => void;
+  onPasswordChanged: () => void;
+  onAccountDeleted: () => Promise<void>;
+}) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const deleteConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (isDeleteConfirming) {
+      deleteConfirmButtonRef.current?.focus();
+    }
+  }, [isDeleteConfirming]);
+
+  const handlePasswordChange = async (event: FormEvent) => {
+    event.preventDefault();
+    setMessage(null);
+    setFormError(null);
+    setIsSubmitting(true);
+
+    try {
+      await api.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage("비밀번호가 변경되었습니다.");
+      onPasswordChanged();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "비밀번호 변경에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setMessage(null);
+    setFormError(null);
+    setIsSubmitting(true);
+
+    try {
+      await api.deleteAccount({ password: deletePassword });
+      await onAccountDeleted();
+      onClose();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "계정 삭제에 실패했습니다.");
+      setIsDeleteConfirming(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const focusableElements = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).filter((element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true");
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    if (!firstElement || !lastElement) return;
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+      return;
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 px-4 py-8 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-dialog-title"
+      onClick={onClose}
+      onKeyDown={handleDialogKeyDown}
+    >
+      <div
+        ref={dialogRef}
+        className="w-full max-w-2xl overflow-hidden rounded-[26px] bg-white shadow-[0_28px_80px_rgba(0,0,0,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#eceff3] px-6 py-5">
+          <div>
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#b86a12]">Account Settings</p>
+            <h3 id="account-dialog-title" className="mt-1 text-[22px] font-black text-[#152846]">
+              계정 관리
+            </h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#69717d]">
+              비밀번호 변경과 계정 삭제는 현재 비밀번호 확인 후 진행됩니다.
+            </p>
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f4f5f7] text-[#4d5562] transition-colors hover:bg-[#e8ebef]"
+            onClick={onClose}
+            aria-label="계정 관리 닫기"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-6">
+          {(message || formError) && (
+            <div className={`rounded-[16px] px-4 py-3 text-[13px] font-semibold ${formError ? "bg-[#fff2f1] text-[#9b2f2a]" : "bg-[#f1fbf4] text-[#237a3f]"}`}>
+              {formError ?? message}
+            </div>
+          )}
+
+          <form className="rounded-[20px] border border-[#e6e1d8] bg-[#fffefa] p-5" onSubmit={handlePasswordChange}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#eef4ff] text-[#245ea8]">
+                <KeyRound className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-[16px] font-black text-[#152846]">비밀번호 변경</h4>
+                <p className="text-[12px] text-[#69717d]">현재 비밀번호와 새 비밀번호를 입력하세요.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-[12px] font-bold text-[#69717d]">
+                현재 비밀번호
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  className="mt-1 w-full rounded-[14px] border border-[#ddd7cb] px-3 py-3 text-[14px] text-[#152846] outline-none focus:border-[#245ea8]"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <label className="text-[12px] font-bold text-[#69717d]">
+                새 비밀번호
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="mt-1 w-full rounded-[14px] border border-[#ddd7cb] px-3 py-3 text-[14px] text-[#152846] outline-none focus:border-[#245ea8]"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button type="submit" variant="outline" disabled={isSubmitting || !currentPassword || !newPassword}>
+                변경 저장
+              </Button>
+            </div>
+          </form>
+
+          <div className="rounded-[20px] border border-[#f0d1cd] bg-[#fff8f7] p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#ffebe8] text-[#c43b31]">
+                <Trash2 className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-[16px] font-black text-[#8f2f2a]">계정 삭제</h4>
+                <p className="text-[12px] text-[#8a6864]">삭제하면 저장된 진단 기록과 프로필을 되돌릴 수 없습니다.</p>
+              </div>
+            </div>
+
+            <label className="text-[12px] font-bold text-[#8a6864]">
+              비밀번호 확인
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(event) => {
+                  setDeletePassword(event.target.value);
+                  setIsDeleteConfirming(false);
+                }}
+                className="mt-1 w-full rounded-[14px] border border-[#f0d1cd] px-3 py-3 text-[14px] text-[#152846] outline-none focus:border-[#c43b31]"
+                autoComplete="current-password"
+              />
+            </label>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[12px] leading-relaxed text-[#8a6864]">
+                삭제 전 비밀번호를 입력한 뒤 최종 확인을 진행해주세요.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="!border-[#efb8b1] !text-[#a53a32] hover:!bg-[#fff0ee]"
+                disabled={isSubmitting || !deletePassword}
+                onClick={() => setIsDeleteConfirming(true)}
+              >
+                계정 삭제
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {isDeleteConfirming && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsDeleteConfirming(false);
+            }}
+          >
+            <div
+              className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_28px_80px_rgba(0,0,0,0.28)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#ffebe8] text-[#c43b31]">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <h4 id="delete-confirm-title" className="text-[22px] font-black text-[#8f2f2a]">
+                정말 삭제하시겠습니까?
+              </h4>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#6f5b58]">
+                계정을 삭제하면 프로필과 저장된 진단 기록을 복구할 수 없습니다.
+                계속하려면 아래 최종 삭제 버튼을 눌러주세요.
+              </p>
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  ref={deleteConfirmButtonRef}
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-[16px] border border-[#e5e5e7] bg-white px-5 py-3 text-[15px] font-semibold text-[#1d1d1f] transition-all hover:bg-[#f5f5f7] focus:outline-none focus:ring-2 focus:ring-[#e5e5e7] focus:ring-offset-2 active:scale-[0.98]"
+                  onClick={() => setIsDeleteConfirming(false)}
+                >
+                  취소
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="!border-[#efb8b1] !bg-[#fff8f7] !text-[#a53a32] hover:!bg-[#fff0ee]"
+                  disabled={isSubmitting}
+                  onClick={() => void handleDeleteAccount()}
+                >
+                  최종 삭제
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -315,14 +652,17 @@ function ProfileSummaryBar({
   onOpenResult,
   onEditProfile,
   onRunBasic,
+  isBasicRunning,
 }: {
   tags: string[];
   latestProfileOnlyGroup?: ProfileOnlyGroup;
   onOpenResult: (strategyId: string) => void;
   onEditProfile: () => void;
   onRunBasic: () => void;
+  isBasicRunning: boolean;
 }) {
-  if (tags.length === 0 && !latestProfileOnlyGroup) return null;
+  const displayTags = tags.length > 0 ? tags : ["프로필 입력 필요"];
+  const needsProfile = tags.length === 0 && !latestProfileOnlyGroup;
 
   return (
     <Card className="mb-8 !rounded-[24px] !border-[#e5e1d8] bg-white/82 px-5 py-4 shadow-[0_18px_52px_rgba(24,31,43,0.06)] backdrop-blur sm:px-6">
@@ -336,7 +676,7 @@ function ProfileSummaryBar({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {tags.slice(0, 4).map((tag) => (
+            {displayTags.slice(0, 4).map((tag) => (
               <span
                 key={tag}
                 className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[12px] font-semibold text-[#394150]"
@@ -344,23 +684,28 @@ function ProfileSummaryBar({
                 {tag}
               </span>
             ))}
-            {tags.length > 4 && (
+            {displayTags.length > 4 && (
               <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[12px] font-semibold text-[#8a8f98]">
-                +{tags.length - 4}
+                +{displayTags.length - 4}
               </span>
             )}
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          {latestProfileOnlyGroup ? (
+          {needsProfile ? (
+            <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={onEditProfile}>
+              프로필 입력
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : latestProfileOnlyGroup ? (
             <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={() => onOpenResult(latestProfileOnlyGroup.latestStrategy.strategy_id)}>
-              결과 보기
+              기본 진단
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={onRunBasic}>
-              분석 실행
+            <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={onRunBasic} disabled={isBasicRunning}>
+              {isBasicRunning ? "진단 중..." : "기본 진단"}
               <ArrowRight className="h-4 w-4" />
             </Button>
           )}
@@ -380,45 +725,60 @@ function ReportCarousel({
   onKeyDown,
   onSelect,
 }: {
-  carouselRef: RefObject<HTMLDivElement | null>;
+  carouselRef: RefObject<HTMLDivElement>;
   items: CarouselItem[];
   activeIndex: number;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   onSelect: (index: number, item: CarouselItem) => void;
 }) {
+  const descriptionId = useId();
+  const activeItem = items[activeIndex];
+
   return (
-    <div
-      ref={carouselRef}
-      className="relative h-[430px] overflow-hidden outline-none [overscroll-behavior:contain] sm:h-[470px]"
-      role="listbox"
-      tabIndex={0}
-      aria-label="청약 진단 기록 카드 캐러셀"
-      onKeyDown={onKeyDown}
-    >
-      {items.map((item, index) => {
-        const offset = index - activeIndex;
-        if (Math.abs(offset) > 1) return null;
+    <>
+      <p id={descriptionId} className="sr-only">
+        좌우 방향키, PageUp, PageDown, Home, End 키로 카드를 이동하고 Enter 키로 현재 카드를 선택할 수 있습니다.
+      </p>
+      <div
+        ref={carouselRef}
+        className="relative h-[430px] overflow-hidden outline-none [overscroll-behavior:contain] focus-visible:ring-4 focus-visible:ring-[#245ea8]/15 sm:h-[470px]"
+        role="listbox"
+        tabIndex={0}
+        aria-label="청약 진단 기록 카드 캐러셀"
+        aria-describedby={descriptionId}
+        aria-activedescendant={activeItem ? `report-card-${activeItem.key}` : undefined}
+        onKeyDown={onKeyDown}
+      >
+        {items.map((item, index) => {
+          const offset = index - activeIndex;
+          if (Math.abs(offset) > 1) return null;
 
-        const positionClass =
-          offset === 0
-            ? "z-20 -translate-x-1/2 scale-100 opacity-100"
-            : offset < 0
-              ? "z-10 -translate-x-[118%] scale-[0.82] -rotate-[7deg] opacity-80"
-              : "z-10 translate-x-[18%] scale-[0.82] rotate-[7deg] opacity-80";
+          const isActive = offset === 0;
+          const positionClass =
+            isActive
+              ? "z-20 -translate-x-1/2 scale-100 opacity-100"
+              : offset < 0
+                ? "z-10 -translate-x-[118%] scale-[0.82] -rotate-[7deg] opacity-80"
+                : "z-10 translate-x-[18%] scale-[0.82] rotate-[7deg] opacity-80";
 
-        return (
-          <button
-            key={item.key}
-            type="button"
-            className={`absolute left-1/2 top-4 origin-center transition-all duration-500 ease-out ${positionClass}`}
-            onClick={() => onSelect(index, item)}
-            aria-label={item.kind === "bookend" ? "AFIT 기본 카드" : `${getCarouselTitle(item)} 선택`}
-          >
-            <CarouselItemCard item={item} isActive={offset === 0} />
-          </button>
-        );
-      })}
-    </div>
+          return (
+            <button
+              id={`report-card-${item.key}`}
+              key={item.key}
+              type="button"
+              role="option"
+              aria-selected={isActive}
+              tabIndex={isActive ? 0 : -1}
+              className={`absolute left-1/2 top-4 origin-center transition-all duration-500 ease-out ${positionClass}`}
+              onClick={() => onSelect(index, item)}
+              aria-label={item.kind === "bookend" ? "AFIT 기본 카드" : `${getCarouselTitle(item)} 선택`}
+            >
+              <CarouselItemCard item={item} isActive={isActive} />
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -489,7 +849,7 @@ function AnnouncementCarouselCard({ group, isActive }: { group: AnnouncementGrou
 }
 
 function getCarouselTitle(item: HistoryEntry) {
-  return item.kind === "announcement" ? item.title : item.announcement.title;
+  return item.title;
 }
 
 function HistoryDialog({
@@ -501,6 +861,44 @@ function HistoryDialog({
   onClose: () => void;
   onOpenResult: (strategyId: string) => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const focusableElements = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).filter((element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true");
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    if (!firstElement || !lastElement) return;
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+      return;
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/55 px-4 py-8 backdrop-blur-[2px]"
@@ -508,8 +906,10 @@ function HistoryDialog({
       aria-modal="true"
       aria-labelledby="history-dialog-title"
       onClick={onClose}
+      onKeyDown={handleDialogKeyDown}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-[1040px] [animation:reportCardFlipIn_420ms_cubic-bezier(.2,.8,.2,1)] [perspective:1200px]"
         onClick={(event) => event.stopPropagation()}
       >
@@ -542,6 +942,7 @@ function HistoryDialog({
 
             <div className="relative flex min-h-0 flex-col bg-white p-6 sm:p-7">
               <button
+                ref={closeButtonRef}
                 type="button"
                 className="absolute right-4 top-4 rounded-full p-2 text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#152846]"
                 onClick={onClose}

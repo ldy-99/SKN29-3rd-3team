@@ -83,6 +83,7 @@ export function PdfAnalysis() {
         pdfAnalysisId: result.pdf_analysis_id,
         pdfSummaryText: result.summary_text,
         pdfExtractedFields: result.extracted_fields,
+        pdfWarnings: result.warnings ?? [],
       },
     });
   };

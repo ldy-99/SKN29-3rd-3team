@@ -2,10 +2,12 @@
 // 흐름: StrategyRun.tsx -> api.runStrategy -> Django StrategyRunAPIView -> FastAPI pipeline.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
 import { useLocation, useNavigate } from "react-router";
-import { Card, PageTitle, Button, ErrorNotice, ProcessingIndicator, WarningBox } from "../components/UI";
-import { ArrowRight, Check, FileText, Home, MapPin, Pencil, Timer, Upload, User } from "lucide-react";
+import { PageTitle, ErrorNotice, WarningBox } from "../components/UI";
 import { api } from "../api/client";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { PdfAnnouncementInputCard } from "./strategy-run/PdfAnnouncementInputCard";
+import { getPdfUploadStage, getStrategyRunningStage } from "./strategy-run/progressStages";
+import { StrategyProfileSummary } from "./strategy-run/StrategyProfileSummary";
 
 const STRATEGY_DRAFT_STORAGE_KEY = "strategy-run-draft-v1";
 
@@ -17,6 +19,7 @@ type StrategyDraft = {
   pdfAnalysisId: string | null;
   pdfSummaryText: string | null;
   pdfExtractedFields: Record<string, unknown> | null;
+  pdfWarnings: string[];
 };
 
 export function StrategyRun() {
@@ -37,13 +40,26 @@ export function StrategyRun() {
   const [pdfExtractedFields, setPdfExtractedFields] = useState<Record<string, unknown> | null>(
     initialDraft?.pdfExtractedFields ?? null,
   );
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pdfWarnings, setPdfWarnings] = useState<string[]>(initialDraft?.pdfWarnings ?? []);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfDragDepthRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
   const runningStage = getStrategyRunningStage(elapsedSeconds);
   const pdfStage = getPdfUploadStage(pdfElapsedSeconds);
   const isBusy = isRunning || isPdfUploading;
+
+  const applyDraft = useCallback((draft: StrategyDraft) => {
+    setNoticeText(draft.noticeText);
+    setIsBasicOnly(draft.isBasicOnly);
+    setInputMethod(draft.inputMethod);
+    setSourceFilename(draft.sourceFilename);
+    setPdfAnalysisId(draft.pdfAnalysisId);
+    setPdfSummaryText(draft.pdfSummaryText);
+    setPdfExtractedFields(draft.pdfExtractedFields);
+    setPdfWarnings(draft.pdfWarnings);
+    writeStrategyDraft(draft);
+  }, []);
 
   useEffect(() => {
     // PdfAnalysis에서 전달한 정리본을 기존 수동 공고문 입력 흐름에 태웁니다.
@@ -55,6 +71,7 @@ export function StrategyRun() {
           pdfAnalysisId?: string;
           pdfSummaryText?: string;
           pdfExtractedFields?: Record<string, unknown>;
+          pdfWarnings?: string[];
         }
       | null;
 
@@ -67,10 +84,11 @@ export function StrategyRun() {
         pdfAnalysisId: state.pdfAnalysisId ?? null,
         pdfSummaryText: state.pdfSummaryText ?? null,
         pdfExtractedFields: state.pdfExtractedFields ?? null,
+        pdfWarnings: state.pdfWarnings ?? [],
       });
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [applyDraft, location.state]);
 
   useEffect(() => {
     writeStrategyDraft({
@@ -81,8 +99,9 @@ export function StrategyRun() {
       pdfAnalysisId,
       pdfSummaryText,
       pdfExtractedFields,
+      pdfWarnings,
     });
-  }, [noticeText, isBasicOnly, inputMethod, sourceFilename, pdfAnalysisId, pdfSummaryText, pdfExtractedFields]);
+  }, [noticeText, isBasicOnly, inputMethod, sourceFilename, pdfAnalysisId, pdfSummaryText, pdfExtractedFields, pdfWarnings]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -104,17 +123,6 @@ export function StrategyRun() {
     return () => window.clearInterval(timer);
   }, [isPdfUploading]);
 
-  const applyDraft = (draft: StrategyDraft) => {
-    setNoticeText(draft.noticeText);
-    setIsBasicOnly(draft.isBasicOnly);
-    setInputMethod(draft.inputMethod);
-    setSourceFilename(draft.sourceFilename);
-    setPdfAnalysisId(draft.pdfAnalysisId);
-    setPdfSummaryText(draft.pdfSummaryText);
-    setPdfExtractedFields(draft.pdfExtractedFields);
-    writeStrategyDraft(draft);
-  };
-
   const clearAnnouncementDraft = () => {
     applyDraft({
       noticeText: "",
@@ -124,6 +132,7 @@ export function StrategyRun() {
       pdfAnalysisId: null,
       pdfSummaryText: null,
       pdfExtractedFields: null,
+      pdfWarnings: [],
     });
   };
 
@@ -149,6 +158,7 @@ export function StrategyRun() {
         pdfAnalysisId: data.pdf_analysis_id,
         pdfSummaryText: data.summary_text ?? null,
         pdfExtractedFields: data.extracted_fields ?? null,
+        pdfWarnings: data.warnings ?? [],
       });
     } catch (error) {
       setError(error);
@@ -251,248 +261,40 @@ export function StrategyRun() {
       <ErrorNotice error={error} fallbackMessage="전략 진단 요청에 실패했습니다." />
 
       <div className="space-y-6">
-        <Card className="p-7 !rounded-[20px] !border-[#e6e0d6] !shadow-[0_10px_32px_rgba(35,45,60,0.05)]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-[18px] flex items-center gap-2 text-[#152846]">
-              <User className="w-5 h-5 text-[#b86a12]" />
-              현재 기준 프로필
-            </h3>
-            <button
-              onClick={() => navigate("/profile")}
-              disabled={isBusy}
-              className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#0b5bd3] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
-            >
-              <Pencil className="w-4 h-4" />
-              수정하기
-            </button>
-          </div>
+        <StrategyProfileSummary isBusy={isBusy} onEditProfile={() => navigate("/profile")} />
 
-          <div className="bg-[#f5f5f7] rounded-[16px] p-5 flex flex-wrap gap-x-8 gap-y-4 text-[14px]">
-            <div>
-              <div className="text-[#6e6e73] mb-1">통장 유형</div>
-              <div className="font-medium">종합저축 (4년, 600만)</div>
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2 sm:border-r border-[#eee9df]">
-              <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
-                <MapPin className="w-5 h-5" />
-              </span>
-              <div>
-                <div className="text-[#7a818c] text-[12px] mb-0.5">거주·세대</div>
-                <div className="font-semibold text-[14px] text-[#26364e]">서울 · 세대주</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2">
-              <span className="w-10 h-10 rounded-full bg-[#f8f1e5] flex items-center justify-center text-[#102e5a]">
-                <Home className="w-5 h-5" />
-              </span>
-              <div>
-                <div className="text-[#7a818c] text-[12px] mb-0.5">주택 소유</div>
-                <div className="font-semibold text-[14px] text-[#26364e]">무주택 · 5년</div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className={`relative p-7 !rounded-[20px] !shadow-[0_10px_32px_rgba(35,45,60,0.05)] ${
-            isPdfDragging
-              ? "!border-[#0b5bd3] !ring-4 !ring-[#0b5bd3]/10"
-              : "!border-[#e6e0d6]"
-          }`}
-          onDragEnter={handlePdfDragEnter}
-          onDragOver={handlePdfDragOver}
-          onDragLeave={handlePdfDragLeave}
-          onDrop={handlePdfDrop}
-        >
-          {isPdfDragging && (
-            <div className="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-[18px] border-2 border-dashed border-[#0b5bd3] bg-[#f4f8ff]/95 text-center shadow-[inset_0_0_0_1px_rgba(11,91,211,0.06)]">
-              <div>
-                <Upload className="mx-auto mb-3 h-8 w-8 text-[#0b5bd3]" />
-                <p className="text-[18px] font-bold text-[#102e5a]">여기에 PDF를 드롭하세요</p>
-                <p className="mt-1 text-[13px] text-[#68717d]">아파트 입주자모집공고 PDF를 바로 분석합니다.</p>
-              </div>
-            </div>
-          )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="hidden"
-            onChange={(event) => {
-              void handlePdfFileSelect(event.target.files?.[0]);
-              event.currentTarget.value = "";
-            }}
-          />
-          <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-[20px] mb-1.5 text-[#152846]">아파트 분양 모집공고 입력</h3>
-              <p className="text-[14px] text-[#69717d]">아파트 입주자모집공고의 주요 내용을 붙여넣거나 PDF로 바로 분석하세요.</p>
-            </div>
-          </div>
-
-          {isPdfUploading ? (
-            <ProcessingIndicator
-              title={pdfStage.title}
-              description={`${selectedPdfFile?.name ?? "선택한 PDF"}의 공고문 내용을 진단에 사용할 수 있도록 변환합니다.`}
-              elapsedSeconds={pdfElapsedSeconds}
-              steps={["파일 확인", "내용 추출", "결과 정리"]}
-              currentStep={pdfStage.currentStep}
-              progressPercent={pdfStage.progressPercent}
-              showProgress
-              className="!mb-0"
-            />
-          ) : isRunning ? (
-            <ProcessingIndicator
-              title={runningStage.title}
-              description={
-                isBasicOnly
-                  ? "저장된 프로필을 기준으로 신청 가능성이 높은 공급 유형을 분석합니다."
-                  : "프로필과 입력한 모집공고를 함께 분석해 맞춤 전략을 정리합니다."
-              }
-              elapsedSeconds={elapsedSeconds}
-              steps={["프로필 확인", "공고 조건 비교", "전략 정리"]}
-              currentStep={runningStage.currentStep}
-              progressPercent={runningStage.progressPercent}
-              showProgress
-              className="!mb-0"
-            />
-          ) : (
-            <>
-              <div
-                className="mb-5 cursor-pointer rounded-[16px] border border-dashed border-[#cfd8e6] bg-[#f8fbff] px-5 py-4 transition-colors hover:border-[#245ea8]/50"
-                role="button"
-                tabIndex={0}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#245ea8] shadow-sm">
-                    <Upload className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-[14px] font-semibold text-[#26364e]">PDF를 여기에 드래그하거나 클릭해서 선택하세요</p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-[#737b87]">
-                      분석 후 정리본이 아래 입력창에 채워지고, 다른 탭에 다녀와도 현재 브라우저 탭에서는 유지됩니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {noticeText && !isBasicOnly && (
-                <div className="mb-4 flex items-center gap-2 rounded-[14px] bg-[#007aff]/10 px-4 py-3 text-[13px] text-[#1d1d1f]">
-                  <FileText className="w-4 h-4 text-[#007aff] shrink-0" />
-                  <span>
-                    {inputMethod === "pdf"
-                      ? `${sourceFilename ?? "PDF"} 추출 텍스트가 진단 입력에 준비되어 있습니다.`
-                      : "수동 입력 공고문이 진단 입력에 준비되어 있습니다."}
-                  </span>
-                </div>
-              )}
-
-              <textarea
-                className="w-full h-[210px] bg-[#fffefa] border border-[#dcd6ca] rounded-[15px] p-5 text-[15px] text-[#26364e] placeholder:text-[#989da5] focus:outline-none focus:border-[#245ea8] focus:ring-2 focus:ring-[#245ea8]/10 resize-none transition-colors mb-5 disabled:opacity-50"
-                placeholder="아파트 분양 입주자모집공고를 여기에 붙여넣으세요..."
-                value={noticeText}
-                onChange={(e) => setNoticeText(e.target.value)}
-                disabled={isBasicOnly}
-              ></textarea>
-
-              <label className="flex items-center gap-3 mb-8 cursor-pointer group">
-                <span className="relative flex items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={isBasicOnly}
-                    onChange={(e) => {
-                      setIsBasicOnly(e.target.checked);
-                      if (e.target.checked) {
-                        clearAnnouncementDraft();
-                      }
-                    }}
-                  />
-                  <span className="w-6 h-6 rounded-[8px] border-2 border-[#dcd6ca] peer-checked:bg-[#102e5a] peer-checked:border-[#102e5a] transition-colors flex items-center justify-center group-hover:border-[#102e5a]/60">
-                    <Check className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100" />
-                  </span>
-                </span>
-                <span className="text-[14px] font-semibold select-none">공고 없이 기본 조건만 확인</span>
-              </label>
-
-              <div className="flex items-center gap-2 mb-4 px-1 text-[13px] text-[#737b87]">
-                <Timer className="w-4 h-4" />
-                <span>분석에는 보통 30~40초가 걸립니다.</span>
-              </div>
-
-              <Button
-                className="w-full py-4 text-[17px]"
-                onClick={handleRun}
-                disabled={!isBasicOnly && noticeText.trim() === ""}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  진단 실행
-                  <ArrowRight className="w-5 h-5" />
-                </span>
-              </Button>
-            </>
-          )}
-        </Card>
+        <PdfAnnouncementInputCard
+          fileInputRef={fileInputRef}
+          isPdfDragging={isPdfDragging}
+          isPdfUploading={isPdfUploading}
+          isRunning={isRunning}
+          selectedPdfFile={selectedPdfFile}
+          pdfElapsedSeconds={pdfElapsedSeconds}
+          elapsedSeconds={elapsedSeconds}
+          pdfStage={pdfStage}
+          runningStage={runningStage}
+          noticeText={noticeText}
+          isBasicOnly={isBasicOnly}
+          inputMethod={inputMethod}
+          sourceFilename={sourceFilename}
+          pdfWarnings={pdfWarnings}
+          onPdfFileSelect={(file) => void handlePdfFileSelect(file)}
+          onPdfDragEnter={handlePdfDragEnter}
+          onPdfDragOver={handlePdfDragOver}
+          onPdfDragLeave={handlePdfDragLeave}
+          onPdfDrop={handlePdfDrop}
+          onNoticeTextChange={setNoticeText}
+          onBasicOnlyChange={(checked) => {
+            setIsBasicOnly(checked);
+            if (checked) {
+              clearAnnouncementDraft();
+            }
+          }}
+          onRun={handleRun}
+        />
       </div>
     </div>
   );
-}
-
-function getPdfUploadStage(elapsedSeconds: number) {
-  // Backend progress events are not exposed yet, so the bar is an elapsed-time estimate per visible stage.
-  if (elapsedSeconds < 5) {
-    return {
-      title: "PDF 파일을 확인하고 있습니다",
-      currentStep: 0,
-      progressPercent: Math.min(12 + elapsedSeconds * 4, 32),
-    };
-  }
-
-  if (elapsedSeconds < 28) {
-    return {
-      title: "본문과 표를 추출하고 있습니다",
-      currentStep: 1,
-      progressPercent: Math.min(35 + (elapsedSeconds - 5) * 2, 84),
-    };
-  }
-
-  return {
-    title: "추출 결과를 정리하고 있습니다",
-    currentStep: 2,
-    progressPercent: Math.min(86 + Math.floor((elapsedSeconds - 28) * 0.5), 96),
-  };
-}
-
-function getStrategyRunningStage(elapsedSeconds: number) {
-  if (elapsedSeconds < 10) {
-    return {
-      title: "프로필과 입력 정보를 확인하고 있습니다",
-      currentStep: 0,
-      progressPercent: Math.min(15 + elapsedSeconds * 3, 42),
-    };
-  }
-
-  if (elapsedSeconds < 35) {
-    return {
-      title: "청약 조건과 공급 유형을 비교하고 있습니다",
-      currentStep: 1,
-      progressPercent: Math.min(45 + (elapsedSeconds - 10) * 1.5, 82),
-    };
-  }
-
-  return {
-    title: "맞춤 전략을 생성하고 있습니다",
-    currentStep: 2,
-    progressPercent: Math.min(84 + Math.floor((elapsedSeconds - 35) * 0.4), 96),
-  };
 }
 
 function readStrategyDraft(): StrategyDraft | null {
@@ -511,6 +313,9 @@ function readStrategyDraft(): StrategyDraft | null {
         parsed.pdfExtractedFields && typeof parsed.pdfExtractedFields === "object" && !Array.isArray(parsed.pdfExtractedFields)
           ? parsed.pdfExtractedFields as Record<string, unknown>
           : null,
+      pdfWarnings: Array.isArray(parsed.pdfWarnings)
+        ? parsed.pdfWarnings.filter((warning): warning is string => typeof warning === "string")
+        : [],
     };
   } catch {
     return null;

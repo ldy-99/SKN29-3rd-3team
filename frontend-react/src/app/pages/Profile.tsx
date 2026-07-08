@@ -250,7 +250,7 @@ export function Profile() {
               <input type="number" min="0" placeholder="예: 24" className={inputClass} value={numberInputValue(profile.bankbook_payment_count)} onChange={(e) => updateField("bankbook_payment_count", e.target.value)} />
             </FormGroup>
 
-            <FormGroup label="예치금 (만원)" required>
+            <FormGroup label="예치금 (만원)" required helperText="만원 단위로 입력하면 원 단위로 저장됩니다.">
               <CurrencyInput
                 value={profile.bankbook_balance_krw}
                 onChange={(value) => updateField("bankbook_balance_krw", value)}
@@ -458,7 +458,7 @@ export function Profile() {
                 저장이 완료되었습니다.
               </span>
             )}
-            {!isSaving && error && (
+            {!isSaving && Boolean(error) && (
               <span className="font-semibold text-[#c62f2f]">
                 {error instanceof Error ? error.message : "저장하지 못했습니다. 입력값과 서버 연결을 확인해주세요."}
               </span>

@@ -1,7 +1,7 @@
 // 역할: 어느 화면에서든 RAG 챗봇 질문을 보낼 수 있는 패널입니다.
 // 흐름: ChatbotPanel -> api.askChatbot -> Django ChatbotAPIView -> FastAPI /api/chat -> RAG graph.
 // 다음 파일: frontend-react/src/app/api/client.ts, django_backend/strategy/views.py.
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Bot, ArrowUp, BookOpen, ChevronDown, Sparkles, AlertCircle, RotateCcw } from "lucide-react";
 import { useLocation } from "react-router";
 import { api } from "../api/client";
@@ -55,14 +55,14 @@ export function ChatbotPanel() {
   );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const getContextMessage = () => {
+  const getContextMessage = useCallback(() => {
     if (location.pathname.includes("/profile")) return "프로필 입력에 필요한 청약 기준을 물어보세요.";
     if (location.pathname.includes("/strategy")) return "지원 자격과 공급 유형별 기준을 물어보세요.";
     if (location.pathname.includes("/pdf")) return "공고문에 나오는 청약 용어와 기준을 물어보세요.";
     if (location.pathname.includes("/results")) return "진단 결과에 나온 청약 제도와 기준을 물어보세요.";
-    if (location.pathname.includes("/mypage")) return "진단 기록을 검토할 때 필요한 청약 기준을 물어보세요.";
+    if (location.pathname.includes("/mypage")) return "마이페이지에서 기록을 검토할 때 필요한 청약 기준을 물어보세요.";
     return "주택청약 제도와 자격 조건을 물어보세요.";
-  };
+  }, [location.pathname]);
 
   const getRecommendedQuestions = () => {
     if (location.pathname.includes("/profile")) {
@@ -120,7 +120,7 @@ export function ChatbotPanel() {
         variant: "greeting",
       }];
     });
-  }, [location.pathname]);
+  }, [getContextMessage]);
 
   useEffect(() => {
     sessionStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
@@ -134,7 +134,7 @@ export function ChatbotPanel() {
     }
   }, [chatSessionId]);
 
-  const updateMessageScroll = () => {
+  const updateMessageScroll = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
@@ -154,11 +154,11 @@ export function ChatbotPanel() {
       top: container.scrollHeight,
       behavior: "smooth",
     });
-  };
+  }, [messages]);
 
   useEffect(() => {
     updateMessageScroll();
-  }, [messages, isTyping]);
+  }, [isTyping, updateMessageScroll]);
 
   const handleSend = async (text: string) => {
     const question = text.trim();

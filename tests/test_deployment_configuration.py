@@ -77,6 +77,14 @@ def test_frontend_container_builds_static_assets_and_serves_with_nginx_proxy():
     assert "client_max_body_size 20M" in nginx_conf
 
 
+def test_deploy_nginx_proxy_matches_compose_service_names_and_upload_limit():
+    nginx_conf = read_text("deploy/nginx/default.conf")
+
+    assert "client_max_body_size 20m" in nginx_conf
+    assert "proxy_pass http://django-backend:8000/api/;" in nginx_conf
+    assert "proxy_pass http://django:8000" not in nginx_conf
+
+
 def test_env_example_documents_required_deployment_runtime_variables():
     env_example = read_text(".env.example")
 
@@ -92,5 +100,27 @@ def test_env_example_documents_required_deployment_runtime_variables():
         "FASTAPI_CHATBOT_TIMEOUT=",
         "FASTAPI_ANNOUNCEMENT_TIMEOUT=",
         "FASTAPI_PDF_TIMEOUT=",
+    ]:
+        assert key in env_example
+
+
+def test_production_env_example_documents_hardened_runtime_defaults():
+    env_example = read_text(".env.production.example")
+
+    for key in [
+        "OPENAI_API_KEY=",
+        "DJANGO_SECRET_KEY=",
+        "DJANGO_DEBUG=false",
+        "DJANGO_ALLOWED_HOSTS=",
+        "DJANGO_CORS_ALLOWED_ORIGINS=https://",
+        "DJANGO_CSRF_TRUSTED_ORIGINS=https://",
+        "FASTAPI_API_URL=http://fastapi-backend:8080",
+        "FASTAPI_PROFILE_TIMEOUT=",
+        "FASTAPI_SIMULATE_TIMEOUT=",
+        "FASTAPI_CHATBOT_TIMEOUT=",
+        "FASTAPI_ANNOUNCEMENT_TIMEOUT=",
+        "FASTAPI_PDF_TIMEOUT=",
+        "DJANGO_SESSION_COOKIE_SECURE=true",
+        "DJANGO_CSRF_COOKIE_SECURE=true",
     ]:
         assert key in env_example
