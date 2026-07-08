@@ -6,6 +6,7 @@ services:
     build:
       context: ./django_backend
       dockerfile: Dockerfile
+    image: dongyoon99/django-backend:latest
     container_name: django-backend
     ports:
       - "8000:8000"
@@ -25,6 +26,7 @@ services:
     build:
       context: ./Backend
       dockerfile: Dockerfile
+    image: dongyoon99/fastapi-backend:latest
     container_name: fastapi-backend
     ports:
       - "8080:8080"
@@ -38,6 +40,7 @@ services:
     build:
       context: ./frontend-react
       dockerfile: Dockerfile
+    image: dongyoon99/frontend-react:latest
     container_name: frontend-react
     ports:
       - "3000:80"  # 브라우저에서 http://localhost:3000 으로 접속
