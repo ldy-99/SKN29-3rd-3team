@@ -719,6 +719,7 @@ function buildProfileSnapshotKey(profile: UnknownRecord) {
     "bankbook_join_date",
     "bankbook_payment_count",
     "bankbook_balance_krw",
+    "savings_amount_krw",
     "marital_status",
     "minor_child_count",
     "household_member_count",
@@ -754,6 +755,7 @@ function buildProfileChangeBadges(currentStrategy?: StrategyRecord, previousStra
     { key: "is_household_head", label: "세대", format: (value) => booleanTag(value, "세대주", "세대원") },
     { key: "bankbook_payment_count", label: "납입 횟수", format: (value) => formatCount(value) },
     { key: "bankbook_balance_krw", label: "예치금", format: (value) => formatCompactWon(value) },
+    { key: "savings_amount_krw", label: "저축액", format: (value) => formatCompactWon(value) },
     { key: "minor_child_count", label: "자녀 수", format: (value) => formatCount(value, "명") },
   ];
 
@@ -788,6 +790,7 @@ function formatRegionTag(value?: string) {
     GWANGJU: "광주",
     ULSAN: "울산",
     SEJONG: "세종",
+    OTHER: "그 외 지역",
   };
   return regionMap[value] ?? value.replace(/_/g, " ");
 }

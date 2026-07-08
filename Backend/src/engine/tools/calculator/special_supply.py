@@ -52,6 +52,9 @@ class SpecialSupplyInput(BaseModel):
     bankbook_joined_months: int | None = Field(default=None, ge=0)
     bankbook_payments: int | None = Field(default=None, ge=0)
     bankbook_balance: int | None = Field(default=None, ge=0)
+    # 저축액(선납금 포함 누적 납입인정액). bankbook_balance(예치금)와는 다른 개념이며
+    # 생애최초 특공의 "저축액 600만원 이상" 판정에 사용된다.
+    bankbook_savings_amount: int | None = Field(default=None, ge=0)
     homeless_period_years: int | None = Field(default=None, ge=0)
     dependent_family_count: int | None = Field(default=None, ge=0)
     num_household_members: int | None = Field(default=None, ge=1)
@@ -291,7 +294,13 @@ def check_first_home_special_supply(
         unknown_fields.append("has_property_history")
 
     _check_minimum(profile.bankbook_payments, 24, "bankbook_payments", "납입 24회 이상", matched_items, missing_items, unknown_fields)
-    _check_minimum(profile.bankbook_balance, 6000000, "bankbook_balance", "저축액 600만원 이상", matched_items, missing_items, unknown_fields)
+    # 저축액(누적 납입인정액) 우선 사용. 신규 필드가 없는 기존 프로필은 예치금(bankbook_balance)으로 대체 판정한다.
+    savings_amount = (
+        profile.bankbook_savings_amount
+        if profile.bankbook_savings_amount is not None
+        else profile.bankbook_balance
+    )
+    _check_minimum(savings_amount, 6000000, "bankbook_savings_amount", "저축액 600만원 이상", matched_items, missing_items, unknown_fields)
     _check_bool(
         profile.has_income_tax_payment_5_years,
         "has_income_tax_payment_5_years",

@@ -11,6 +11,7 @@ type ProfileForm = {
   bankbook_join_date: string | null;
   bankbook_payment_count: number | null;
   bankbook_balance_krw: number | null;
+  savings_amount_krw: number | null;
   residence_region: string | null;
   is_homeless: boolean | null;
   is_household_head: boolean | null;
@@ -40,6 +41,7 @@ const defaultProfile: ProfileForm = {
   bankbook_join_date: null,
   bankbook_payment_count: null,
   bankbook_balance_krw: null,
+  savings_amount_krw: null,
   residence_region: null,
   is_homeless: null,
   is_household_head: null,
@@ -67,6 +69,7 @@ const defaultProfile: ProfileForm = {
 const numberFields = new Set<keyof ProfileForm>([
   "bankbook_payment_count",
   "bankbook_balance_krw",
+  "savings_amount_krw",
   "household_member_count",
   "birth_year",
   "minor_child_count",
@@ -247,11 +250,20 @@ export function Profile() {
               <input type="number" min="0" placeholder="예: 24" className={inputClass} value={numberInputValue(profile.bankbook_payment_count)} onChange={(e) => updateField("bankbook_payment_count", e.target.value)} />
             </FormGroup>
 
-            <FormGroup label="예치금 (만원)" required helperText="만원 단위로 입력하면 원 단위로 저장됩니다.">
+            <FormGroup label="예치금 (만원)" required>
               <CurrencyInput
                 value={profile.bankbook_balance_krw}
                 onChange={(value) => updateField("bankbook_balance_krw", value)}
                 placeholder="예: 240"
+                className={inputClass}
+              />
+            </FormGroup>
+
+            <FormGroup label="저축액 (만원)">
+              <CurrencyInput
+                value={profile.savings_amount_krw}
+                onChange={(value) => updateField("savings_amount_krw", value)}
+                placeholder="예: 600"
                 className={inputClass}
               />
             </FormGroup>

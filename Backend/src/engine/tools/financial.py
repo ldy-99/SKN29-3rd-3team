@@ -87,7 +87,7 @@ def _get_dsr_limit(average_monthly_income: int) -> int:
 
 @tool
 def calculate_loan_amount(
-    price: int,
+    price: Optional[int],
     is_regulated: bool,
     has_property_history: Optional[bool] = None,
     region: str = "",
@@ -197,7 +197,7 @@ def calculate_loan_amount(
 
 @tool
 def calculate_real_investment(
-    price: int,
+    price: Optional[int],
     loan_amount: Optional[int],
 ) -> dict:
     """

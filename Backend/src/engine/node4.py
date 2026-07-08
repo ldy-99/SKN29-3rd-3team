@@ -35,7 +35,11 @@ class AnnouncementSchema(BaseModel):
     )
     price: Optional[int] = Field(
         None,
-        description="분양가를 원 단위 정수로 환산 (예: '5억' → 500000000). 없으면 null"
+        description=(
+            "분양가를 원 단위 정수로 환산 (예: '5억' → 500000000). "
+            "'공급금액 범위: 2.2억~6.5억'처럼 범위로 제시된 경우 null로 두지 말고 "
+            "더 높은 금액(상한값)을 사용해 보수적으로 계산되게 한다. 정보가 전혀 없으면 null."
+        )
     )
     deposit: Optional[int] = Field(
         None,
