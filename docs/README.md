@@ -20,6 +20,18 @@
 | [frontend/](frontend/) | 프론트 화면설계, 요구사항 추적, 테스트 결과, 개선 기록 |
 | [reports/](reports/) | 기존 AI/RAG 설계·품질·아키텍처 분석 보고서 |
 | [assets/](assets/) | 보고서와 문서에서 사용하는 이미지/SVG 자료 |
+| [final/](final/) | 평가 제출용 최종 산출물 후보와 발표/체크리스트 |
+
+## 최종 평가 산출물
+
+| 산출물 | 문서 |
+|---|---|
+| 테스트 계획 및 결과 보고서 | [final/TEST_PLAN_AND_RESULT_REPORT.md](final/TEST_PLAN_AND_RESULT_REPORT.md) |
+| 요구사항 정의서 | [final/REQUIREMENTS_SPECIFICATION_FINAL.md](final/REQUIREMENTS_SPECIFICATION_FINAL.md) |
+| 화면설계서 | [final/SCREEN_DESIGN_FINAL.md](final/SCREEN_DESIGN_FINAL.md) |
+| 시스템 구성도 | [final/SYSTEM_ARCHITECTURE_FINAL.md](final/SYSTEM_ARCHITECTURE_FINAL.md) |
+| 10분 발표자료 가이드 | [final/PRESENTATION_GUIDE_10MIN.md](final/PRESENTATION_GUIDE_10MIN.md) |
+| 최종 산출물 체크리스트 | [final/FINAL_DELIVERABLE_CHECKLIST.md](final/FINAL_DELIVERABLE_CHECKLIST.md) |
 
 ## 기준 문서
 
