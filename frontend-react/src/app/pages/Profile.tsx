@@ -247,11 +247,11 @@ export function Profile() {
               <input type="number" min="0" placeholder="예: 24" className={inputClass} value={numberInputValue(profile.bankbook_payment_count)} onChange={(e) => updateField("bankbook_payment_count", e.target.value)} />
             </FormGroup>
 
-            <FormGroup label="예치금 (원)" required helperText="만원 단위가 아니라 원 단위로 저장됩니다.">
+            <FormGroup label="예치금 (만원)" required helperText="만원 단위로 입력하면 원 단위로 저장됩니다.">
               <CurrencyInput
                 value={profile.bankbook_balance_krw}
                 onChange={(value) => updateField("bankbook_balance_krw", value)}
-                placeholder="예: 2,400,000"
+                placeholder="예: 240"
                 className={inputClass}
               />
             </FormGroup>
@@ -392,11 +392,11 @@ export function Profile() {
           </div>
 
           <SettingsList>
-            <FormGroup label="월평균 가구소득 (원)">
+            <FormGroup label="월평균 가구소득 (만원)">
               <CurrencyInput value={profile.monthly_household_income_krw} onChange={(value) => updateField("monthly_household_income_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
-            <FormGroup label="총자산 (원)">
+            <FormGroup label="총자산 (만원)">
               <CurrencyInput value={profile.total_assets_krw} onChange={(value) => updateField("total_assets_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
@@ -427,11 +427,11 @@ export function Profile() {
               </FormGroup>
             )}
 
-            <FormGroup label="부동산 자산 (원)">
+            <FormGroup label="부동산 자산 (만원)">
               <CurrencyInput value={profile.real_estate_assets_krw} onChange={(value) => updateField("real_estate_assets_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
 
-            <FormGroup label="차량 가액 (원)">
+            <FormGroup label="차량 가액 (만원)">
               <CurrencyInput value={profile.vehicle_value_krw} onChange={(value) => updateField("vehicle_value_krw", value)} placeholder="모르면 비워둠" className={inputClass} />
             </FormGroup>
           </SettingsList>
@@ -538,9 +538,12 @@ function CurrencyInput({
       autoComplete="off"
       placeholder={placeholder}
       className={className}
-      value={value === null ? "" : value.toLocaleString("ko-KR")}
-      onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
-      aria-label="원 단위 금액"
+      value={value === null ? "" : Math.round(value / 10000).toLocaleString("ko-KR")}
+      onChange={(event) => {
+        const tenThousandWon = event.target.value.replace(/[^\d]/g, "");
+        onChange(tenThousandWon ? String(Number(tenThousandWon) * 10000) : "");
+      }}
+      aria-label="만원 단위 금액"
     />
   );
 }
