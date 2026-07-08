@@ -42,6 +42,7 @@ export function MyPage() {
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const lastCarouselStepAtRef = useRef(0);
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [profile, setProfile] = useState<UnknownRecord | null>(null);
   const [strategies, setStrategies] = useState<StrategyRecord[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<AnnouncementGroup | null>(null);
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(1);
@@ -53,12 +54,14 @@ export function MyPage() {
     setError(null);
 
     try {
-      const [currentUser, savedStrategies] = await Promise.all([
+      const [currentUser, savedStrategies, currentProfile] = await Promise.all([
         api.getMe(),
         api.getMyStrategies(),
+        api.getProfile().catch(() => null),
       ]);
       setUser(currentUser);
       setStrategies(savedStrategies);
+      setProfile(asRecord(currentProfile) ?? null);
     } catch (error) {
       setError(error);
     } finally {
@@ -77,6 +80,10 @@ export function MyPage() {
 
   const historyEntries = useMemo(() => buildHistoryEntries(strategies), [strategies]);
   const profileOnlyGroups = useMemo(() => buildProfileOnlyGroups(strategies), [strategies]);
+  const currentProfileTags = useMemo(
+    () => profile ? buildProfileTags(profile) : profileOnlyGroups[0]?.tags ?? [],
+    [profile, profileOnlyGroups],
+  );
   const carouselItems = useMemo<CarouselItem[]>(
     () => [
       { kind: "bookend", key: "bookend-start" },
@@ -195,6 +202,14 @@ export function MyPage() {
 
       <ErrorNotice error={error} fallbackMessage="마이페이지 정보를 불러오지 못했습니다." />
 
+      <ProfileSummaryBar
+        tags={currentProfileTags}
+        latestProfileOnlyGroup={profileOnlyGroups[0]}
+        onOpenResult={openResult}
+        onEditProfile={() => navigate("/profile")}
+        onRunBasic={() => navigate("/strategy")}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
         <SummaryCard
           icon={<User className="w-5 h-5" />}
@@ -220,7 +235,7 @@ export function MyPage() {
         <div>
           <h2 className="text-[22px] font-bold text-[#152846]">청약 진단 기록</h2>
           <p className="mt-1 text-[14px] text-[#69717d]">
-            공고 기반 분석은 아파트명 단위로 묶고, 기본 조건 분석은 별도 섹션에서 확인합니다.
+            공고 기반 분석은 아파트명 단위로 묶어 확인합니다.
           </p>
         </div>
         <Button onClick={() => navigate("/strategy")}>새 진단</Button>
@@ -248,8 +263,15 @@ export function MyPage() {
               onSelect={handleCarouselSelect}
             />
           )}
-
-          <ProfileOnlySection groups={profileOnlyGroups} onOpenResult={openResult} />
+          {historyEntries.length === 0 && (
+            <Card className="p-8 text-center">
+              <History className="mx-auto mb-3 h-9 w-9 text-[#a1a1a6]" />
+              <h3 className="text-[18px] font-bold text-[#152846]">공고 기반 분석 기록이 없습니다</h3>
+              <p className="mt-2 text-[14px] text-[#69717d]">
+                PDF 공고문 또는 공고 내용을 넣고 진단하면 이곳에 아파트명 기준 카드가 생성됩니다.
+              </p>
+            </Card>
+          )}
         </div>
       )}
 
@@ -283,6 +305,70 @@ function SummaryCard({
       <p className="text-[13px] text-[#6e6e73]">{label}</p>
       <p className="mt-1 text-[20px] font-bold text-[#152846] break-all">{value}</p>
       {description && <p className="mt-1 text-[12px] text-[#86868b] break-all">{description}</p>}
+    </Card>
+  );
+}
+
+function ProfileSummaryBar({
+  tags,
+  latestProfileOnlyGroup,
+  onOpenResult,
+  onEditProfile,
+  onRunBasic,
+}: {
+  tags: string[];
+  latestProfileOnlyGroup?: ProfileOnlyGroup;
+  onOpenResult: (strategyId: string) => void;
+  onEditProfile: () => void;
+  onRunBasic: () => void;
+}) {
+  if (tags.length === 0 && !latestProfileOnlyGroup) return null;
+
+  return (
+    <Card className="mb-8 !rounded-[24px] !border-[#e5e1d8] bg-white/82 px-5 py-4 shadow-[0_18px_52px_rgba(24,31,43,0.06)] backdrop-blur sm:px-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h3 className="text-[20px] font-black tracking-[-0.01em] text-[#152846]">기본 정보 진단</h3>
+            <span className="text-[13px] font-semibold text-[#8a8f98]">
+              {latestProfileOnlyGroup ? formatDateOnly(latestProfileOnlyGroup.latestCreatedAt) : "현재 기준"}
+            </span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {tags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[12px] font-semibold text-[#394150]"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 4 && (
+              <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[12px] font-semibold text-[#8a8f98]">
+                +{tags.length - 4}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          {latestProfileOnlyGroup ? (
+            <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={() => onOpenResult(latestProfileOnlyGroup.latestStrategy.strategy_id)}>
+              결과 보기
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button variant="outline" className="gap-2 whitespace-nowrap !rounded-full !border-[#d9dee8] bg-[#f7f8fb]" onClick={onRunBasic}>
+              분석 실행
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="outline" className="whitespace-nowrap !rounded-full !border-transparent bg-transparent text-[#5f6875] shadow-none hover:bg-[#f5f5f7]" onClick={onEditProfile}>
+            수정
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -402,62 +488,6 @@ function AnnouncementCarouselCard({ group, isActive }: { group: AnnouncementGrou
   );
 }
 
-function ProfileOnlySection({
-  groups,
-  onOpenResult,
-}: {
-  groups: ProfileOnlyGroup[];
-  onOpenResult: (strategyId: string) => void;
-}) {
-  if (groups.length === 0) return null;
-
-  return (
-    <section className="px-1">
-      <div className="mb-4">
-        <h2 className="text-[20px] font-bold text-[#152846]">기본 조건 분석</h2>
-        <p className="mt-1 text-[14px] text-[#69717d]">
-          공고 없이 현재 프로필 조건만으로 실행한 최근 결과입니다.
-        </p>
-      </div>
-
-      <div className="grid gap-3">
-        {groups.map((group, index) => (
-          <Card key={group.key} className="p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#f6f3ee] px-3 py-1 text-[12px] font-bold text-[#b86a12]">
-                    {index === 0 ? "최근 프로필 기준" : "이전 프로필 기준"}
-                  </span>
-                  <StatusBadge status={group.latestStrategy.status} />
-                </div>
-                <h3 className="text-[19px] font-black text-[#152846]">기본 조건 분석</h3>
-                <p className="mt-1 text-[13px] text-[#69717d]">
-                  최근 분석 {formatDateTime(group.latestCreatedAt)}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {group.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-[#f6f7f9] px-3 py-1.5 text-[12px] font-semibold text-[#344258]"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <Button className="shrink-0 gap-2" onClick={() => onOpenResult(group.latestStrategy.strategy_id)}>
-                결과 보기
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function getCarouselTitle(item: HistoryEntry) {
   return item.kind === "announcement" ? item.title : item.announcement.title;
 }
@@ -530,37 +560,55 @@ function HistoryDialog({
 
               <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {group.items.map(({ strategy }, index) => (
-                    <button
-                      key={strategy.strategy_id}
-                      type="button"
-                      className="min-h-[132px] rounded-[18px] border border-[#e7e2d9] bg-[#fbfaf7] px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#245ea8]/35 hover:bg-[#f8fbff] hover:shadow-[0_12px_28px_rgba(36,94,168,0.10)]"
-                      onClick={() => onOpenResult(strategy.strategy_id)}
-                    >
-                      <div className="flex h-full flex-col justify-between gap-4">
-                        <div>
-                          <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <StatusBadge status={strategy.status} />
-                            {index === 0 && (
-                              <span className="rounded-full bg-[#eef4ff] px-2.5 py-1 text-[11px] font-bold text-[#245ea8]">
-                                최근
-                              </span>
+                  {group.items.map(({ strategy }, index) => {
+                    const profileChanges = buildProfileChangeBadges(strategy, group.items[index + 1]?.strategy);
+
+                    return (
+                      <button
+                        key={strategy.strategy_id}
+                        type="button"
+                        className="min-h-[132px] rounded-[18px] border border-[#e7e2d9] bg-[#fbfaf7] px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#245ea8]/35 hover:bg-[#f8fbff] hover:shadow-[0_12px_28px_rgba(36,94,168,0.10)]"
+                        onClick={() => onOpenResult(strategy.strategy_id)}
+                      >
+                        <div className="flex h-full flex-col justify-between gap-4">
+                          <div>
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <StatusBadge status={strategy.status} />
+                              {index === 0 && (
+                                <span className="rounded-full bg-[#eef4ff] px-2.5 py-1 text-[11px] font-bold text-[#245ea8]">
+                                  최근
+                                </span>
+                              )}
+                              {profileChanges.length > 0 && (
+                                <span className="rounded-full bg-[#fff1d9] px-2.5 py-1 text-[11px] font-bold text-[#9a5c11]">
+                                  조건 변경
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[17px] font-bold text-[#152846]">
+                              {formatDateOnly(strategy.created_at)} 분석
+                            </p>
+                            <p className="mt-1 text-[12px] text-[#69717d]">
+                              {formatDateTime(strategy.created_at)}
+                            </p>
+                            {profileChanges.length > 0 && (
+                              <div className="mt-3 space-y-1">
+                                {profileChanges.slice(0, 2).map((change) => (
+                                  <p key={change} className="text-[11px] leading-5 text-[#8a5b1c]">
+                                    변경: {change}
+                                  </p>
+                                ))}
+                              </div>
                             )}
                           </div>
-                          <p className="text-[17px] font-bold text-[#152846]">
-                            {formatDateOnly(strategy.created_at)} 분석
-                          </p>
-                          <p className="mt-1 text-[12px] text-[#69717d]">
-                            {formatDateTime(strategy.created_at)}
-                          </p>
+                          <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#245ea8]">
+                            레포트 보기
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </span>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#245ea8]">
-                          레포트 보기
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </span>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -690,6 +738,38 @@ function buildProfileTags(profile: UnknownRecord) {
   return tags.length > 0 ? tags : ["프로필 기준"];
 }
 
+function buildProfileChangeBadges(currentStrategy?: StrategyRecord, previousStrategy?: StrategyRecord) {
+  const current = getProfileSnapshot(currentStrategy);
+  const previous = getProfileSnapshot(previousStrategy);
+  if (!current || !previous) return [];
+
+  const comparableFields: Array<{
+    key: string;
+    label: string;
+    format: (value: unknown) => string | undefined;
+  }> = [
+    { key: "residence_region", label: "거주지", format: (value) => formatRegionTag(stringValue(value)) },
+    { key: "is_homeless", label: "주택 상태", format: (value) => booleanTag(value, "무주택", "주택 보유") },
+    { key: "homeless_period_years", label: "무주택 기간", format: (value) => formatYears(value) },
+    { key: "is_household_head", label: "세대", format: (value) => booleanTag(value, "세대주", "세대원") },
+    { key: "bankbook_payment_count", label: "납입 횟수", format: (value) => formatCount(value) },
+    { key: "bankbook_balance_krw", label: "예치금", format: (value) => formatCompactWon(value) },
+    { key: "minor_child_count", label: "자녀 수", format: (value) => formatCount(value, "명") },
+  ];
+
+  return comparableFields
+    .map(({ key, label, format }) => {
+      const before = format(previous[key]);
+      const after = format(current[key]);
+      return before && after && before !== after ? `${label} ${before} → ${after}` : undefined;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function getProfileSnapshot(strategy?: StrategyRecord) {
+  return asRecord(asRecord(strategy?.input_snapshot)?.profile);
+}
+
 function booleanTag(value: unknown, trueText: string, falseText: string) {
   if (value === true) return trueText;
   if (value === false) return falseText;
@@ -721,6 +801,28 @@ function formatBankbookTag(profile: UnknownRecord) {
   }
   if (paymentCount !== undefined) return `납입 ${paymentCount}회`;
   return undefined;
+}
+
+function formatYears(value: unknown) {
+  const years = numberValue(value);
+  return years !== undefined ? `${years}년` : undefined;
+}
+
+function formatCount(value: unknown, unit = "회") {
+  const count = numberValue(value);
+  return count !== undefined ? `${count}${unit}` : undefined;
+}
+
+function formatCompactWon(value: unknown) {
+  const amount = numberValue(value);
+  if (amount === undefined) return undefined;
+  if (amount >= 100000000) {
+    return `${(amount / 100000000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억원`;
+  }
+  if (amount >= 10000) {
+    return `${Math.round(amount / 10000).toLocaleString("ko-KR")}만원`;
+  }
+  return `${amount.toLocaleString("ko-KR")}원`;
 }
 
 function formatCompactLocation(value: string) {
