@@ -11,6 +11,7 @@ services:
       - django-db:/app/data  # SQLite db 보존용 볼륨
     environment:
       - DJANGO_DEBUG=False
+      - DJANGO_DB_PATH=/app/data/db.sqlite3
       - FASTAPI_API_URL=http://fastapi-backend:8080
     env_file:
       - .env
