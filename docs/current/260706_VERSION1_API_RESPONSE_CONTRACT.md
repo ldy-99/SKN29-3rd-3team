@@ -424,6 +424,41 @@ Node 4가 공고문 구조화에 성공하면 `announcement`는 다음 내부 �
 }
 ```
 
+#### 5.3.1 `node5` 재무 결과 필드 (260708 갱신)
+
+대출 계산 로직 개선(절대 한도 캡, 생애최초 판정 기준 변경, DSR 근사, 분양가 누락 방어)에 따라 `node5.loan_result`에 필드가 추가되었다. 기존 필드는 이름/타입이 유지되며, 신규 필드는 전부 추가 필드라 기존 소비자(Django serializer, React)는 수정 없이 동작한다.
+
+`node5.loan_result`:
+
+```json
+{
+  "loan_amount": 350000000,
+  "ltv_rate": 0.7,
+  "area_type": "규제지역",
+  "supply_type": "생애최초",
+  "ltv_limit": 350000000,
+  "loan_cap": 600000000,
+  "dsr_limit": 418922480,
+  "applied_constraint": "LTV",
+  "notices": ["실제 대출 한도는 기존 부채, 스트레스 DSR, 금리, 은행 심사 기준에 따라 달라질 수 있으므로 반드시 금융기관에 사전 확인이 필요합니다."]
+}
+```
+
+| 필드 | 의미 | 비고 |
+|---|---|---|
+| `loan_amount` | 최종 대출 가능 금액 (원) | LTV·한도 캡·DSR 중 최솟값. 분양가 누락 시 `null` |
+| `ltv_rate` | 적용 LTV 비율 | 분양가 누락 시 `null` |
+| `supply_type` | 차주 유형 (`생애최초` \| `일반`) | 공급 유형이 아니라 `has_property_history`(주택 소유 이력) 기준으로 판정 |
+| `ltv_limit` | LTV 기준 한도 (원) | 신규 |
+| `loan_cap` | 수도권·규제지역 절대 한도 캡 (원) | 신규. 15억↓ 6억 / 15~25억 4억 / 25억↑ 2억, 캡 미적용 지역이면 `null` |
+| `dsr_limit` | DSR 40% 근사 한도 (원) | 신규. 금리 4%·30년 원리금균등 가정, 소득 미입력 시 `null` |
+| `applied_constraint` | 실제 적용된 제약 | 신규. `LTV` \| `대출한도 상한` \| `DSR(근사)` \| `null` |
+| `notices` | 사용자 고지 문구 목록 | 신규. `agent_result` 텍스트에도 반영됨 |
+
+`node5.risk_result.risk_level`은 기존 `낮음 | 중간 | 높음`에 **`분석 불가`가 추가**되었다. 분양가(`announcement.price`)가 없거나 0이면 대출/실투자금이 `null`이 되고 리스크는 `분석 불가`로 반환된다 (기존에는 이 경우 `낮음`으로 잘못 계산됐음). React는 `risk_level`을 문자열 그대로 표시하므로 별도 대응이 필요 없다.
+
+참고: Django `report.finance`는 기존 필드(`loan_amount`, `ltv_rate`, `area_type`, `real_investment`, `price`, `risk_level`, `risk_ratio`, `risk_description`)만 추려서 노출한다. 신규 필드를 공개 API에서 쓰려면 `django_backend/strategy/serializers.py`에 passthrough를 추가해야 한다 (프론트에서 `applied_constraint`/`notices` 표시가 필요해지는 시점에).
+
 ### 5.4 `POST /api/pdf/analyze`
 
 FastAPI 직접 응답은 Django `POST /api/pdf/analyze`의 `data`와 동일하다. Django 공개 API에서는 공통 envelope로 감싸진다.
@@ -497,7 +532,7 @@ HTTP status는 503이다.
 | `supply_rank[].missing_items` | `missing_fields` | 추가 확인 항목 |
 | `warnings` | `warnings` | 경고/부분 결과 안내 |
 | `report.summary` | `report.summary` | 결과 요약 |
-| `report.finance` 또는 `node5.*` | `report.finance` | 대출/실투자금/자금 리스크 |
+| `report.finance` 또는 `node5.*` | `report.finance` | 대출/실투자금/자금 리스크 (`risk_level`에 `분석 불가` 값 추가, 5.3.1 참고) |
 | `report.strategy` 또는 `node5.agent_result` | `report.strategy` | 상세 전략 설명 |
 
 중요: FastAPI 내부에서는 `missing_items`가 기본이고, Django 공개 응답에서는 `missing_fields`로 노출한다. React는 통합 과도기 동안 두 이름을 모두 읽되, 최종 공개 계약은 `missing_fields`로 고정한다.
