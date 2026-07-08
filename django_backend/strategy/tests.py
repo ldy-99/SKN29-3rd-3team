@@ -2,11 +2,17 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from django.core.cache import cache
+import requests
 from accounts.models import Profile
 from strategy.models import StrategyRun
-from strategy.services import FastAPIClient
+from strategy.services import (
+    FastAPIClient,
+    FastAPIConnectionError,
+    FastAPITimeoutError,
+    FastAPIUpstreamError,
+)
 from strategy.views import _build_announcement_display_title
 
 User = get_user_model()
@@ -21,6 +27,33 @@ class StrategyAPITests(APITestCase):
             password="testpassword123"
         )
         self.client.force_authenticate(user=self.user)
+
+    def create_valid_profile(self):
+        return Profile.objects.create(
+            user=self.user,
+            bankbook_type="RE subscription",
+            bankbook_join_date="2022-01-15",
+            bankbook_payment_count=24,
+            bankbook_balance_krw=2400000,
+            residence_region="SEOUL",
+            is_homeless=True,
+            is_household_head=True,
+            household_member_count=1,
+            birth_year=1995,
+            marital_status="SINGLE",
+            minor_child_count=0,
+            has_household_property_ownership_history=False,
+        )
+
+    def assert_error_envelope(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        response_json = response.json()
+        self.assertIsNone(response_json["data"])
+        self.assertIn("request_id", response_json)
+        self.assertEqual(response_json["error"]["code"], expected_code)
+        self.assertTrue(response_json["error"]["message"])
+        self.assertNotIn("Traceback", response_json["error"]["message"])
+        self.assertNotIn("requests.exceptions", response_json["error"]["message"])
 
     def test_strategy_run_missing_profile(self):
         """
@@ -105,6 +138,92 @@ class StrategyAPITests(APITestCase):
         self.assertEqual(response_json['data']['result_payload']['eligibility'], 'PASS')
         
         self.assertTrue(StrategyRun.objects.filter(user=self.user).exists())
+
+    @patch('strategy.views.FastAPIClient.run_diagnosis')
+    def test_strategy_run_fastapi_timeout_returns_error_envelope(self, mock_run_diagnosis):
+        self.create_valid_profile()
+        mock_run_diagnosis.side_effect = FastAPITimeoutError()
+
+        response = self.client.post(
+            reverse('strategy-run'),
+            {"announcement_text": "announcement"},
+            format='json',
+        )
+
+        self.assert_error_envelope(response, status.HTTP_504_GATEWAY_TIMEOUT, "FASTAPI_TIMEOUT")
+        self.assertEqual(StrategyRun.objects.get(user=self.user).status, "FAILED")
+
+    @patch('strategy.views.FastAPIClient.run_diagnosis')
+    def test_strategy_run_fastapi_connection_failure_returns_error_envelope(self, mock_run_diagnosis):
+        self.create_valid_profile()
+        mock_run_diagnosis.side_effect = FastAPIConnectionError()
+
+        response = self.client.post(
+            reverse('strategy-run'),
+            {"announcement_text": "announcement"},
+            format='json',
+        )
+
+        self.assert_error_envelope(
+            response,
+            status.HTTP_502_BAD_GATEWAY,
+            "FASTAPI_CONNECTION_FAILED",
+        )
+        self.assertNotIn("ConnectionError", response.json()["error"]["message"])
+        self.assertEqual(StrategyRun.objects.get(user=self.user).status, "FAILED")
+
+    @patch('strategy.views.FastAPIClient.run_diagnosis')
+    def test_strategy_run_fastapi_500_returns_upstream_error_envelope(self, mock_run_diagnosis):
+        self.create_valid_profile()
+        mock_run_diagnosis.side_effect = FastAPIUpstreamError()
+
+        response = self.client.post(
+            reverse('strategy-run'),
+            {"announcement_text": "announcement"},
+            format='json',
+        )
+
+        self.assert_error_envelope(
+            response,
+            status.HTTP_502_BAD_GATEWAY,
+            "FASTAPI_UPSTREAM_ERROR",
+        )
+        self.assertNotIn("500 Server Error", response.json()["error"]["message"])
+        self.assertEqual(StrategyRun.objects.get(user=self.user).status, "FAILED")
+
+    @patch('strategy.views.FastAPIClient.run_diagnosis')
+    def test_strategy_run_api_flow_creates_history_and_detail_without_external_call(self, mock_run_diagnosis):
+        self.create_valid_profile()
+        mock_run_diagnosis.return_value = {
+            "status": "SUCCEEDED",
+            "eligibility": "PASS",
+            "score": 72,
+            "message": "ok",
+        }
+
+        create_response = self.client.post(
+            reverse('strategy-run'),
+            {
+                "announcement_text": "manual announcement",
+                "input_method": "manual",
+                "source_filename": "manual.txt",
+            },
+            format='json',
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        created = create_response.json()["data"]
+        self.assertEqual(created["status"], "SUCCEEDED")
+        self.assertEqual(created["result_payload"]["score"], 72)
+
+        list_response = self.client.get(reverse('strategy-list'))
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_response.json()["data"]), 1)
+
+        detail_response = self.client.get(reverse('strategy-detail', kwargs={"strategy_id": created["id"]}))
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.json()["data"]["result_payload"]["eligibility"], "PASS")
+        mock_run_diagnosis.assert_called_once()
 
     @patch('strategy.views.FastAPIClient.run_diagnosis')
     def test_strategy_run_preserves_pdf_metadata_in_snapshot(self, mock_run_diagnosis):
@@ -249,6 +368,34 @@ class StrategyAPITests(APITestCase):
         self.assertEqual(response_json['data']['pdf_analysis_id'], 'test-pdf-analysis')
         mock_proxy_pdf_analysis.assert_called_once()
 
+    @patch('strategy.views.FastAPIClient.proxy_pdf_analysis')
+    def test_pdf_upload_timeout_returns_error_envelope(self, mock_proxy_pdf_analysis):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        mock_proxy_pdf_analysis.side_effect = FastAPITimeoutError()
+        fake_pdf = SimpleUploadedFile(
+            "announcement.pdf",
+            b"%PDF-1.4 mock pdf body",
+            content_type="application/pdf",
+        )
+
+        response = self.client.post(reverse('pdf-analyze'), {"file": fake_pdf}, format='multipart')
+
+        self.assert_error_envelope(response, status.HTTP_504_GATEWAY_TIMEOUT, "FASTAPI_TIMEOUT")
+
+    def test_pdf_upload_too_large_returns_error_envelope(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        fake_pdf = SimpleUploadedFile(
+            "large.pdf",
+            b"%PDF-1.4" + b"x" * (15 * 1024 * 1024 + 1),
+            content_type="application/pdf",
+        )
+
+        response = self.client.post(reverse('pdf-analyze'), {"file": fake_pdf}, format='multipart')
+
+        self.assert_error_envelope(response, status.HTTP_400_BAD_REQUEST, "PDF_TOO_LARGE")
+
     def test_announcement_create_invalid(self):
         """
         유효하지 않은 공고 정보를 등록 시 에러 발생 검증
@@ -328,6 +475,34 @@ class StrategyAPITests(APITestCase):
         self.assertEqual(response_json['data']['answer'], "신혼부부 소득요건 기준 가이드...")
 
     @patch('strategy.views.FastAPIClient.call_chatbot')
+    def test_chatbot_timeout_returns_error_envelope(self, mock_call_chatbot):
+        mock_call_chatbot.side_effect = FastAPITimeoutError()
+
+        response = self.client.post(
+            reverse('chatbot'),
+            {"question": "subscription question", "session_id": None},
+            format='json',
+        )
+
+        self.assert_error_envelope(response, status.HTTP_504_GATEWAY_TIMEOUT, "FASTAPI_TIMEOUT")
+
+    @patch('strategy.views.FastAPIClient.call_chatbot')
+    def test_chatbot_connection_failure_returns_error_envelope(self, mock_call_chatbot):
+        mock_call_chatbot.side_effect = FastAPIConnectionError()
+
+        response = self.client.post(
+            reverse('chatbot'),
+            {"question": "subscription question", "session_id": None},
+            format='json',
+        )
+
+        self.assert_error_envelope(
+            response,
+            status.HTTP_502_BAD_GATEWAY,
+            "FASTAPI_CONNECTION_FAILED",
+        )
+
+    @patch('strategy.views.FastAPIClient.call_chatbot')
     def test_chatbot_throttling(self, mock_call_chatbot):
         """
         단시간에 60회 초과 요청 시 Throttling(429 Too Many Requests) 제한 작동 검증
@@ -346,6 +521,69 @@ class StrategyAPITests(APITestCase):
 
 
 class FastAPIClientFlowTests(APITestCase):
+    def test_send_profile_timeout_maps_to_fastapi_timeout(self):
+        client = FastAPIClient()
+
+        with patch(
+            'strategy.services.requests.post',
+            side_effect=requests.exceptions.Timeout("socket timed out"),
+        ):
+            with self.assertRaises(FastAPITimeoutError) as context:
+                client.send_profile({"region": "SEOUL"})
+
+        self.assertEqual(context.exception.status_code, status.HTTP_504_GATEWAY_TIMEOUT)
+        self.assertEqual(context.exception.default_code, "FASTAPI_TIMEOUT")
+        self.assertNotIn("socket timed out", str(context.exception.detail))
+
+    def test_send_profile_connection_error_maps_to_fastapi_connection_failed(self):
+        client = FastAPIClient()
+
+        with patch(
+            'strategy.services.requests.post',
+            side_effect=requests.exceptions.ConnectionError("connection refused"),
+        ):
+            with self.assertRaises(FastAPIConnectionError) as context:
+                client.send_profile({"region": "SEOUL"})
+
+        self.assertEqual(context.exception.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(context.exception.default_code, "FASTAPI_CONNECTION_FAILED")
+        self.assertNotIn("connection refused", str(context.exception.detail))
+
+    def test_trigger_simulate_http_500_maps_to_fastapi_upstream_error(self):
+        client = FastAPIClient()
+        response = Mock()
+        response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "500 Server Error: Internal Server Error"
+        )
+
+        with patch('strategy.services.requests.post', return_value=response):
+            with self.assertRaises(FastAPIUpstreamError) as context:
+                client.trigger_simulate("session-id", simulate=False)
+
+        self.assertEqual(context.exception.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(context.exception.default_code, "FASTAPI_UPSTREAM_ERROR")
+        self.assertNotIn("500 Server Error", str(context.exception.detail))
+
+    def test_call_chatbot_timeout_maps_to_fastapi_timeout(self):
+        client = FastAPIClient()
+
+        with patch(
+            'strategy.services.requests.post',
+            side_effect=requests.exceptions.Timeout("chat timed out"),
+        ):
+            with self.assertRaises(FastAPITimeoutError):
+                client.call_chatbot("question", session_id=None)
+
+    def test_proxy_pdf_analysis_timeout_maps_to_fastapi_timeout(self):
+        client = FastAPIClient()
+
+        with patch(
+            'strategy.services.requests.post',
+            side_effect=requests.exceptions.Timeout("pdf timed out"),
+        ):
+            with self.assertRaises(FastAPITimeoutError):
+                client.proxy_pdf_analysis("announcement.pdf", b"%PDF-1.4")
+
     def test_run_diagnosis_uses_fastapi_session_and_expected_order_with_announcement(self):
         client = FastAPIClient()
         calls = []

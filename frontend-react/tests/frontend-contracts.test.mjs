@@ -54,7 +54,12 @@ test("API errors are presented with user-facing field details", () => {
   assert.match(mapper, /flattenFieldErrors/);
   assert.match(mapper, /fieldLabel/);
   assert.match(mapper, /field_errors/);
+  assert.match(mapper, /NETWORK_ERROR/);
+  assert.match(mapper, /502:/);
+  assert.match(mapper, /504:/);
+  assert.match(mapper, /error\.status >= 500/);
   assert.match(ui, /getErrorPresentation/);
+  assert.match(ui, /details/);
 });
 
 test("chatbot keeps messages and backend session id in browser session storage", () => {

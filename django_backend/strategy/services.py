@@ -22,6 +22,12 @@ class FastAPITimeoutError(APIException):
     default_code = 'FASTAPI_TIMEOUT'
 
 
+class FastAPIUpstreamError(APIException):
+    status_code = 502
+    default_detail = '내부 AI 분석 서버가 요청을 정상 처리하지 못했습니다.'
+    default_code = 'FASTAPI_UPSTREAM_ERROR'
+
+
 class FastAPIClient:
     def __init__(self):
         self.base_url = getattr(settings, 'FASTAPI_API_URL', 'http://127.0.0.1:8080')
@@ -43,10 +49,13 @@ class FastAPIClient:
             return response.json()
         except requests.exceptions.Timeout as e:
             logger.error(f"FastAPI send_profile timeout after {self.profile_timeout}s: {e}")
-            raise FastAPITimeoutError(f"프로필 데이터 전송 시간 초과: {str(e)}")
+            raise FastAPITimeoutError()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"FastAPI send_profile upstream error: {e}")
+            raise FastAPIUpstreamError()
         except requests.RequestException as e:
             logger.error(f"FastAPI send_profile error: {e}")
-            raise FastAPIConnectionError(f"프로필 데이터 전송 실패: {str(e)}")
+            raise FastAPIConnectionError()
 
     def send_announcement(self, session_id: str, announcement_text: str) -> dict:
         """
@@ -63,10 +72,13 @@ class FastAPIClient:
             return response.json()
         except requests.exceptions.Timeout as e:
             logger.error(f"FastAPI send_announcement timeout after {self.announcement_timeout}s: {e}")
-            raise FastAPITimeoutError(f"공고문 데이터 전송 시간 초과: {str(e)}")
+            raise FastAPITimeoutError()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"FastAPI send_announcement upstream error: {e}")
+            raise FastAPIUpstreamError()
         except requests.RequestException as e:
             logger.error(f"FastAPI send_announcement error: {e}")
-            raise FastAPIConnectionError(f"공고문 데이터 전송 실패: {str(e)}")
+            raise FastAPIConnectionError()
 
     def trigger_simulate(self, session_id: str, simulate: bool = True) -> dict:
         """
@@ -83,10 +95,13 @@ class FastAPIClient:
             return response.json()
         except requests.exceptions.Timeout as e:
             logger.error(f"FastAPI trigger_simulate timeout after {self.simulate_timeout}s: {e}")
-            raise FastAPITimeoutError(f"청약 진단 시뮬레이션 연산 시간 초과: {str(e)}")
+            raise FastAPITimeoutError()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"FastAPI trigger_simulate upstream error: {e}")
+            raise FastAPIUpstreamError()
         except requests.RequestException as e:
             logger.error(f"FastAPI trigger_simulate error: {e}")
-            raise FastAPIConnectionError(f"청약 진단 시뮬레이션 연산 실패: {str(e)}")
+            raise FastAPIConnectionError()
 
     def run_diagnosis(self, session_id: str, profile_3rd: dict, announcement_text: str = None) -> dict:
         """
@@ -115,10 +130,13 @@ class FastAPIClient:
             return response.json()
         except requests.exceptions.Timeout as e:
             logger.error(f"FastAPI proxy_pdf_analysis timeout after {self.pdf_timeout}s: {e}")
-            raise FastAPITimeoutError(f"PDF 파일 분석 프록시 전송 시간 초과: {str(e)}")
+            raise FastAPITimeoutError()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"FastAPI proxy_pdf_analysis upstream error: {e}")
+            raise FastAPIUpstreamError()
         except requests.RequestException as e:
             logger.error(f"FastAPI proxy_pdf_analysis error: {e}")
-            raise FastAPIConnectionError(f"PDF 파일 분석 프록시 전송 실패: {str(e)}")
+            raise FastAPIConnectionError()
 
     def call_chatbot(self, question: str, session_id: str = None) -> dict:
         """
@@ -135,8 +153,11 @@ class FastAPIClient:
             return response.json()
         except requests.exceptions.Timeout as e:
             logger.error(f"FastAPI call_chatbot timeout after {self.chatbot_timeout}s: {e}")
-            raise FastAPITimeoutError(f"챗봇 서비스 호출 시간 초과: {str(e)}")
+            raise FastAPITimeoutError()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"FastAPI call_chatbot upstream error: {e}")
+            raise FastAPIUpstreamError()
         except requests.RequestException as e:
             logger.error(f"FastAPI call_chatbot error: {e}")
-            raise FastAPIConnectionError(f"챗봇 서비스 호출에 실패했습니다: {str(e)}")
+            raise FastAPIConnectionError()
 
