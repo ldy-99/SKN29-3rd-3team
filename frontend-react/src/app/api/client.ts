@@ -71,17 +71,34 @@ export class ApiRequestError extends Error {
   }
 }
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const isFormData = options.body instanceof FormData;
   let response: Response;
+
+  // CSRF 토큰 추출 및 헤더 구성
+  const csrfToken = getCookie("csrftoken");
+  const csrfHeader: Record<string, string> = {};
+  if (
+    csrfToken &&
+    options.method &&
+    !["GET", "HEAD", "OPTIONS", "TRACE"].includes(options.method.toUpperCase())
+  ) {
+    csrfHeader["X-CSRFToken"] = csrfToken;
+  }
 
   try {
     response = await fetch(`${API_BASE_URL}${endpoint}`, {
       credentials: "include",
       headers: isFormData
-        ? options.headers
+        ? { ...csrfHeader, ...options.headers }
         : {
             "Content-Type": "application/json",
+            ...csrfHeader,
             ...options.headers,
           },
       ...options,
