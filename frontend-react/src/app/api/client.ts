@@ -1,5 +1,6 @@
 // 역할: React 화면들이 Django 공개 API를 호출할 때 사용하는 공통 client입니다.
 // 모든 요청은 Django API로 전송하며 로컬 fixture fallback을 사용하지 않습니다.
+/// <reference types="vite/client" />
 
 export type ApiEnvelope<T> = {
   data: T | null;
