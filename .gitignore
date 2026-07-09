@@ -25,6 +25,7 @@ dist/
 *.log
 *.pid
 db.sqlite3
+runtime.env
 
 # Local editor / OS files
 .vscode/

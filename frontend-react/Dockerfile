@@ -4,7 +4,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # pnpm 글로벌 설치
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.14.0
 
 # 의존성 관련 파일 복사 및 설치
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
