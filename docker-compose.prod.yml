@@ -32,7 +32,7 @@ services:
     image: dongyoon99/frontend-react:latest
     container_name: frontend-react
     ports:
-      - "80:80"
+      - "80:80"  # 운영 서버 HTTP 80 포트로 접속
     depends_on:
       - django-backend
       - fastapi-backend

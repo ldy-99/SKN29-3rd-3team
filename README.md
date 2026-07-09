@@ -1,201 +1,250 @@
-# 청약 진단 서비스
+# A-FIT 청약 진단 서비스
 
-React, Django, FastAPI/LangGraph를 연결한 청약 프로필 기반 전략 진단 서비스입니다.
+<div align="center">
 
-현재 실행 구조는 아래와 같습니다.
+### 아파트 분양과 청약이 처음인 사용자를 위한 개인 맞춤형 청약 가능성 진단 서비스
 
-```text
-Browser
-  -> React/Vite (:5173)
-      -> Django REST API (:8000)
-          - session login
-          - user profile
-          - strategy history
-          - FastAPI proxy
-              -> FastAPI AI service (:8080)
-                  - PDF text extraction
-                  - LangGraph pipeline
-                  - calculator tools
-                  - RAG, ChromaDB, OpenAI
+복잡한 청약 제도, 사용자 조건, 모집공고 PDF, 가점과 자금 부담을 한 번에 이해하기 어렵다는 문제를 해결하기 위해
+**React 웹서비스**, **Django 인증/저장 API**, **FastAPI LangGraph/RAG AI 엔진**, **Docker/AWS 배포 구조**를 결합했습니다.
+
+<br/>
+
+<img src="https://img.shields.io/badge/Target-청약%20초보자-1D4ED8?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Service-아파트%20분양%20진단-0F766E?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Core-React%20Django%20FastAPI-334155?style=for-the-badge" />
+<img src="https://img.shields.io/badge/AI-LangGraph%20RAG%20PDF-B45309?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Deploy-Docker%20AWS%20EC2-475569?style=for-the-badge" />
+
+</div>
+
+---
+
+## 목차
+
+| 구분 | 내용 |
+|---|---|
+| 1 | [팀 구성 및 역할](#1-팀-구성-및-역할) |
+| 2 | [프로젝트 개요](#2-프로젝트-개요) |
+| 3 | [핵심 기능](#3-핵심-기능) |
+| 4 | [전체 시스템 구조](#4-전체-시스템-구조) |
+| 5 | [PDF 분석 및 LLM/RAG 흐름](#5-pdf-분석-및-llmrag-흐름) |
+| 6 | [배포 및 CI/CD](#6-배포-및-cicd) |
+| 7 | [기술 스택](#7-기술-스택) |
+| 8 | [실행 방법](#8-실행-방법) |
+| 9 | [검증 방법](#9-검증-방법) |
+| 10 | [폴더 구조](#10-폴더-구조) |
+| 11 | [주요 화면](#11-주요-화면) |
+| 12 | [최종 산출물](#12-최종-산출물) |
+| 13 | [프로젝트 회고](#13-프로젝트-회고) |
+
+---
+
+## 1. 팀 구성 및 역할
+
+### 1.1 팀원별 담당 영역
+
+<!-- 팀원 사진은 기존 3차 프로젝트 README 형식을 유지합니다. 이미지 교체가 필요하면 docs/assets/team 경로에 최신 사진을 넣어주세요. -->
+
+<table width="100%">
+  <tr>
+    <td align="center" width="25%">
+      <img src="./docs/assets/team/jun-eok.jpg" width="220" /><br/>
+      <h3>준억</h3>
+      <b>Backend · Integration</b><br/>
+      <sub>Django/FastAPI 연동, PDF 개선, 산출물 정리</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./docs/assets/team/dong-yoon.jpg" width="220" /><br/>
+      <h3>동윤</h3>
+      <b>Deployment · Backend</b><br/>
+      <sub>Docker/AWS 배포, Nginx/Gunicorn 운영 설정</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./docs/assets/team/ji-hoon.jpg" width="220" /><br/>
+      <h3>지훈</h3>
+      <b>AI Backend · Planning</b><br/>
+      <sub>LangGraph, RAG, 청약 진단 파이프라인</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./docs/assets/team/eun-jin.jpg" width="220" /><br/>
+      <h3>은진</h3>
+      <b>Frontend · Planning</b><br/>
+      <sub>React 화면, 사용자 흐름, UI 개선</sub>
+    </td>
+  </tr>
+</table>
+
+| 팀원 | 역할 | 담당 영역 |
+|---|---|---|
+| 준억 | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
+| 동윤 | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
+| 지훈 | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
+| 은진 | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
+
+---
+
+## 2. 프로젝트 개요
+
+> 청약 초보자는 내가 어떤 공급 유형에 유리한지, 공고문 조건을 충족하는지, 결과를 나중에 다시 볼 수 있는지 판단하기 어렵습니다.
+
+A-FIT은 사용자의 청약 조건과 아파트 분양 모집공고를 기반으로 청약 가능성을 참고용으로 진단하고, 결과를 리포트와 마이페이지 이력으로 저장하는 웹서비스입니다.
+
+| 서비스 관점 | 설계 내용 |
+|---|---|
+| 사용자 | 아파트 분양 청약을 준비하는 초보 사용자 |
+| 문제 | 청약 제도, 공고문 PDF, 가점, 자금 조건을 스스로 해석하기 어렵다 |
+| 해결 | 프로필 기반 기본 진단, PDF 공고문 요약, LangGraph/RAG 기반 설명과 전략 리포트 제공 |
+| 결과 | 청약 가능성, 추천 방향, 공고 요약, 진단 이력을 한 화면에서 확인 |
+
+```mermaid
+flowchart LR
+    A["회원가입/로그인"] --> B["청약 프로필 입력"]
+    B --> C["기본 조건 진단"]
+    B --> D["PDF/공고문 기반 진단"]
+    D --> E["LLM 요약 및 구조화"]
+    C --> F["AFIT Report"]
+    E --> F
+    F --> G["마이페이지 이력"]
+    G --> H["RAG 챗봇 질의"]
 ```
 
-`Backend/`는 현재도 사용하는 FastAPI AI/RAG 서비스입니다. 과거 Streamlit 화면과 함께 쓰였던 AI 자산이지만, 현재 웹 화면은 `frontend-react/`만 사용합니다. Streamlit UI는 현재 실행 흐름에 없습니다.
+---
 
-## 먼저 확인할 문서
+## 3. 핵심 기능
 
-| 목적 | 문서 |
-|---|---|
-| 현재 통합 브랜치 구조와 팀원 전달 메모 | [docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md](docs/current/260706_VERSION1_INTEGRATION_HANDOFF.md) |
-| PDF 분석 개선 현황과 팀 공유 요약 | [docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md) |
-| PDF 개선 작업 추적 | [docs/traces/260707_PDF_IMPROVEMENT_TRACKING.md](docs/traces/260707_PDF_IMPROVEMENT_TRACKING.md) |
-| 문서 전체 색인 | [docs/README.md](docs/README.md) |
-| API 요청/응답 계약 | [docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md](docs/current/260706_VERSION1_API_RESPONSE_CONTRACT.md) |
+| 기능 | 사용자에게 보이는 가치 | 구현 방식 |
+|---|---|---|
+| 회원가입/로그인 | 개인별 프로필과 진단 이력 관리 | Django session 인증 |
+| 청약 프로필 입력 | 거주, 세대, 무주택, 통장, 소득 조건 저장 | Django Profile API + React form |
+| 기본 조건 진단 | 공고 없이 현재 내 조건 기준 빠른 진단 | FastAPI LangGraph 진단 |
+| PDF 모집공고 분석 | 복잡한 공고문을 짧게 요약하고 진단 입력으로 변환 | PDF text/table extraction + LLM summary |
+| 공고 기반 결과 리포트 | 공고 조건을 반영한 청약 가능성 분석 | Django StrategyRun 저장 + 결과 상세 |
+| 마이페이지 | 공고별 분석 이력과 기본 진단 결과 재조회 | 카드형 이력 UI |
+| RAG 챗봇 | 청약 제도 질문에 근거 기반 답변 | ChromaDB + OpenAI |
+| PDF 저장 | 결과 화면을 PDF로 저장 | 브라우저 print/export 기반 |
+| 계정 관리 | 비밀번호 변경, 계정 삭제 | Django accounts API |
 
-## 검증 환경
+---
 
-이 브랜치에서 확인한 기준입니다.
+## 4. 전체 시스템 구조
 
-| 항목 | 기준 |
-|---|---|
-| OS | Windows |
-| Python | 3.10.x |
-| Node.js | 22.23.1 검증, 최소 20 이상 권장 |
-| pnpm | `corepack pnpm` 11.9.0 검증 |
-| Django | 5.2.15 |
-| FastAPI | 0.136.3 |
-
-문제 발생 시 바로 아래의 실행 순서를 따라간 뒤, 하단 [오류 대처법](#오류-대처법)을 확인하세요.
-
-## 1. 브랜치 받기
-
-```powershell
-git fetch origin
-git switch version-1-integrate-0706
-git pull origin version-1-integrate-0706
+```mermaid
+flowchart LR
+    User["사용자 브라우저"] --> Nginx["Nginx / React SPA"]
+    Nginx -->|"/api/*"| Django["Django REST API"]
+    Nginx -->|"/admin/*"| Admin["Django Admin"]
+    Django --> DB[("SQLite / django-db volume")]
+    Django -->|"FASTAPI_API_URL"| FastAPI["FastAPI AI Service"]
+    FastAPI --> LangGraph["LangGraph 진단 파이프라인"]
+    FastAPI --> Chroma[("ChromaDB")]
+    FastAPI --> OpenAI["OpenAI API"]
 ```
 
-오류 가능성: 현재 작업 중인 변경사항이 있으면 switch/pull이 막힐 수 있습니다. 이 경우 [T8](#t8-git-switchpull이-막힐-때)를 확인하세요.
+| 계층 | 책임 |
+|---|---|
+| React/Vite | 사용자 화면, 폼 입력, 로딩/오류 처리, 마이페이지/결과 상세 |
+| Nginx | 정적 파일 제공, `/api/`, `/admin/`, `/static/admin/` 프록시, PDF 업로드 edge limit |
+| Django | 인증, 세션, 프로필, 진단 이력 저장, FastAPI proxy |
+| FastAPI | PDF 분석, LangGraph 진단, RAG 챗봇, LLM 호출 |
+| SQLite | 사용자/프로필/진단 이력 저장, Docker volume으로 보존 |
+| ChromaDB | 청약 제도 문서 기반 RAG 검색 |
+| OpenAI | 공고문 구조화/요약, RAG 답변 합성, 리포트 문장 생성 |
 
-## 2. 환경 파일 만들기
+---
 
-루트에서 실행합니다.
+## 5. PDF 분석 및 LLM/RAG 흐름
+
+PDF 원본은 저장하지 않고, 추출/요약 결과만 사용자 확인 및 진단 입력에 사용합니다.
+
+```mermaid
+sequenceDiagram
+    actor U as 사용자
+    participant R as React
+    participant D as Django
+    participant F as FastAPI
+    participant L as LLM
+
+    U->>R: PDF 드래그/선택
+    R->>D: POST /api/pdf/analyze
+    D->>F: 내부 PDF 분석 요청
+    F->>F: 텍스트/표 추출
+    F->>L: 공고 요약/구조화 요청
+    L-->>F: summary_text / diagnosis_text / extracted_fields
+    F-->>D: 분석 결과 반환
+    D-->>R: 사용자 확인용 요약 표시
+    U->>R: 진단 실행
+```
+
+| 산출 데이터 | 용도 |
+|---|---|
+| `summary_text` | 마이페이지와 사용자 확인용 짧은 공고 요약 |
+| `diagnosis_text` | 전략 진단에 전달되는 구조화된 공고문 정보 |
+| `extracted_fields` | 공고명, 위치, 공급유형, 공급세대, 금액, 일정 등 |
+
+---
+
+## 6. 배포 및 CI/CD
+
+최종 배포는 Docker Hub 이미지와 AWS EC2 기반으로 구성했습니다.
+
+| 항목 | 내용 |
+|---|---|
+| 운영 URL | `http://a-fit.duckdns.org/` |
+| EC2 | `43.201.113.124` |
+| 이미지 저장소 | Docker Hub `dongyoon99/*` |
+| 운영 포트 | HTTP `80:80` |
+| Django 실행 | `migrate -> collectstatic -> gunicorn` |
+| DB 보존 | `django-db` Docker volume |
+| CI/CD | GitHub Actions 기반 검증, 이미지 빌드/푸시, EC2 배포 |
+
+```mermaid
+flowchart LR
+    Code["final merge / push"] --> Test["lint/typecheck/test/build"]
+    Test --> Build["Docker image build"]
+    Build --> Hub["Docker Hub push"]
+    Hub --> EC2["EC2 docker compose pull"]
+    EC2 --> Up["docker compose up -d"]
+    Up --> URL["a-fit.duckdns.org"]
+```
+
+자세한 배포 산출물은 [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md)를 참고합니다.
+
+---
+
+## 7. 기술 스택
+
+| 영역 | 기술 | 역할 |
+|---|---|---|
+| Frontend | React 18, Vite, TypeScript, pnpm | 사용자 화면, SPA 라우팅, 상태 관리 |
+| API Backend | Django 5, DRF, django-cors-headers | 인증, 세션, 프로필, 진단 이력 |
+| AI Backend | FastAPI, LangGraph, LangChain | 청약 진단 파이프라인, RAG, PDF 분석 |
+| LLM/RAG | OpenAI, ChromaDB | 공고 요약, 질의응답, 근거 검색 |
+| PDF | PyMuPDF, pdfplumber, pypdf | PDF 텍스트/표 추출 |
+| Deployment | Docker, Nginx, Gunicorn, AWS EC2, Docker Hub | 컨테이너 배포 및 운영 |
+| Quality | ESLint, TypeScript, pytest, node:test | 정적 검증 및 회귀 테스트 |
+
+---
+
+## 8. 실행 방법
+
+### 8.1 환경 파일
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item frontend-react\.env.example frontend-react\.env.local
 ```
 
-루트 `.env`에서 최소한 아래 값을 채웁니다.
+루트 `.env`에는 최소한 `OPENAI_API_KEY`, `DJANGO_SECRET_KEY`, `FASTAPI_API_URL`을 설정합니다. 로컬 Vite 개발에서는 `frontend-react/.env.local`의 `VITE_API_BASE_URL`을 비워두면 Vite proxy가 Django `127.0.0.1:8000`으로 요청을 넘깁니다.
 
-```dotenv
-OPENAI_API_KEY=sk-...
-DJANGO_SECRET_KEY=local-dev-secret
-DJANGO_DEBUG=true
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
-DJANGO_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
-DJANGO_CSRF_TRUSTED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
-FASTAPI_API_URL=http://127.0.0.1:8080
-FASTAPI_PROFILE_TIMEOUT=10
-FASTAPI_SIMULATE_TIMEOUT=30
-FASTAPI_CHATBOT_TIMEOUT=30
-FASTAPI_ANNOUNCEMENT_TIMEOUT=90
-FASTAPI_PDF_TIMEOUT=90
-```
-
-`frontend-react/.env.local`은 로컬 Vite 개발 서버 기준으로 비워둡니다.
-
-```dotenv
-VITE_API_BASE_URL=
-```
-
-이 값을 비워두면 `frontend-react/vite.config.ts`의 `/api` proxy가 Django `127.0.0.1:8000`으로 요청을 넘깁니다.
-
-오류 가능성: `VITE_API_BASE_URL`에 다른 프로젝트 주소가 들어 있으면 회원가입/로그인이 엉뚱한 서버로 갈 수 있습니다. [T3](#t3-회원가입에서-usernamenickname-필수-오류가-나올-때)을 확인하세요.
-
-## 3. Python 가상환경 만들기
-
-권장 방식은 Python 3.10으로 `.venv`를 만드는 것입니다.
+### 8.2 Python 의존성
 
 ```powershell
 py -3.10 -m venv .venv
-```
-
-`py` 명령이 없고 팀 공용 `torch_env` conda 환경이 있다면 아래처럼 만들 수 있습니다.
-
-```powershell
-conda run -n torch_env python -m venv .venv
-```
-
-둘 다 어렵다면 Python 3.10 conda 환경을 새로 만든 뒤 venv를 만듭니다.
-
-```powershell
-conda create -n skn4_py310 python=3.10 -y
-conda run -n skn4_py310 python -m venv .venv
-```
-
-가상환경 Python 확인:
-
-```powershell
-.\.venv\Scripts\python.exe --version
-```
-
-오류 가능성: `python --version`만 보면 다른 Python이 잡힐 수 있습니다. 항상 `.\.venv\Scripts\python.exe`를 직접 호출하세요. [T1](#t1-python-버전이나-venv가-꼬일-때)을 확인하세요.
-
-## 4. Python 의존성 설치
-
-루트에서 실행합니다.
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
 ```
 
-설치 확인:
-
-```powershell
-.\.venv\Scripts\python.exe -c "import django, fastapi, chromadb, openai, langchain_chroma; print('python deps ok')"
-```
-
-오류 가능성: 패키지 설치 중 네트워크나 Python 버전 문제로 실패할 수 있습니다. [T2](#t2-pip-install이-실패할-때)를 확인하세요.
-
-## 5. Django DB 준비
-
-루트에서 실행합니다.
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py migrate
-```
-
-확인:
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py check
-.\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
-```
-
-정상 기준:
-
-```text
-System check identified no issues
-Ran 27 tests
-OK
-```
-
-오류 가능성: `no such table: accounts_user`가 나오면 migrate가 안 된 것입니다. [T4](#t4-no-such-table-accounts_user가-나올-때)를 확인하세요.
-
-## 6. ChromaDB 구축
-
-RAG 챗봇과 공고문 기반 전략 분석을 확인하려면 ChromaDB를 먼저 만들어야 합니다. 이 단계는 OpenAI embedding API를 호출하므로 API 사용량이 발생할 수 있습니다.
-
-```powershell
-.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
-```
-
-구축 확인:
-
-```powershell
-.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
-```
-
-정상 기준:
-
-```text
-[('faq_chunks', 480), ('guide_chunks', 76), ('law_chunks', 163), ('lh_guide_chunks', 18), ('manual_chunks', 144), ('web_faq_chunks', 120)]
-```
-
-오류 가능성: `[]`가 나오거나 HNSW reader 오류가 나오면 ChromaDB가 비어 있거나 깨진 것입니다. [T5](#t5-chromadb가-비어-있거나-hnsw-오류가-날-때)를 확인하세요.
-
-## 7. React 의존성 설치
-
-Node.js 20 이상을 사용합니다. Node 22 LTS 이상이면 좋습니다.
-
-```powershell
-node --version
-corepack --version
-corepack pnpm --version
-```
-
-설치:
+### 8.3 React 의존성
 
 ```powershell
 cd frontend-react
@@ -203,392 +252,175 @@ corepack pnpm install --frozen-lockfile
 cd ..
 ```
 
-오류 가능성: `pnpm.cmd`가 없어도 `corepack pnpm`이 되면 정상입니다. [T6](#t6-pnpmpnpmcmd가-없다고-나올-때)을 확인하세요.
-
-## 8. 서버 3개 실행
-
-터미널 3개를 열고 모두 프로젝트 루트에서 시작합니다.
-
-### Terminal 1. FastAPI
+### 8.4 DB migration
 
 ```powershell
+.\.venv\Scripts\python.exe django_backend\manage.py migrate
+```
+
+### 8.5 로컬 서버 실행
+
+터미널 3개를 사용합니다.
+
+```powershell
+# Terminal 1. FastAPI
 .\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
 ```
 
-확인:
-
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8080/health
-```
-
-### Terminal 2. Django
-
-```powershell
+# Terminal 2. Django
 .\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8000
 ```
 
-확인:
-
 ```powershell
-Invoke-WebRequest http://127.0.0.1:8000/admin/
-```
-
-Django 관리자 로그인 화면 HTML이 오면 정상입니다.
-
-### Terminal 3. React
-
-```powershell
+# Terminal 3. React
 cd frontend-react
 corepack pnpm dev -- --host 127.0.0.1 --port 5173
 ```
 
-브라우저:
+브라우저 접속:
 
 ```text
 http://127.0.0.1:5173
 ```
 
-오류 가능성: `8000` 포트에 다른 FastAPI 서버가 떠 있으면 회원가입 응답 형식이 완전히 달라집니다. [T3](#t3-회원가입에서-usernamenickname-필수-오류가-나올-때)을 확인하세요.
+### 8.6 Docker 운영 배포
 
-## 9. 전체 검증 명령
-
-서버 실행 전 정적 검증:
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py check
-.\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'Backend'); from main import app; print('fastapi import ok:', app.title)"
+```bash
+docker-compose build
+docker-compose push
 ```
 
-프론트 검증:
+EC2:
+
+```bash
+cd ~/app
+docker compose pull
+docker compose up -d
+docker ps
+docker compose logs --tail=100
+```
+
+### 8.7 흐름별 오류 대처법
+
+| 흐름 | 증상 | 확인/해결 |
+|---|---|---|
+| Python 가상환경 | `ModuleNotFoundError`, Python 3.13로 실행됨 | `.\.venv\Scripts\python.exe --version`으로 3.10.x 확인 후 `pip install -r requirements.txt -r django_backend\requirements.txt` 재실행 |
+| 패키지 설치 | `pip install` 실패 | `.\.venv\Scripts\python.exe -m pip install --upgrade pip` 후 재시도. Python 3.10 환경인지 먼저 확인 |
+| Django DB | `no such table: accounts_user` | `.\.venv\Scripts\python.exe django_backend\manage.py migrate` 실행 |
+| 회원가입/API | `username`, `nickname` 필수 오류가 나옴 | 8000번에 FastAPI 등 다른 서버가 떠 있는 상태일 수 있음. `Invoke-WebRequest http://127.0.0.1:8000/admin/`로 Django admin 화면 확인 |
+| React API 연결 | 로그인/회원가입 요청이 엉뚱한 서버로 감 | `frontend-react/.env.local`의 `VITE_API_BASE_URL=`을 비워두고 Vite proxy 사용 |
+| pnpm | `pnpm` 또는 `pnpm.cmd`를 찾지 못함 | Node 20 이상에서 `corepack pnpm --version` 확인 후 `corepack pnpm install --frozen-lockfile` 사용 |
+| ChromaDB/RAG | collection이 비어 있거나 HNSW 오류 발생 | `.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py`로 ChromaDB 재구축 |
+| PDF 업로드 | 큰 PDF 업로드 실패 | 프론트/백엔드는 15MB 정책, Nginx edge limit은 20MB. 운영 설정의 `client_max_body_size 20m` 확인 |
+| Docker 배포 | 최신 코드가 EC2에 반영되지 않음 | 로컬/CI에서 이미지 build 후 Docker Hub push, EC2에서 `docker compose pull && docker compose up -d` 재실행 |
+| 운영 접속 | `a-fit.duckdns.org`는 뜨지만 `/admin/`이 안 열림 | Nginx에 `/admin/`, `/static/admin/` 프록시가 포함되어 있는지 확인 |
+| HTTP 쿠키 | 운영 HTTP에서 로그인 세션이 유지되지 않음 | HTTP 운영 기준 `DJANGO_SESSION_COOKIE_SECURE=false`, `DJANGO_CSRF_COOKIE_SECURE=false` 확인. HTTPS 전환 시 true로 변경 |
+
+---
+
+## 9. 검증 방법
 
 ```powershell
+# Django
+.\.venv\Scripts\python.exe django_backend\manage.py check
+.\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
+
+# 배포 설정
+.\.venv\Scripts\python.exe -m pytest tests\test_deployment_configuration.py -q
+
+# Frontend
 cd frontend-react
+corepack pnpm lint
+corepack pnpm typecheck
 corepack pnpm test
 corepack pnpm run build
 cd ..
 ```
 
-ChromaDB 검증:
-
-```powershell
-.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
-```
-
-로컬 개발 점검 스크립트:
-
-```powershell
-.\scripts\dev-doctor.ps1
-```
-
-`dev-doctor.ps1`은 운영 health check가 아니라 로컬 편의용 점검 스크립트입니다.
-
-## 10. 브라우저에서 확인할 흐름
-
-1. `http://127.0.0.1:5173` 접속
-2. 회원가입
-3. 프로필 입력
-4. PDF 분석 또는 수동 공고문 입력
-5. 전략 진단 실행
-6. 마이페이지에서 진단 이력 확인
-7. 챗봇 질문 확인
-
-PDF 분석은 원본 파일을 저장하지 않습니다. 현재는 PDF에서 텍스트/표를 추출한 뒤 `summary_text`(사용자 이력/확인용 짧은 요약), `diagnosis_text`(전략 진단 입력용 구조화 텍스트), `extracted_fields`(공고명/위치/주택형/공급금액/일정 등)를 생성합니다. 자세한 내용은 [docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md](docs/current/260707_VERSION1_PDF_ANALYSIS_STATUS.md)를 확인하세요.
-
-회원가입은 현재 `email`, `password`만 필요합니다. `username`은 선택이고 `nickname` 필드는 없습니다.
-
-## 11. 배포 Nginx 설정 메모
-
-프론트 정적 파일을 Nginx로 서빙하고 `/api/` 요청을 Django로 프록시하는 기준 설정은 [deploy/nginx/default.conf](deploy/nginx/default.conf)에 둡니다.
-
-PDF 업로드는 브라우저에서 `multipart/form-data`로 전송되므로 실제 PDF 파일보다 요청 본문이 조금 커집니다. 그래서 Nginx edge 제한은 아래처럼 `20m`으로 여유 있게 열어두고, 서비스 정책상 PDF 파일 크기 제한은 Django `PDFAnalyzeAPIView`의 15MB 검증에서 처리합니다.
-
-```nginx
-client_max_body_size 20m;
-```
-
-배포 컨테이너에서 이 파일은 보통 `/etc/nginx/conf.d/default.conf`로 마운트합니다. `proxy_pass http://django:8000;`의 `django` 호스트명은 Docker Compose나 배포 환경의 Django 서비스 이름에 맞춰 조정하면 됩니다.
-
-## 내가 로컬에서 실험할 때 쓰는 명령 모음
-
-### 가상환경
-
-```powershell
-conda run -n torch_env python -m venv .venv
-.\.venv\Scripts\python.exe --version
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
-```
-
-### Django
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py migrate
-.\.venv\Scripts\python.exe django_backend\manage.py check
-.\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
-.\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8000
-```
-
-### FastAPI
-
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
-Invoke-RestMethod http://127.0.0.1:8080/health
-```
-
-### ChromaDB
-
-```powershell
-.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
-.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
-```
-
-### React
-
-```powershell
-cd frontend-react
-corepack pnpm install --frozen-lockfile
-corepack pnpm dev -- --host 127.0.0.1 --port 5173
-corepack pnpm test
-corepack pnpm run build
-cd ..
-```
-
-### API 직접 확인
-
-```powershell
-Invoke-WebRequest http://127.0.0.1:8000/admin/
-```
-
-```powershell
-$email = "local$(Get-Random)@example.com"
-$body = @{ email = $email; password = "StrongPass123!" } | ConvertTo-Json
-Invoke-RestMethod -Uri http://127.0.0.1:8000/api/auth/signup -Method Post -Body $body -ContentType "application/json" -SessionVariable s
-Invoke-RestMethod -Uri http://127.0.0.1:8000/api/auth/me -Method Get -WebSession $s
-```
-
-### 포트 확인
-
-```powershell
-netstat -ano | findstr :8000
-netstat -ano | findstr :8080
-netstat -ano | findstr :5173
-```
-
-### Git
-
-```powershell
-git status
-git fetch origin
-git switch version-1-integrate-0706
-git pull origin version-1-integrate-0706
-git add -A
-git commit -m "message"
-git push origin version-1-integrate-0706
-```
-
-## 주요 디렉터리
-
-| 경로 | 역할 |
+| 검증 항목 | 상태 |
 |---|---|
-| `Backend/` | 현재 FastAPI AI/RAG/LangGraph 서비스 |
-| `django_backend/` | Django 인증, 프로필, 진단 이력, FastAPI proxy |
-| `frontend-react/` | React/Vite 화면 |
-| `fixture_examples/` | API 계약 예시 |
-| `docs/current/` | 현재 기준 문서 |
-| `docs/guides/` | 협업 가이드 |
-| `docs/traces/` | 변경 이력과 문제 해결 기록 |
-| `docs/reports/` | 기존 AI/RAG 분석 보고서 |
+| ESLint | PASS |
+| TypeScript | PASS |
+| Frontend test/build | PASS |
+| Django accounts/strategy test | PASS |
+| Docker/Nginx/env 정적 검증 | PASS |
+| Docker Hub/AWS EC2 배포 | PASS |
+| HTTP 80 외부 접속 | PASS |
+| PDF 다건 품질 회귀 | 추가 개선 과제 |
+| 챗봇 실제 RAG 질의 회귀 | 추가 개선 과제 |
 
-## Git에 올리면 안 되는 로컬 파일
+---
 
-아래 파일과 폴더는 로컬 실행 산출물이므로 커밋하지 않습니다.
-
-```text
-.env
-frontend-react/.env.local
-.venv/
-django_backend/db.sqlite3
-Backend/src/preprocessing/chroma_db/
-Backend/src/checkpoints/
-frontend-react/node_modules/
-frontend-react/dist/
-__pycache__/
-```
-
-## 오류 대처법
-
-### T1. Python 버전이나 venv가 꼬일 때
-
-증상:
+## 10. 폴더 구조
 
 ```text
-ModuleNotFoundError
-Python 3.13.x로 실행됨
-django가 설치되어 있는데 못 찾음
+version-1_check/
+├── Backend/                  # FastAPI AI/RAG/LangGraph/PDF 서비스
+├── django_backend/           # Django 인증, 프로필, 진단 이력, FastAPI proxy
+├── frontend-react/           # React/Vite 사용자 화면
+├── deploy/nginx/             # 운영 Nginx proxy 설정
+├── docs/
+│   ├── current/              # 현재 기준 공유 문서
+│   ├── final/                # 최종 평가 산출물
+│   ├── guides/               # 협업 가이드
+│   ├── reports/              # 기존 AI/RAG 분석 보고서
+│   └── traces/               # 변경 이력 추적
+├── tests/                    # 배포 설정 등 pytest
+├── docker-compose.yml        # 로컬 빌드 기반 compose
+├── docker-compose.prod.yml   # Docker Hub pull 기반 운영 compose
+├── requirements.txt          # FastAPI/RAG Python 의존성
+└── README.md
 ```
 
-확인:
+---
 
-```powershell
-where python
-.\.venv\Scripts\python.exe --version
-```
+## 11. 주요 화면
 
-해결:
+현재 화면 캡처는 최종 배포 화면 기준으로 다시 삽입해야 합니다. 아래 칸은 제출 전 캡처 삽입 위치입니다.
 
-```powershell
-conda run -n torch_env python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
-```
+| 화면 | 설명 | 캡처 |
+|---|---|---|
+| 랜딩/로그인 | 서비스 진입, 회원가입/로그인 | 삽입 필요 |
+| 프로필 입력 | 청약통장, 거주지, 무주택, 소득 등 입력 | 삽입 필요 |
+| 전략 진단 | 기본 진단, 공고문 직접 입력, PDF 분석 진입 | 삽입 필요 |
+| PDF 분석 | 모집공고 PDF 업로드, 요약 결과 확인 | 삽입 필요 |
+| 결과 상세 | AFIT Report, 공고 기본 정보, 프로필 확인, PDF 저장 | 삽입 필요 |
+| 마이페이지 | 계정 정보, 기본 진단, 공고별 분석 이력 | 삽입 필요 |
+| 챗봇 | Floating RAG 챗봇, 답변/출처 표시 | 삽입 필요 |
+| Django Admin | 포트 80 기반 `/admin/` 관리자 페이지 | 삽입 필요 |
 
-항상 `python` 대신 `.\.venv\Scripts\python.exe`를 직접 호출하면 헷갈림이 줄어듭니다.
+---
 
-### T2. pip install이 실패할 때
+## 12. 최종 산출물
 
-확인:
+| 산출물 | 파일 |
+|---|---|
+| 최종 산출물 색인 | [docs/final/README.md](docs/final/README.md) |
+| 요구사항 정의서 | [docs/final/REQUIREMENTS_SPECIFICATION_FINAL.md](docs/final/REQUIREMENTS_SPECIFICATION_FINAL.md) |
+| 화면설계서 | [docs/final/SCREEN_DESIGN_FINAL.md](docs/final/SCREEN_DESIGN_FINAL.md) |
+| 시스템 구성도 | [docs/final/SYSTEM_ARCHITECTURE_FINAL.md](docs/final/SYSTEM_ARCHITECTURE_FINAL.md) |
+| 테스트 계획 및 결과 보고서 | [docs/final/TEST_PLAN_AND_RESULT_REPORT.md](docs/final/TEST_PLAN_AND_RESULT_REPORT.md) |
+| Docker/AWS/CI-CD 배포 정리 | [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md) |
+| 발표자료 가이드 | [docs/final/PRESENTATION_GUIDE_10MIN.md](docs/final/PRESENTATION_GUIDE_10MIN.md) |
+| 최종 체크리스트 | [docs/final/FINAL_DELIVERABLE_CHECKLIST.md](docs/final/FINAL_DELIVERABLE_CHECKLIST.md) |
 
-```powershell
-.\.venv\Scripts\python.exe --version
-.\.venv\Scripts\python.exe -m pip --version
-```
+---
 
-해결:
+## 13. 프로젝트 회고
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
-```
+### 준억
 
-Python 3.10이 아니면 일부 패키지 wheel이 맞지 않을 수 있습니다.
+> Django와 FastAPI를 연결하고 PDF 공고문 분석, 마이페이지, 결과 리포트 흐름을 개선하면서 AI 엔진을 실제 서비스 UX로 감싸는 과정의 중요성을 배웠습니다. 특히 LLM 요약 결과를 그대로 보여주는 것이 아니라 사용자가 이해하고 다시 확인할 수 있는 정보 구조로 정리하는 일이 서비스 완성도에 큰 영향을 준다는 점을 체감했습니다.
 
-### T3. 회원가입에서 username/nickname 필수 오류가 나올 때
+### 동윤
 
-증상:
+> Docker 이미지 빌드와 AWS EC2 배포, Nginx/Gunicorn 운영 설정을 정리하며 로컬 개발 결과를 실제 외부 접속 가능한 서비스로 만드는 과정을 담당했습니다. 포트 80 단일화, 관리자 페이지 프록시, 세션/CSRF 쿠키 문제를 해결하면서 배포 환경과 애플리케이션 설정의 정합성이 중요하다는 점을 확인했습니다.
 
-```json
-{"detail":[{"type":"missing","loc":["body","username"]},{"loc":["body","nickname"]}]}
-```
+### 지훈
 
-판단:
+> LangGraph 기반 청약 진단 흐름과 RAG 구조를 통해 청약 도메인의 복잡한 판단을 단계별로 나누어 설계했습니다. 계산 가능한 영역은 규칙 기반으로 고정하고, 설명과 요약은 LLM/RAG로 보완하는 방향이 서비스 신뢰도를 높이는 데 중요하다고 느꼈습니다.
 
-이 응답은 이 프로젝트의 Django 응답이 아닙니다. FastAPI/Pydantic 기본 422 형식입니다. 현재 Django 회원가입은 `email`, `password`만 필수이고 `nickname` 필드는 없습니다.
+### 은진
 
-확인:
-
-```powershell
-netstat -ano | findstr :8000
-Invoke-WebRequest http://127.0.0.1:8000/admin/
-```
-
-정상이면 `/admin/`에서 Django 관리자 로그인 화면이 떠야 합니다. FastAPI Swagger나 다른 응답이 뜨면 8000번 포트를 다른 서버가 잡고 있는 것입니다.
-
-해결:
-
-1. 8000번을 쓰는 다른 프로세스를 종료합니다.
-2. Django를 다시 실행합니다.
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8000
-```
-
-3. `frontend-react/.env.local`의 `VITE_API_BASE_URL`을 비워둡니다.
-
-```dotenv
-VITE_API_BASE_URL=
-```
-
-### T4. no such table: accounts_user가 나올 때
-
-원인:
-
-Django DB migration을 아직 실행하지 않은 상태입니다.
-
-해결:
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py migrate
-```
-
-그 뒤 다시 회원가입을 시도합니다.
-
-### T5. ChromaDB가 비어 있거나 HNSW 오류가 날 때
-
-증상:
-
-```text
-[]
-Error creating hnsw segment reader: Nothing found on disk
-```
-
-해결:
-
-```powershell
-.\.venv\Scripts\python.exe -X utf8 Backend\src\preprocessing\build_all.py
-.\.venv\Scripts\python.exe -c "import chromadb; c=chromadb.PersistentClient(path='Backend/src/preprocessing/chroma_db'); print(sorted([(x.name, x.count()) for x in c.list_collections()]))"
-```
-
-6개 collection과 count가 보여야 합니다.
-
-### T6. pnpm/pnpm.cmd가 없다고 나올 때
-
-Node 20 이상에서는 Corepack을 사용할 수 있습니다.
-
-```powershell
-node --version
-corepack --version
-corepack pnpm --version
-```
-
-이후 `pnpm.cmd` 대신 아래처럼 실행합니다.
-
-```powershell
-corepack pnpm install --frozen-lockfile
-corepack pnpm dev -- --host 127.0.0.1 --port 5173
-```
-
-### T7. React에서 Django API에 연결할 수 없을 때
-
-확인:
-
-```powershell
-Invoke-WebRequest http://127.0.0.1:8000/admin/
-Get-Content frontend-react\.env.local
-```
-
-로컬 Vite dev에서는 `VITE_API_BASE_URL=`가 비어 있어야 `/api` proxy가 동작합니다.
-
-### T8. git switch/pull이 막힐 때
-
-현재 변경사항 확인:
-
-```powershell
-git status
-```
-
-작업을 임시 보관:
-
-```powershell
-git stash push -m "local work before branch update"
-git pull origin version-1-integrate-0706
-git stash pop
-```
-
-충돌이 나면 파일을 열어 충돌 표시를 해결한 뒤 commit합니다.
-
-### T9. 포트가 이미 사용 중일 때
-
-확인:
-
-```powershell
-netstat -ano | findstr :8000
-netstat -ano | findstr :8080
-netstat -ano | findstr :5173
-```
-
-PID를 확인한 뒤 작업 관리자에서 종료하거나, 다른 포트로 실행합니다.
-
-```powershell
-.\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8001
-```
-
-Django 포트를 바꾸면 `frontend-react/vite.config.ts` proxy도 같이 바꿔야 하므로, 가능하면 기본 포트를 비우는 방식을 권장합니다.
+> React 화면과 사용자 흐름을 구현하며 청약 초보자가 진단, 결과 확인, 이력 조회를 자연스럽게 이어갈 수 있도록 UI를 정리했습니다. API 응답 구조와 화면 표현이 잘 맞아야 사용자가 복잡한 청약 정보를 부담 없이 이해할 수 있다는 점을 배웠습니다.

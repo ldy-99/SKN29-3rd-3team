@@ -3,8 +3,8 @@
 | 항목 | 내용 |
 |---|---|
 | 프로젝트 | A-FIT 청약 진단 서비스 |
-| 문서 상태 | 최종 제출 후보 |
-| 작성일 | 2026-07-08 |
+| 문서 상태 | 최종 제출본 |
+| 작성일 | 2026-07-09 |
 | 기준 브랜치 | `pdf-improvement-0707` |
 | 기준 커밋 | `9992295 Improve mypage report UX and deployment checks` |
 | 대상 | React SPA / Django REST API / FastAPI LangGraph RAG PDF 엔진 |
@@ -111,10 +111,11 @@ flowchart LR
 | NFR-UI-02 | UI | 로딩/오류/빈 상태를 표시해야 한다 | 완료 |
 | NFR-ACC-01 | 접근성 | 모달/플로팅 UI는 role/aria/focus 동작을 갖춰야 한다 | 완료. 일부 자동 테스트 보강 |
 | NFR-SEC-01 | 보안 | 세션 기반 인증과 사용자별 데이터 격리를 적용해야 한다 | 완료 |
-| NFR-SEC-02 | 보안 | 운영 환경 secure cookie/HTTPS는 분리 관리해야 한다 | 후속 과제 |
+| NFR-SEC-02 | 보안 | HTTP 운영과 향후 HTTPS 운영의 cookie/CSRF 설정을 분리 관리해야 한다 | 완료. HTTPS 전환 시 secure cookie true 재설정 필요 |
 | NFR-PERF-01 | 안정성 | 장시간 요청은 timeout 또는 오류 안내를 제공해야 한다 | 완료, 장애 주입 추가 필요 |
-| NFR-DEP-01 | 배포 | Docker Compose 기반 실행 구조를 제공해야 한다 | 완료. 실제 이미지 빌드/EC2 검증은 NOT_TESTED |
-| NFR-DATA-01 | 데이터 | SQLite 데이터는 Docker volume으로 유지할 수 있어야 한다 | 설계 완료, 재기동 검증 필요 |
+| NFR-DEP-01 | 배포 | Docker Compose 기반 실행 구조를 제공해야 한다 | 완료. Docker Hub/AWS EC2 배포 반영 |
+| NFR-DEP-02 | CI/CD | GitHub Actions로 검증, 이미지 빌드/푸시, EC2 배포를 자동화해야 한다 | 완료 |
+| NFR-DATA-01 | 데이터 | SQLite 데이터는 Docker volume으로 유지할 수 있어야 한다 | 완료. 운영 고도화 시 RDS 전환 |
 | NFR-TEST-01 | 테스트 | TypeScript/build/test/lint를 통과해야 한다 | 완료 |
 
 ## 6. LLM 연동 요구사항
@@ -137,15 +138,12 @@ flowchart LR
 | FR-PDF-01~04 | `/strategy`, `/pdf` | `/api/pdf/analyze` | TC-PDF-* |
 | FR-MYPAGE-01~04 | `/mypage` | `/api/auth/me`, `/api/strategy/me` | MAN-FE-02~05 |
 | FR-CHAT-01~02 | Floating 챗봇, `/chatbot` | `/api/chatbot` | MAN-FE-04, TC-CHAT-* |
-| NFR-DEP-01 | 배포 구성 | Nginx/Docker Compose | AUTO-DEP-01 |
+| NFR-DEP-01~02 | 배포/CI-CD 구성 | Nginx/Docker Compose/GitHub Actions | AUTO-DEP-01, DEP-04~09 |
 
 ## 8. 후속 과제
 
-- EC2 실서버 Docker pull/up, 외부 URL 접속, DB volume 유지 검증
 - HTTP 배포에서 HTTPS 적용
 - SQLite에서 PostgreSQL/RDS 전환
 - S3 정적/미디어 파일 운영 분리
-- CI/CD 자동화
 - PDF 구조화 정확도 회귀 테스트 데이터셋 확대
 - LLM/RAG 장애 주입 자동 테스트
-
