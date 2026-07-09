@@ -1,0 +1,63 @@
+<svg width="1280" height="230" viewBox="0 0 1280 230" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Technology stack summary</title>
+  <desc id="desc">Visual summary of the project technology stack for the A-FIT apartment subscription diagnosis service.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="230" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EFF6FF"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="90" y1="38" x2="1190" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset=".45" stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-25%" width="120%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#334155" flood-opacity=".12"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="230" rx="0" fill="url(#bg)"/>
+  <rect x="42" y="32" width="1196" height="166" rx="18" fill="white" stroke="#D7E0EA"/>
+  <rect x="72" y="56" width="8" height="118" rx="4" fill="url(#bar)"/>
+
+  <text x="102" y="76" fill="#0F172A" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="26" font-weight="800">Technology Stack</text>
+  <text x="102" y="105" fill="#64748B" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="15">React, Django, FastAPI, PDF analysis, RAG, and deployment are separated by responsibility.</text>
+
+  <g filter="url(#shadow)" font-family="Arial, 'Noto Sans KR', sans-serif">
+    <g transform="translate(102 132)">
+      <rect width="128" height="48" rx="10" fill="#EEF4FF" stroke="#C8D7F5"/>
+      <text x="16" y="20" fill="#1D4ED8" font-size="12" font-weight="800">FRONTEND</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">React / Vite</text>
+    </g>
+    <g transform="translate(246 132)">
+      <rect width="148" height="48" rx="10" fill="#F0FDFA" stroke="#B8E6DE"/>
+      <text x="16" y="20" fill="#0F766E" font-size="12" font-weight="800">API</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">Django / DRF</text>
+    </g>
+    <g transform="translate(410 132)">
+      <rect width="166" height="48" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="16" y="20" fill="#334155" font-size="12" font-weight="800">AI API</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">FastAPI / Python</text>
+    </g>
+    <g transform="translate(592 132)">
+      <rect width="168" height="48" rx="10" fill="#EEF4FF" stroke="#C8D7F5"/>
+      <text x="16" y="20" fill="#1D4ED8" font-size="12" font-weight="800">WORKFLOW</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">LangGraph / RAG</text>
+    </g>
+    <g transform="translate(776 132)">
+      <rect width="162" height="48" rx="10" fill="#F0FDFA" stroke="#B8E6DE"/>
+      <text x="16" y="20" fill="#0F766E" font-size="12" font-weight="800">PDF</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">PyMuPDF / pdfplumber</text>
+    </g>
+    <g transform="translate(954 132)">
+      <rect width="112" height="48" rx="10" fill="#FFF7ED" stroke="#F2D3AA"/>
+      <text x="16" y="20" fill="#B45309" font-size="12" font-weight="800">LLM</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">OpenAI GPT</text>
+    </g>
+    <g transform="translate(1082 132)">
+      <rect width="112" height="48" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+      <text x="16" y="20" fill="#334155" font-size="12" font-weight="800">DEPLOY</text>
+      <text x="16" y="37" fill="#0F172A" font-size="13" font-weight="700">Docker / AWS</text>
+    </g>
+  </g>
+</svg>
