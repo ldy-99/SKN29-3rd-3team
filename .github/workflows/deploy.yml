@@ -4,9 +4,17 @@ on:
   pull_request:
     branches:
       - final
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
   push:
     branches:
       - final
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
