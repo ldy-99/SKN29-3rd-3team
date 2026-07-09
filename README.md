@@ -23,17 +23,17 @@
 
 ---
 
-## Overview
+## 서비스 개요
 
 A-FIT은 청약 초보자가 복잡한 청약 조건과 모집공고를 혼자 해석하기 어렵다는 문제에서 출발했습니다. 사용자는 프로필을 입력하고, 관심 있는 아파트 모집공고 PDF를 업로드하거나 공고 내용을 직접 입력해 청약 가능성을 참고용으로 진단받을 수 있습니다.
 
-서비스는 세 가지 원칙으로 설계했습니다.
+서비스는 세 가지 원칙으로 설계하였습니다.
 
 | 원칙 | 설명 |
 |---|---|
 | 계산과 설명 분리 | 자격/점수/조건 비교는 코드와 도메인 로직으로 처리하고, 설명과 요약은 LLM이 보조합니다. |
 | 원본보다 정리된 정보 | PDF 원본은 저장하지 않고, 사용자 확인용 요약과 진단용 구조화 텍스트만 남깁니다. |
-| 다시 볼 수 있는 진단 | 분석 결과를 마이페이지에 저장해 공고별 이력과 기본 진단 결과를 재확인할 수 있습니다. |
+| 다시 볼 수 있는 진단 | 분석 결과를 마이페이지에 저장하여 공고별 이력과 기본 진단 결과를 재확인할 수 있습니다. |
 
 ```mermaid
 flowchart LR
@@ -49,7 +49,7 @@ flowchart LR
 
 ---
 
-## Current Status
+## 현재 구현 상태
 
 | 항목 | 상태 |
 |---|---|
@@ -67,51 +67,53 @@ flowchart LR
 
 ---
 
-## Table of Contents
+## 목차
 
 | 구분 | 내용 |
 |---|---|
-| 1 | [Team](#1-team) |
-| 2 | [Features](#2-features) |
-| 3 | [Architecture](#3-architecture) |
-| 4 | [PDF and AI Flow](#4-pdf-and-ai-flow) |
-| 5 | [Deployment](#5-deployment) |
-| 6 | [Tech Stack](#6-tech-stack) |
-| 7 | [Getting Started](#7-getting-started) |
-| 8 | [Verification](#8-verification) |
-| 9 | [Troubleshooting](#9-troubleshooting) |
-| 10 | [Project Structure](#10-project-structure) |
-| 11 | [Screenshots](#11-screenshots) |
-| 12 | [Final Deliverables](#12-final-deliverables) |
-| 13 | [Retrospective](#13-retrospective) |
+| - | [서비스 개요](#서비스-개요) |
+| - | [현재 구현 상태](#현재-구현-상태) |
+| 1 | [팀 구성](#1-팀-구성) |
+| 2 | [핵심 기능](#2-핵심-기능) |
+| 3 | [시스템 아키텍처](#3-시스템-아키텍처) |
+| 4 | [PDF 및 AI 처리 흐름](#4-pdf-및-ai-처리-흐름) |
+| 5 | [배포 및 CI/CD](#5-배포-및-cicd) |
+| 6 | [기술 스택](#6-기술-스택) |
+| 7 | [실행 방법](#7-실행-방법) |
+| 8 | [검증 방법](#8-검증-방법) |
+| 9 | [오류 대처법](#9-오류-대처법) |
+| 10 | [폴더 구조](#10-폴더-구조) |
+| 11 | [주요 화면](#11-주요-화면) |
+| 12 | [최종 산출물](#12-최종-산출물) |
+| 13 | [프로젝트 회고](#13-프로젝트-회고) |
 
 ---
 
-## 1. Team
+## 1. 팀 구성
 
 <table width="100%">
   <tr>
     <td align="center" width="25%">
       <img src="./docs/assets/team/jun-eok.jpg" width="220" /><br/>
-      <h3>준억</h3>
+      <h3><a href="https://github.com/gripgrap">준억</a></h3>
       <b>Backend · Integration</b><br/>
       <sub>Django/FastAPI 연동, PDF 개선, 산출물 정리</sub>
     </td>
     <td align="center" width="25%">
       <img src="./docs/assets/team/dong-yoon.jpg" width="220" /><br/>
-      <h3>동윤</h3>
+      <h3><a href="https://github.com/ldy-99">동윤</a></h3>
       <b>Deployment · Backend</b><br/>
       <sub>Docker/AWS 배포, Nginx/Gunicorn 운영 설정</sub>
     </td>
     <td align="center" width="25%">
       <img src="./docs/assets/team/ji-hoon.jpg" width="220" /><br/>
-      <h3>지훈</h3>
+      <h3><a href="https://github.com/Jihun105">지훈</a></h3>
       <b>AI Backend · Planning</b><br/>
       <sub>LangGraph, RAG, 청약 진단 파이프라인</sub>
     </td>
     <td align="center" width="25%">
       <img src="./docs/assets/team/eun-jin.jpg" width="220" /><br/>
-      <h3>은진</h3>
+      <h3><a href="https://github.com/eunjin661">은진</a></h3>
       <b>Frontend · Planning</b><br/>
       <sub>React 화면, 사용자 흐름, UI 개선</sub>
     </td>
@@ -120,21 +122,21 @@ flowchart LR
 
 | 팀원 | 역할 | 담당 영역 |
 |---|---|---|
-| 준억 | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
-| 동윤 | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
-| 지훈 | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
-| 은진 | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
+| [준억](https://github.com/gripgrap) | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
+| [동윤](https://github.com/ldy-99) | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
+| [지훈](https://github.com/Jihun105) | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
+| [은진](https://github.com/eunjin661) | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
 
 ---
 
-## 2. Features
+## 2. 핵심 기능
 
 | 기능 | 사용자 가치 | 구현 |
 |---|---|---|
-| 회원가입/로그인 | 개인별 프로필과 진단 이력 관리 | Django session auth |
+| 회원가입/로그인 | 개인별 프로필과 진단 이력 관리 | Django 세션 인증 |
 | 청약 프로필 입력 | 거주, 세대, 무주택, 통장, 소득 조건 저장 | React form + Django Profile API |
-| 기본 조건 진단 | 공고 없이 현재 조건 기준 빠른 진단 | FastAPI LangGraph diagnosis |
-| PDF 모집공고 분석 | 복잡한 공고문을 요약하고 진단 입력으로 변환 | PDF extraction + LLM summary |
+| 기본 조건 진단 | 공고 없이 현재 조건 기준 빠른 진단 | FastAPI LangGraph 진단 |
+| PDF 모집공고 분석 | 복잡한 공고문을 요약하고 진단 입력으로 변환 | PDF 추출 + LLM 요약 |
 | 공고 기반 리포트 | 공고 조건을 반영한 청약 가능성 분석 | StrategyRun 저장 + 결과 상세 |
 | 마이페이지 | 공고별 분석 이력과 기본 진단 결과 재조회 | 카드형 이력 UI |
 | RAG 챗봇 | 청약 제도 질문에 근거 기반 답변 | ChromaDB + OpenAI |
@@ -143,7 +145,7 @@ flowchart LR
 
 ---
 
-## 3. Architecture
+## 3. 시스템 아키텍처
 
 ```mermaid
 flowchart LR
@@ -157,7 +159,7 @@ flowchart LR
     FastAPI --> OpenAI["OpenAI API"]
 ```
 
-| Layer | Responsibility |
+| 계층 | 책임 |
 |---|---|
 | React/Vite | 화면, 라우팅, 입력 상태, 로딩/오류 처리, 결과 표시 |
 | Nginx | 정적 파일 제공, `/api/`, `/admin/`, `/static/admin/` 프록시, PDF 업로드 edge limit |
@@ -169,9 +171,9 @@ flowchart LR
 
 ---
 
-## 4. PDF and AI Flow
+## 4. PDF 및 AI 처리 흐름
 
-PDF 원본은 저장하지 않습니다. 업로드된 PDF에서 텍스트와 표를 추출한 뒤 사용자 확인용 요약과 진단용 구조화 텍스트를 생성합니다.
+PDF 원본은 저장하지 않습니다. 업로드된 PDF에서 텍스트와 표를 추출한 뒤 사용자 확인용 요약과 진단용 구조화 텍스트를 생성하도록 구성하였습니다.
 
 ```mermaid
 sequenceDiagram
@@ -200,9 +202,9 @@ sequenceDiagram
 
 ---
 
-## 5. Deployment
+## 5. 배포 및 CI/CD
 
-최종 배포는 Docker Hub 이미지와 AWS EC2 기반으로 구성했습니다.
+최종 배포는 Docker Hub 이미지와 AWS EC2 기반으로 구성하였습니다.
 
 | 항목 | 내용 |
 |---|---|
@@ -224,31 +226,31 @@ flowchart LR
     Up --> URL["a-fit.duckdns.org"]
 ```
 
-자세한 배포 절차는 [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md)를 참고합니다.
+자세한 배포 절차는 [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md)를 참고해 주세요.
 
 ---
 
-## 6. Tech Stack
+## 6. 기술 스택
 
 <img src="./docs/assets/readme/tech-stack.svg" width="100%" />
 
 <br/>
 
-| Area | Stack | Role |
+| 영역 | 기술 | 역할 |
 |---|---|---|
-| Frontend | React 18, Vite, TypeScript, pnpm | SPA, routing, UI state |
-| API Backend | Django 5, DRF, django-cors-headers | auth, session, profile, history |
-| AI Backend | FastAPI, LangGraph, LangChain | diagnosis, RAG, PDF analysis |
-| LLM/RAG | OpenAI, ChromaDB | summary, answer generation, retrieval |
-| PDF | PyMuPDF, pdfplumber, pypdf | text/table extraction |
-| Deployment | Docker, Nginx, Gunicorn, AWS EC2, Docker Hub | containerized runtime |
-| Quality | ESLint, TypeScript, pytest, node:test | static checks and regression tests |
+| Frontend | React 18, Vite, TypeScript, pnpm | SPA, 라우팅, UI 상태 관리 |
+| API Backend | Django 5, DRF, django-cors-headers | 인증, 세션, 프로필, 이력 저장 |
+| AI Backend | FastAPI, LangGraph, LangChain | 진단, RAG, PDF 분석 |
+| LLM/RAG | OpenAI, ChromaDB | 요약, 답변 생성, 검색 |
+| PDF | PyMuPDF, pdfplumber, pypdf | 텍스트/표 추출 |
+| Deployment | Docker, Nginx, Gunicorn, AWS EC2, Docker Hub | 컨테이너 기반 운영 |
+| Quality | ESLint, TypeScript, pytest, node:test | 정적 검사 및 회귀 테스트 |
 
 ---
 
-## 7. Getting Started
+## 7. 실행 방법
 
-### 7.1 Environment
+### 7.1 환경 파일
 
 ```powershell
 Copy-Item .env.example .env
@@ -257,7 +259,7 @@ Copy-Item frontend-react\.env.example frontend-react\.env.local
 
 루트 `.env`에는 최소한 `OPENAI_API_KEY`, `DJANGO_SECRET_KEY`, `FASTAPI_API_URL`을 설정합니다. 로컬 Vite 개발에서는 `frontend-react/.env.local`의 `VITE_API_BASE_URL`을 비워두면 Vite proxy가 Django `127.0.0.1:8000`으로 요청을 넘깁니다.
 
-### 7.2 Backend Dependencies
+### 7.2 백엔드 의존성 설치
 
 ```powershell
 py -3.10 -m venv .venv
@@ -265,7 +267,7 @@ py -3.10 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r django_backend\requirements.txt
 ```
 
-### 7.3 Frontend Dependencies
+### 7.3 프론트엔드 의존성 설치
 
 ```powershell
 cd frontend-react
@@ -273,26 +275,26 @@ corepack pnpm install --frozen-lockfile
 cd ..
 ```
 
-### 7.4 Database
+### 7.4 데이터베이스 준비
 
 ```powershell
 .\.venv\Scripts\python.exe django_backend\manage.py migrate
 ```
 
-### 7.5 Local Development
+### 7.5 로컬 개발 서버 실행
 
 ```powershell
-# Terminal 1. FastAPI
+# 터미널 1. FastAPI
 .\.venv\Scripts\python.exe -m uvicorn main:app --app-dir Backend --reload --host 127.0.0.1 --port 8080
 ```
 
 ```powershell
-# Terminal 2. Django
+# 터미널 2. Django
 .\.venv\Scripts\python.exe django_backend\manage.py runserver 127.0.0.1:8000
 ```
 
 ```powershell
-# Terminal 3. React
+# 터미널 3. React
 cd frontend-react
 corepack pnpm dev -- --host 127.0.0.1 --port 5173
 ```
@@ -301,7 +303,7 @@ corepack pnpm dev -- --host 127.0.0.1 --port 5173
 http://127.0.0.1:5173
 ```
 
-### 7.6 Production Deploy
+### 7.6 운영 배포
 
 ```bash
 docker-compose build
@@ -318,17 +320,17 @@ docker compose logs --tail=100
 
 ---
 
-## 8. Verification
+## 8. 검증 방법
 
 ```powershell
 # Django
 .\.venv\Scripts\python.exe django_backend\manage.py check
 .\.venv\Scripts\python.exe django_backend\manage.py test accounts strategy
 
-# Deployment config
+# 배포 설정
 .\.venv\Scripts\python.exe -m pytest tests\test_deployment_configuration.py -q
 
-# Frontend
+# 프론트엔드
 cd frontend-react
 corepack pnpm lint
 corepack pnpm typecheck
@@ -351,7 +353,7 @@ cd ..
 
 ---
 
-## 9. Troubleshooting
+## 9. 오류 대처법
 
 | 흐름 | 증상 | 확인/해결 |
 |---|---|---|
@@ -369,47 +371,47 @@ cd ..
 
 ---
 
-## 10. Project Structure
+## 10. 폴더 구조
 
 ```text
 version-1_check/
-├── Backend/                  # FastAPI AI/RAG/LangGraph/PDF service
-├── django_backend/           # Django auth, profile, strategy history, FastAPI proxy
-├── frontend-react/           # React/Vite web app
-├── deploy/nginx/             # production Nginx proxy config
+├── Backend/                  # FastAPI AI/RAG/LangGraph/PDF 서비스
+├── django_backend/           # Django 인증, 프로필, 진단 이력, FastAPI 프록시
+├── frontend-react/           # React/Vite 웹 앱
+├── deploy/nginx/             # 운영 Nginx 프록시 설정
 ├── docs/
-│   ├── current/              # current shared docs
-│   ├── final/                # final evaluation deliverables
-│   ├── guides/               # team guides
-│   ├── reports/              # AI/RAG reports
-│   └── traces/               # change traces
-├── tests/                    # deployment/config tests
-├── docker-compose.yml        # local build compose
+│   ├── current/              # 현재 공유 문서
+│   ├── final/                # 최종 평가 산출물
+│   ├── guides/               # 팀 가이드
+│   ├── reports/              # AI/RAG 리포트
+│   └── traces/               # 변경 추적 문서
+├── tests/                    # 배포/설정 테스트
+├── docker-compose.yml        # 로컬 빌드 compose
 ├── docker-compose.prod.yml   # Docker Hub pull compose
-├── requirements.txt          # FastAPI/RAG dependencies
+├── requirements.txt          # FastAPI/RAG 의존성
 └── README.md
 ```
 
 ---
 
-## 11. Screenshots
+## 11. 주요 화면
 
 최종 배포 화면 기준 캡처를 삽입합니다.
 
 | 화면 | 설명 | 캡처 |
 |---|---|---|
-| Landing/Login | 서비스 진입, 회원가입/로그인 | 삽입 필요 |
-| Profile | 청약통장, 거주지, 무주택, 소득 등 입력 | 삽입 필요 |
-| Strategy | 기본 진단, 공고문 직접 입력, PDF 분석 진입 | 삽입 필요 |
-| PDF Analysis | 모집공고 PDF 업로드, 요약 결과 확인 | 삽입 필요 |
-| Result Detail | AFIT Report, 공고 기본 정보, 프로필 확인, PDF 저장 | 삽입 필요 |
-| MyPage | 계정 정보, 기본 진단, 공고별 분석 이력 | 삽입 필요 |
-| Chatbot | Floating RAG 챗봇, 답변/출처 표시 | 삽입 필요 |
+| 랜딩/로그인 | 서비스 진입, 회원가입/로그인 | 삽입 필요 |
+| 프로필 | 청약통장, 거주지, 무주택, 소득 등 입력 | 삽입 필요 |
+| 전략 진단 | 기본 진단, 공고문 직접 입력, PDF 분석 진입 | 삽입 필요 |
+| PDF 분석 | 모집공고 PDF 업로드, 요약 결과 확인 | 삽입 필요 |
+| 결과 상세 | AFIT Report, 공고 기본 정보, 프로필 확인, PDF 저장 | 삽입 필요 |
+| 마이페이지 | 계정 정보, 기본 진단, 공고별 분석 이력 | 삽입 필요 |
+| 챗봇 | Floating RAG 챗봇, 답변/출처 표시 | 삽입 필요 |
 | Django Admin | 포트 80 기반 `/admin/` 관리자 페이지 | 삽입 필요 |
 
 ---
 
-## 12. Final Deliverables
+## 12. 최종 산출물
 
 | 산출물 | 파일 |
 |---|---|
@@ -424,7 +426,7 @@ version-1_check/
 
 ---
 
-## 13. Retrospective
+## 13. 프로젝트 회고
 
 ### 준억
 
