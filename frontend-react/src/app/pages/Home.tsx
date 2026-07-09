@@ -51,7 +51,7 @@ export function Home() {
               <h1 className="text-[46px] md:text-[58px] xl:text-[66px] font-bold tracking-[-0.045em] leading-[1.18] text-[#102e5a] break-keep">
                 아파트 분양 청약 조건을
                 <br />
-                내 상황에 맞게 진단해 보세요
+                내 상황에 맞게 진단해 보세요!
               </h1>
               <p className="mt-7 text-[17px] md:text-[19px] leading-[1.8] text-[#566171] max-w-[620px] break-keep">
                 청약 프로필과 아파트 입주자모집공고를 바탕으로 자격, 가점, 위험 요소와 준비 전략을 확인합니다.
@@ -63,9 +63,8 @@ export function Home() {
                 <Link
                   to={diagnosisPath}
                   aria-disabled={isLoading}
-                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors ${
-                    isLoading ? "pointer-events-none opacity-70" : ""
-                  }`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] bg-[#102e5a] px-7 py-4 text-[16px] font-bold text-white hover:bg-[#183f75] transition-colors ${isLoading ? "pointer-events-none opacity-70" : ""
+                    }`}
                 >
                   {isLoading ? "로그인 상태 확인 중" : user ? "전략 진단 계속하기" : "내 조건 진단하기"}
                   <ArrowRight className="w-5 h-5" />
@@ -74,9 +73,8 @@ export function Home() {
                   to={historyPath}
                   state={!isLoading && !user ? { from: "/mypage" } : undefined}
                   aria-disabled={isLoading}
-                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors ${
-                    isLoading ? "pointer-events-none opacity-70" : ""
-                  }`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-[13px] border border-[#b9b7b1] bg-[#fffefa]/80 px-7 py-4 text-[16px] font-bold text-[#26364e] hover:bg-white transition-colors ${isLoading ? "pointer-events-none opacity-70" : ""
+                    }`}
                 >
                   마이페이지 보기
                   <ArrowRight className="w-5 h-5" />
