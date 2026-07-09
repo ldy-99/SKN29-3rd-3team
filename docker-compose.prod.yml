@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # 1. Django 백엔드 서비스 (도커 허브 이미지 사용)
   django-backend:
-    image: dongyoon99/django-backend:latest
+    image: dongyoon99/django-backend:${IMAGE_TAG:-latest}
     container_name: django-backend
     ports:
       - "8000:8000"
@@ -20,7 +20,7 @@ services:
 
   # 2. FastAPI 백엔드 서비스 (도커 허브 이미지 사용)
   fastapi-backend:
-    image: dongyoon99/fastapi-backend:latest
+    image: dongyoon99/fastapi-backend:${IMAGE_TAG:-latest}
     container_name: fastapi-backend
     ports:
       - "8080:8080"
@@ -29,7 +29,7 @@ services:
 
   # 3. React 프론트엔드 서비스 (도커 허브 이미지 사용)
   frontend:
-    image: dongyoon99/frontend-react:latest
+    image: dongyoon99/frontend-react:${IMAGE_TAG:-latest}
     container_name: frontend-react
     ports:
       - "80:80"  # 운영 서버 HTTP 80 포트로 접속

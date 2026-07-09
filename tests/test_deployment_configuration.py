@@ -44,6 +44,9 @@ def test_docker_compose_keeps_runtime_env_and_persistent_django_volume():
     assert "image: dongyoon99/django-backend:latest" in compose
     assert "image: dongyoon99/fastapi-backend:latest" in compose
     assert "image: dongyoon99/frontend-react:latest" in compose
+    assert "image: dongyoon99/django-backend:${IMAGE_TAG:-latest}" in prod_compose
+    assert "image: dongyoon99/fastapi-backend:${IMAGE_TAG:-latest}" in prod_compose
+    assert "image: dongyoon99/frontend-react:${IMAGE_TAG:-latest}" in prod_compose
 
 
 def test_django_container_runs_migration_and_collectstatic_before_gunicorn():
@@ -137,3 +140,12 @@ def test_production_env_example_documents_hardened_runtime_defaults():
         "DJANGO_CSRF_COOKIE_SECURE=false",
     ]:
         assert key in env_example
+
+
+def test_github_actions_deploys_exact_commit_tag_and_preserves_secret_literals():
+    workflow = read_text(".github/workflows/deploy.yml")
+
+    assert "export IMAGE_TAG=${{ github.sha }}" in workflow
+    assert "cat > runtime.env << 'ENVEOF'" in workflow
+    assert "docker compose up -d --remove-orphans" in workflow
+    assert "docker compose images" in workflow

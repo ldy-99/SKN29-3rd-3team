@@ -31,6 +31,8 @@ flowchart LR
 | django-backend | `dongyoon99/django-backend:latest` | 인증, 세션, 프로필, 진단 이력, FastAPI proxy |
 | fastapi-backend | `dongyoon99/fastapi-backend:latest` | LangGraph/RAG/PDF/LLM 처리 |
 
+GitHub Actions 배포 시에는 `latest`만 의존하지 않고, 동일 커밋 SHA 태그를 세 이미지에 함께 지정한다. EC2 배포 단계에서 `IMAGE_TAG=${{ github.sha }}`를 export한 뒤 compose를 실행하므로, Actions 로그의 `docker compose images`에서 세 서비스가 같은 커밋 SHA 태그를 사용하는지 확인할 수 있다.
+
 ## 3. EC2 운영 명령
 
 ```bash
@@ -43,7 +45,7 @@ docker compose logs --tail=100
 
 운영 서버에서는 HTTP 80 포트로 frontend Nginx 컨테이너에 인입한다. Django와 FastAPI는 Docker network 내부 서비스명으로 통신한다.
 
-운영 환경 변수 파일은 EC2의 `~/app/runtime.env`로 생성한다. Compose의 기본 `.env` 자동 치환 과정에서 secret 값의 `$` 문자가 깨질 수 있어, 배포 단계에서는 기존 `~/app/.env`를 제거하고 `runtime.env`를 명시적으로 사용한다.
+운영 환경 변수 파일은 EC2의 `~/app/runtime.env`로 생성한다. Compose의 기본 `.env` 자동 치환 과정에서 secret 값의 `$` 문자가 깨질 수 있어, 배포 단계에서는 기존 `~/app/.env`를 제거하고 `runtime.env`를 명시적으로 사용한다. `runtime.env` 생성 시 heredoc delimiter를 quote 처리하여 원격 shell이 secret 내부의 `$` 문자를 다시 확장하지 않도록 한다.
 
 Nginx는 다음 경로를 Django 컨테이너로 프록시한다.
 

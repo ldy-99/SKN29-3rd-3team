@@ -149,13 +149,13 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "mkdir -p ~/app"
           scp -i ~/.ssh/deploy_key docker-compose.prod.yml "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/app/docker-compose.yml"
 
-      - name: Deploy latest images
+      - name: Deploy commit images
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
           set -e
           cd ~/app
           rm -f .env
-          cat > runtime.env << ENVEOF
+          cat > runtime.env << 'ENVEOF'
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
           DJANGO_DEBUG=false
@@ -171,8 +171,10 @@ jobs:
           DJANGO_SESSION_COOKIE_SECURE=false
           DJANGO_CSRF_COOKIE_SECURE=false
           ENVEOF
+          export IMAGE_TAG=${{ github.sha }}
           docker compose pull
-          docker compose up -d
+          docker compose up -d --remove-orphans
           docker image prune -f
           docker compose ps
+          docker compose images
           EOF

@@ -65,7 +65,9 @@ docker compose version
 mkdir -p ~/app
 ```
 
-배포 시 Actions가 `docker-compose.prod.yml`을 EC2의 `~/app/docker-compose.yml`로 전송합니다. 이후 운영 환경 변수는 `~/app/runtime.env`로 생성하고, `docker compose pull`, `docker compose up -d`를 실행합니다.
+배포 시 Actions가 `docker-compose.prod.yml`을 EC2의 `~/app/docker-compose.yml`로 전송합니다. 이후 운영 환경 변수는 `~/app/runtime.env`로 생성하고, `IMAGE_TAG=${{ github.sha }}` 기준으로 `docker compose pull`, `docker compose up -d --remove-orphans`를 실행합니다.
+
+운영 compose는 기본값으로 `latest`를 사용할 수 있지만, GitHub Actions 배포에서는 커밋 SHA 태그를 명시합니다. 따라서 Actions 로그의 `docker compose images`에서 세 이미지 태그가 같은 커밋 SHA로 표시되어야 정상입니다.
 
 운영에서는 Compose의 기본 `.env` 자동 치환과 secret 값의 `$` 문자가 충돌할 수 있으므로, Actions 배포 단계에서 기존 `~/app/.env`를 제거하고 `runtime.env`를 사용하도록 구성하였습니다.
 
@@ -96,15 +98,17 @@ http://a-fit.duckdns.org/admin/
 | `ssh-keyscan` 실패 | `EC2_HOST`가 잘못되었거나 EC2 보안그룹 차단 | IP/도메인, 22번 포트 인바운드 규칙 확인 |
 | `docker compose: command not found` | EC2에 Compose plugin이 없음 | `sudo apt install docker-compose-plugin` 설치 |
 | `runtime.env` 관련 런타임 오류 | 필수 운영 Secret 누락 | `OPENAI_API_KEY`, `DJANGO_SECRET_KEY` 등 Actions Secrets 확인 |
+| 배포 성공인데 옛날 화면이 보임 | EC2가 `latest` 기존 이미지를 계속 사용하거나 브라우저 캐시가 남음 | Actions 로그의 `docker compose images`에서 세 이미지 태그가 실행 커밋 SHA인지 확인 후, 브라우저 강력 새로고침 |
 | 웹은 뜨지만 API 실패 | Nginx proxy 또는 컨테이너 네트워크 문제 | `docker compose logs frontend django-backend fastapi-backend` 확인 |
 | `/admin/` 정적 파일 깨짐 | Django collectstatic 또는 Nginx admin static proxy 문제 | Django 컨테이너 로그와 `/static/admin/` proxy 설정 확인 |
 
 ## 7. 롤백 방법
 
-현재 워크플로는 `latest`와 commit SHA 태그를 함께 push합니다. 특정 커밋 이미지로 되돌릴 때는 EC2의 `docker-compose.yml`에서 이미지 태그를 해당 SHA로 바꾼 뒤 재기동합니다.
+현재 워크플로는 `latest`와 commit SHA 태그를 함께 push합니다. 특정 커밋 이미지로 되돌릴 때는 EC2에서 `IMAGE_TAG`를 해당 SHA로 지정한 뒤 재기동합니다.
 
 ```bash
 cd ~/app
+export IMAGE_TAG=되돌릴_커밋_SHA
 docker compose pull
 docker compose up -d
 ```
