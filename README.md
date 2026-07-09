@@ -122,10 +122,10 @@ flowchart LR
 
 | 팀원 | 역할 | 담당 영역 |
 |---|---|---|
-| [준억](https://github.com/gripgrap) | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
-| [동윤](https://github.com/ldy-99) | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
-| [지훈](https://github.com/Jihun105) | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
-| [은진](https://github.com/eunjin661) | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
+| [![준억](https://img.shields.io/badge/GitHub-준억-181717?logo=github)](https://github.com/gripgrap) | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
+| [![동윤](https://img.shields.io/badge/GitHub-동윤-181717?logo=github)](https://github.com/ldy-99) | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
+| [![지훈](https://img.shields.io/badge/GitHub-지훈-181717?logo=github)](https://github.com/Jihun105) | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
+| [![은진](https://img.shields.io/badge/GitHub-은진-181717?logo=github)](https://github.com/eunjin661) | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
 
 ---
 
