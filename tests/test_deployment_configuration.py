@@ -22,10 +22,12 @@ def test_docker_compose_defines_required_runtime_services():
 
 def test_docker_compose_pins_expected_ports_and_internal_service_routes():
     compose = read_text("docker-compose.yml")
+    prod_compose = read_text("docker-compose.prod.yml")
 
     assert '"8000:8000"' in compose
     assert '"8080:8080"' in compose
     assert '"3000:80"' in compose
+    assert '"80:80"' in prod_compose
     assert "FASTAPI_API_URL=http://fastapi-backend:8080" in compose
     assert "depends_on:\n      - fastapi-backend" in compose
     assert "depends_on:\n      - django-backend\n      - fastapi-backend" in compose
@@ -42,14 +44,18 @@ def test_docker_compose_keeps_runtime_env_and_persistent_django_volume():
     assert "image: dongyoon99/frontend-react:latest" in compose
 
 
-def test_django_container_runs_migration_before_serving_on_all_interfaces():
+def test_django_container_runs_migration_and_collectstatic_before_gunicorn():
     dockerfile = read_text("django_backend/Dockerfile")
+    requirements = read_text("django_backend/requirements.txt")
 
     assert "FROM python:3.10-slim" in dockerfile
     assert "COPY requirements.txt ." in dockerfile
     assert "pip install --no-cache-dir -r requirements.txt" in dockerfile
     assert "EXPOSE 8000" in dockerfile
-    assert "python manage.py migrate && python manage.py runserver 0.0.0.0:8000" in dockerfile
+    assert "python manage.py migrate && python manage.py collectstatic --noinput" in dockerfile
+    assert "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3" in dockerfile
+    assert "gunicorn==" in requirements
+    assert "whitenoise==" in requirements
 
 
 def test_fastapi_container_exposes_uvicorn_on_internal_compose_port():
@@ -74,14 +80,18 @@ def test_frontend_container_builds_static_assets_and_serves_with_nginx_proxy():
     assert "EXPOSE 80" in dockerfile
     assert "try_files $uri $uri/ /index.html;" in nginx_conf
     assert "proxy_pass http://django-backend:8000/api/;" in nginx_conf
+    assert "proxy_pass http://django-backend:8000/admin/;" in nginx_conf
+    assert "proxy_pass http://django-backend:8000/static/admin/;" in nginx_conf
     assert "client_max_body_size 20M" in nginx_conf
 
 
-def test_deploy_nginx_proxy_matches_compose_service_names_and_upload_limit():
+def test_deploy_nginx_proxy_matches_compose_service_names_admin_and_upload_limit():
     nginx_conf = read_text("deploy/nginx/default.conf")
 
     assert "client_max_body_size 20m" in nginx_conf
     assert "proxy_pass http://django-backend:8000/api/;" in nginx_conf
+    assert "proxy_pass http://django-backend:8000/admin/;" in nginx_conf
+    assert "proxy_pass http://django-backend:8000/static/admin/;" in nginx_conf
     assert "proxy_pass http://django:8000" not in nginx_conf
 
 
@@ -112,15 +122,15 @@ def test_production_env_example_documents_hardened_runtime_defaults():
         "DJANGO_SECRET_KEY=",
         "DJANGO_DEBUG=false",
         "DJANGO_ALLOWED_HOSTS=",
-        "DJANGO_CORS_ALLOWED_ORIGINS=https://",
-        "DJANGO_CSRF_TRUSTED_ORIGINS=https://",
+        "DJANGO_CORS_ALLOWED_ORIGINS=http://a-fit.duckdns.org",
+        "DJANGO_CSRF_TRUSTED_ORIGINS=http://a-fit.duckdns.org",
         "FASTAPI_API_URL=http://fastapi-backend:8080",
         "FASTAPI_PROFILE_TIMEOUT=",
         "FASTAPI_SIMULATE_TIMEOUT=",
         "FASTAPI_CHATBOT_TIMEOUT=",
         "FASTAPI_ANNOUNCEMENT_TIMEOUT=",
         "FASTAPI_PDF_TIMEOUT=",
-        "DJANGO_SESSION_COOKIE_SECURE=true",
-        "DJANGO_CSRF_COOKIE_SECURE=true",
+        "DJANGO_SESSION_COOKIE_SECURE=false",
+        "DJANGO_CSRF_COOKIE_SECURE=false",
     ]:
         assert key in env_example

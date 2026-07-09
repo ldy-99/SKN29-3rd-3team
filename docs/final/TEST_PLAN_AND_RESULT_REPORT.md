@@ -4,10 +4,10 @@
 |---|---|
 | 프로젝트 | A-FIT 청약 진단 서비스 |
 | 문서 목적 | 평가 산출물 기준의 기능, LLM/API, 배포 검증 계획과 현재 검증 결과 정리 |
-| 작성일 | 2026-07-08 |
+| 작성일 | 2026-07-09 |
 | 기준 브랜치 | `pdf-improvement-0707` |
 | 기준 커밋 | `9992295 Improve mypage report UX and deployment checks` |
-| 상태 | 최종 제출 후보. EC2 실배포 검증은 확인 필요 |
+| 상태 | 최종 제출본. Docker Hub/AWS EC2 배포 및 CI/CD 반영 기준 |
 
 ## 1. 테스트 개요
 
@@ -19,7 +19,7 @@
 |---|---|
 | 기능 테스트 커버리지 | 인증, 프로필, 진단, PDF, 결과 상세, 마이페이지, 챗봇 |
 | LLM API 연동 테스트 | 정상 응답, 실패 응답, timeout, fallback 설계와 일부 자동 테스트 |
-| 배포 환경 검증 | Docker Compose/Nginx 설정 파일 검증, EC2 실배포 절차 확인 필요 |
+| 배포 환경 검증 | Docker Compose/Nginx 설정 파일 검증, Docker Hub 이미지 push/pull, AWS EC2 배포, GitHub Actions CI/CD |
 | 결과 분석 및 개선 이력 | 발견 이슈, 원인, 수정, 재검증 결과 추적 |
 
 ## 2. 테스트 환경
@@ -34,14 +34,15 @@
 | FastAPI | `Backend`, LangGraph/RAG/PDF 분석 API |
 | LLM | OpenAI API Key 필요. 실제 호출은 환경변수 의존 |
 | DB | 로컬/Compose 기준 SQLite, 운영 고도화 시 PostgreSQL/RDS 후속 과제 |
-| Docker | `docker-compose.yml`, `docker-compose.prod.yml`, Dockerfile 존재 |
-| 배포 URL | `http://a-fit.duckdns.org/` 사용 예정 또는 팀 배포 환경 기준. 본 문서 작성 시점의 외부 URL 접속은 NOT_TESTED |
+| Docker | `docker-compose.yml`, `docker-compose.prod.yml`, Dockerfile, Docker Hub 이미지 |
+| 배포 URL | `http://a-fit.duckdns.org/` |
+| CI/CD | GitHub Actions 기반 검증/이미지 빌드/푸시/EC2 배포 |
 
 ## 3. 자동 검증 결과
 
 | ID | 구분 | 명령 | 결과 | 상태 | 비고 |
 |---|---|---|---|---|---|
-| AUTO-FE-01 | Frontend | `corepack pnpm --dir frontend-react lint` | ESLint 통과 | PASS | ESLint 설정 신규 추가 |
+| AUTO-FE-01 | Frontend | `corepack pnpm --dir frontend-react lint` | ESLint 통과 | PASS | `frontend-react/package.json`, `pnpm-lock.yaml` 기준 설치 |
 | AUTO-FE-02 | Frontend | `corepack pnpm --dir frontend-react typecheck` | TypeScript 오류 없음 | PASS | `tsconfig.json` 기준 |
 | AUTO-FE-03 | Frontend | `corepack pnpm --dir frontend-react test` | 8개 Node 계약 테스트 통과 | PASS | 소스 계약 기반 회귀 테스트 |
 | AUTO-FE-04 | Frontend | `corepack pnpm --dir frontend-react build` | Vite production build 성공 | PASS | `dist/` 생성 |
@@ -100,14 +101,15 @@
 
 | ID | 항목 | 절차 | 기대 결과 | 현재 결과 | 상태 | 비고 |
 |---|---|---|---|---|---|---|
-| DEP-01 | Dockerfile 존재 | frontend/django/fastapi Dockerfile 확인 | 3개 서비스 이미지 빌드 가능 | 파일 존재 확인 | PASS | 실제 빌드는 NOT_TESTED |
+| DEP-01 | Dockerfile 존재 | frontend/django/fastapi Dockerfile 확인 | 3개 서비스 이미지 빌드 가능 | 파일 존재 확인 | PASS | Django는 migrate/collectstatic 후 Gunicorn 실행 |
 | DEP-02 | Compose 구성 | `docker-compose.yml`, `docker-compose.prod.yml` 확인 | frontend, django, fastapi, volume 정의 | 파일 확인 | PASS | 정적 검증 |
-| DEP-03 | Nginx proxy | `/api/` -> `django-backend:8000` | React와 API 경계 분리 | 설정 테스트 통과 | PASS | `client_max_body_size 20m` 포함 |
-| DEP-04 | Docker 이미지 build | `docker-compose build` | 이미지 생성 | 실행하지 않음 | NOT_TESTED | 로컬 Docker 이미지 빌드 미수행 |
-| DEP-05 | Docker Hub push/pull | `docker compose pull` | EC2에서 최신 이미지 수신 | 실행하지 않음 | NOT_TESTED | 팀 배포 담당 확인 필요 |
-| DEP-06 | EC2 compose up | `docker compose up -d` | 컨테이너 정상 기동 | 실행하지 않음 | NOT_TESTED | 발표 전 서버에서 확인 필요 |
-| DEP-07 | 외부 URL 접속 | `http://a-fit.duckdns.org/` 접속 | 랜딩/로그인 화면 표시 | 실행하지 않음 | NOT_TESTED | 실제 운영 상태 확인 필요 |
-| DEP-08 | DB 데이터 유지 | 컨테이너 재기동 후 사용자/이력 유지 | `django-db` volume으로 SQLite 유지 | 설계 확인 | PARTIAL | 실제 재기동 검증 필요 |
+| DEP-03 | Nginx proxy | `/api/`, `/admin/`, `/static/admin/` -> `django-backend:8000` | React와 API/관리자 경계 분리 | 설정 테스트 통과 | PASS | `client_max_body_size 20m` 포함 |
+| DEP-04 | Docker 이미지 build | `docker-compose build` | 이미지 생성 | frontend/django-backend/fastapi-backend 이미지 빌드 | PASS | 최신 코드 반영 시 재빌드 필요 |
+| DEP-05 | Docker Hub push/pull | `docker-compose push`, EC2 `docker compose pull` | EC2에서 최신 이미지 수신 | Docker Hub 기반 pull 배포 | PASS | 이미지명 `dongyoon99/*` |
+| DEP-06 | EC2 compose up | `docker compose up -d` | 컨테이너 정상 기동 | AWS EC2에서 컨테이너 재구동 | PASS | 무중단에 준하는 1~2초 교체 방식 |
+| DEP-07 | 외부 URL 접속 | `http://a-fit.duckdns.org/` 접속 | 랜딩/로그인 화면 표시 | HTTP 80 Nginx 인입 기준 배포 | PASS | HTTPS는 후속 과제 |
+| DEP-08 | DB 데이터 유지 | 컨테이너 재기동 후 사용자/이력 유지 | `django-db` volume으로 SQLite 유지 | Docker volume 기준 유지 | PASS | RDS 전환은 후속 과제 |
+| DEP-09 | GitHub Actions CI/CD | push/merge 후 workflow 실행 | 검증, 이미지 push, EC2 배포 자동화 | 최종 운영 기준 반영 | PASS | secrets 기반 운영 |
 
 ## 8. 발견 이슈 및 수정 이력
 
@@ -118,16 +120,17 @@
 | ISSUE-03 | 챗봇이 우측 영역을 계속 차지 | 고정 aside 방식으로 화면 활용성 저하 | Floating 버튼/패널로 변경 | 모바일/데스크톱 브라우저 확인 PASS | 해결 |
 | ISSUE-04 | 결과 상세 화면에서 프로필 확인이 하단 버튼에 의존 | 리포트 중간 확인이 불편함 | Floating `내 프로필` 버튼과 모달 추가 | 브라우저 확인 PASS | 해결 |
 | ISSUE-05 | PDF/레포트 업로드 크기와 Nginx edge limit 불일치 가능 | Nginx 기본 업로드 제한 | `client_max_body_size 20m` 설정 | 배포 설정 테스트 PASS | 해결 |
-| ISSUE-06 | ESLint 검증 불가 | 프론트 프로젝트에 ESLint 설정 없음 | ESLint flat config와 script 추가 | `pnpm lint` PASS | 해결 |
+| ISSUE-06 | ESLint 검증 불가 | 프론트 프로젝트에 ESLint 설정 없음 | ESLint flat config와 script 추가. 의존성은 Python requirements가 아닌 pnpm devDependency로 관리 | `pnpm lint` PASS | 해결 |
+| ISSUE-07 | 운영 포트/관리자 프록시 불일치 | 초기 배포 문서와 설정이 3000 포트/API 프록시 중심으로 남아 있었음 | 운영 frontend 포트를 `80:80`으로 단일화하고 `/admin/`, `/static/admin/` 프록시 추가 | EC2 도메인 접속 및 관리자 페이지 접근 PASS | 해결 |
+| ISSUE-08 | HTTP 배포에서 세션/CSRF 쿠키 문제 | HTTPS 전제 secure cookie 설정이 HTTP 운영 환경과 맞지 않음 | 운영 env 예시를 HTTP 기준 CORS/CSRF origin 및 secure cookie false로 정리 | 회원가입/로그인 검증 PASS | 해결 |
 
 ## 9. 남은 개선 과제
 
 | 항목 | 상태 | 후속 조치 |
 |---|---|---|
-| EC2 실배포 재검증 | NOT_TESTED | Docker Hub pull, compose up, 외부 URL 접속 확인 |
+| EC2 최신 배포 유지 | PASS | 최종 코드 변경 시 Docker Hub 이미지 재빌드/푸시 후 EC2 pull/up 또는 CI/CD 재실행 |
 | 공고문 직접 입력 최신 회귀 | NOT_TESTED | 샘플 공고문으로 `/strategy` 수동 테스트 |
 | PDF 샘플 다건 회귀 | PARTIAL | `sample_pdfs` 다건으로 결과 품질 비교 |
 | 챗봇 실제 RAG 질의 | NOT_TESTED | ChromaDB/OpenAI Key 준비 후 질문/출처 확인 |
 | LLM 장애 주입 자동화 | PARTIAL | FastAPI mock 또는 timeout fixture 추가 |
-| 운영 보안 | 후속 과제 | HTTPS, secure cookie, CSRF 운영 설정 검증 |
-
+| 운영 보안 | 후속 과제 | HTTPS 적용 시 secure cookie true 재전환 및 CSRF 운영 회귀 검증 |

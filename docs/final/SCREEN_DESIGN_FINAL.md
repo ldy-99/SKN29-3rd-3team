@@ -4,7 +4,7 @@
 |---|---|
 | 프로젝트 | A-FIT 청약 진단 서비스 |
 | 작성일 | 2026-07-08 |
-| 문서 상태 | 최종 제출 후보 |
+| 문서 상태 | 최종 제출본 |
 | 기준 | React SPA -> Django REST API -> FastAPI AI Service |
 
 ## 1. 공통 화면 원칙
@@ -121,7 +121,6 @@ flowchart TD
 - React Testing Library 또는 Playwright 기반 실제 DOM 상호작용 테스트
 - 화면 회귀 캡처 자동화
 - PDF 분석 결과 품질 비교 화면
-- 운영 CSRF/secure cookie/HTTPS 적용 후 인증 회귀 테스트
+- HTTPS 전환 시 secure cookie true 재설정 및 인증 회귀 테스트
 - 더 세밀한 스켈레톤 UI
 - 접근성 자동 검사 도입
-

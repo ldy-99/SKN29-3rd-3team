@@ -16,10 +16,10 @@
 | 6 | 화면설계/UI 흐름 | 마이페이지, 결과 상세, Floating 챗봇 | 주요 화면 캡처 |
 | 7 | PDF 분석 시퀀스 | PDF 업로드 -> 추출 -> LLM/규칙 요약 -> 전략 진단 연결 | 시퀀스 |
 | 8 | LLM/RAG 챗봇 흐름 | ChromaDB 검색, OpenAI 답변 합성, 출처 표시 | RAG 흐름 |
-| 9 | Docker/EC2 배포 구조 | Docker Hub 이미지 pull, docker compose up | 배포 가이드 요약 |
-| 10 | 테스트 및 검증 결과 | lint/typecheck/test/build, 브라우저 검증, 배포 NOT_TESTED 구분 | 테스트 표 |
+| 9 | Docker/EC2/CI-CD 배포 구조 | Docker Hub 이미지 push/pull, EC2 compose up, GitHub Actions | 배포 가이드 요약 |
+| 10 | 테스트 및 검증 결과 | lint/typecheck/test/build, 브라우저 검증, 배포 PASS/후속 과제 구분 | 테스트 표 |
 | 11 | 시연 | 기본 진단, PDF 진단, 마이페이지, 챗봇 | 실제 화면 |
-| 12 | 한계와 후속 과제 | RDS/S3/HTTPS/CI/CD, PDF 정확도, 자동 회귀 | TODO |
+| 12 | 한계와 후속 과제 | RDS/S3/HTTPS, PDF 정확도, 자동 회귀 | TODO |
 
 ## 슬라이드별 발표 스크립트 요약
 
@@ -95,16 +95,16 @@ sequenceDiagram
 - RAG 검색 실패 시 `found=False` 또는 안내 메시지로 처리해 전체 흐름을 유지한다.
 - timeout과 사용자 오류 메시지를 분리한다.
 
-### 9. Docker/EC2 배포
+### 9. Docker/EC2/CI-CD 배포
 
 추천 표현:
 
-"이번 프로젝트에서는 EC2에 Docker 기반 배포 환경을 구성하고, Docker Hub 이미지를 pull하여 컨테이너 단위로 재현 가능한 배포가 가능하도록 했습니다. 데이터베이스와 정적 파일 운영 고도화는 추후 PostgreSQL/RDS, S3 적용 대상으로 남겨두었습니다."
+"이번 프로젝트에서는 Docker 이미지 빌드와 Docker Hub 업로드, AWS EC2에서의 최신 이미지 pull 및 컨테이너 재구동 흐름을 구성했습니다. 최종적으로 GitHub Actions를 통해 검증, 이미지 빌드/푸시, EC2 배포까지 자동화하는 CI/CD 흐름으로 정리했습니다."
 
 주의:
 
-- 실제 발표 전 `docker compose pull`, `docker compose up -d`, 외부 URL 접속 확인 필요
-- HTTPS/RDS/S3/CI/CD는 완료로 표현하지 말 것
+- 운영 URL은 `http://a-fit.duckdns.org/` 기준
+- HTTPS/RDS/S3는 완료가 아니라 후속 과제로 표현
 
 ### 10. 테스트 및 검증 결과
 
@@ -117,11 +117,11 @@ sequenceDiagram
 - Django accounts 테스트
 - 배포 설정 정적 테스트
 - 브라우저 모바일/데스크톱 수동 검증
+- Docker 이미지 빌드/푸시, EC2 pull/up 배포
+- GitHub Actions CI/CD 흐름
 
 구분할 NOT_TESTED:
 
-- EC2 실배포 재기동
-- Docker Hub pull/up 직접 확인
 - 챗봇 실제 RAG 질의
 - 다건 PDF 품질 회귀
 
@@ -138,18 +138,16 @@ sequenceDiagram
 
 - SQLite -> PostgreSQL/RDS
 - HTTP -> HTTPS
-- CI/CD 자동화
 - React DOM/네트워크 모킹 테스트 보강
 - PDF 구조화 정확도 개선
 - 접근성/반응형 회귀 테스트 자동화
-- 운영 CSRF/secure cookie 적용 및 보안 회귀 테스트
+- HTTPS 전환 시 secure cookie true 재설정 및 보안 회귀 테스트
 
 ## 발표 전 체크리스트
 
 - [ ] PR merge 후 final 브랜치 기준 화면 다시 확인
-- [ ] Docker 이미지 빌드/푸시 여부 확인
-- [ ] EC2에서 `docker compose pull && docker compose up -d`
+- [ ] GitHub Actions workflow 성공 여부 확인
+- [ ] EC2에서 최신 컨테이너 기동 상태 확인
 - [ ] `docker ps`, `docker compose logs --tail=100` 확인
 - [ ] `http://a-fit.duckdns.org/` 접속 확인
 - [ ] 로그인/기본 진단/PDF/챗봇 중 최소 1회 시연 리허설
-
