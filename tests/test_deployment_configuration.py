@@ -35,8 +35,10 @@ def test_docker_compose_pins_expected_ports_and_internal_service_routes():
 
 def test_docker_compose_keeps_runtime_env_and_persistent_django_volume():
     compose = read_text("docker-compose.yml")
+    prod_compose = read_text("docker-compose.prod.yml")
 
     assert "env_file:\n      - .env" in compose
+    assert "env_file:\n      - runtime.env" in prod_compose
     assert "- django-db:/app/data" in compose
     assert "volumes:\n  django-db:" in compose
     assert "image: dongyoon99/django-backend:latest" in compose
@@ -73,6 +75,7 @@ def test_frontend_container_builds_static_assets_and_serves_with_nginx_proxy():
     nginx_conf = read_text("frontend-react/nginx.conf")
 
     assert "FROM node:20-alpine AS build" in dockerfile
+    assert "npm install -g pnpm@10.14.0" in dockerfile
     assert "RUN pnpm install --frozen-lockfile" in dockerfile
     assert "RUN pnpm build" in dockerfile
     assert "FROM nginx:stable-alpine" in dockerfile

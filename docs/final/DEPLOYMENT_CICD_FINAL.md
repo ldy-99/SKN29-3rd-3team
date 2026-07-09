@@ -43,6 +43,8 @@ docker compose logs --tail=100
 
 운영 서버에서는 HTTP 80 포트로 frontend Nginx 컨테이너에 인입한다. Django와 FastAPI는 Docker network 내부 서비스명으로 통신한다.
 
+운영 환경 변수 파일은 EC2의 `~/app/runtime.env`로 생성한다. Compose의 기본 `.env` 자동 치환 과정에서 secret 값의 `$` 문자가 깨질 수 있어, 배포 단계에서는 기존 `~/app/.env`를 제거하고 `runtime.env`를 명시적으로 사용한다.
+
 Nginx는 다음 경로를 Django 컨테이너로 프록시한다.
 
 | 경로 | 프록시 대상 |
@@ -55,7 +57,7 @@ Nginx는 다음 경로를 Django 컨테이너로 프록시한다.
 
 ## 4. GitHub Actions CI/CD
 
-최종 CI/CD 기준은 GitHub Actions에서 검증, 이미지 빌드, Docker Hub push, EC2 배포를 자동화하는 것이다.
+최종 CI/CD 기준은 GitHub Actions에서 검증, 이미지 빌드, Docker Hub push, EC2 배포를 자동화하는 것이다. 현재 워크플로 파일은 `.github/workflows/deploy.yml`로 구성하였다.
 
 ```mermaid
 flowchart LR
@@ -76,6 +78,16 @@ flowchart LR
 | `EC2_USER` | SSH 사용자, 예: `ubuntu` |
 | `EC2_SSH_KEY` | EC2 접속 private key |
 | `OPENAI_API_KEY`, `DJANGO_SECRET_KEY` 등 | 운영 환경 변수 |
+
+워크플로 동작 기준은 다음과 같다.
+
+| 이벤트 | 동작 |
+|---|---|
+| `pull_request -> final` | Python/Django/Frontend 검증만 수행 |
+| `push -> final` | 검증 후 Docker 이미지 빌드/푸시 및 EC2 배포 |
+| `workflow_dispatch` | GitHub Actions 화면에서 수동 실행 |
+
+Secret 등록과 오류 대응 절차는 [docs/guides/GITHUB_ACTIONS_CICD_SETUP.md](../guides/GITHUB_ACTIONS_CICD_SETUP.md)를 참고한다.
 
 ## 5. 운영상 남은 고도화
 
