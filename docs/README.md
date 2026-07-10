@@ -13,7 +13,6 @@
 | 테스트 계획 및 결과 보고서 | [final_v2/TEST_PLAN_AND_RESULT_REPORT.md](final_v2/TEST_PLAN_AND_RESULT_REPORT.md) |
 | Docker/AWS/CI-CD 배포 정리 | [final_v2/DEPLOYMENT_CICD_FINAL.md](final_v2/DEPLOYMENT_CICD_FINAL.md) |
 | 최종 발표자료 PDF | [final_v2/AFIT.pdf](final_v2/AFIT.pdf) |
-| 10분 발표자료 가이드 | [final_v2/PRESENTATION_GUIDE_10MIN.md](final_v2/PRESENTATION_GUIDE_10MIN.md) |
 
 ## 운영 가이드
 
