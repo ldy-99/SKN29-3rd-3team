@@ -6,6 +6,7 @@
 | 작성일 | 2026-07-09 |
 | 문서 상태 | 최종 제출본 |
 | 배포 URL | `http://a-fit.duckdns.org/` |
+| CI/CD 상태 | 구현 완료 |
 | 운영 서버 | AWS EC2 `43.201.113.124` |
 | 이미지 저장소 | Docker Hub `dongyoon99/*` |
 

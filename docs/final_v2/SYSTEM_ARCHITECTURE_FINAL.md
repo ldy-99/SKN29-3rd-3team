@@ -29,7 +29,7 @@ flowchart LR
 | React | 사용자 화면, 입력, 로딩/오류, 결과 표시 |
 | Nginx | React 정적 파일 제공, `/api` 및 `/admin` 요청을 Django로 프록시, PDF 업로드 edge limit (20MB) |
 | Django | 인증, 세션, 사용자 프로필, 진단 이력 저장, Gunicorn WSGI 서버 기반 처리, FastAPI proxy |
-| FastAPI | LangGraph 진단, RAG 챗봇, PDF 텍스트/표 추출, LLM 호출 |
+| FastAPI | LangGraph 진단, RAG AI 어시스턴트, PDF 텍스트/표 추출, LLM 호출 |
 | SQLite | 사용자, 프로필, 진단 이력 저장 |
 | ChromaDB | RAG 검색 collection |
 | OpenAI API | 공고문 구조화, 요약, 설명 생성, RAG 답변 합성 |
@@ -55,7 +55,7 @@ sequenceDiagram
     F-->>D: 진단 결과 JSON
     D->>DB: StrategyRun 저장
     D-->>R: 표준 응답 envelope (CSRF 토큰 헤더 포함)
-    R-->>U: 리포트/이력/챗봇 표시
+    R-->>U: 리포트/이력/AI 어시스턴트 표시
 ```
 
 ## 3. Docker Compose 구성
@@ -127,7 +127,7 @@ flowchart TB
 | DuckDNS | `a-fit.duckdns.org` 도메인과 EC2 IP 연동 완료 |
 | HTTPS | 미적용. 후속 과제 (Let's Encrypt / Certbot 설정 필요) |
 | RDS/S3 | 미적용. 후속 과제 (PostgreSQL 및 AWS S3 전환 계획) |
-| CI/CD | 미적용. 수동 Docker build/push/pull 방식 배포 |
+| CI/CD | GitHub Actions 기반 검증, 이미지 빌드/푸시, EC2 배포 흐름 구현 완료 |
 
 ## 6. 보안/확장성 고려사항
 

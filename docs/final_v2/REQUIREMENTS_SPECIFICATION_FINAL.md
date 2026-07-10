@@ -31,7 +31,7 @@ flowchart LR
 
 - React는 Django 공개 API만 호출한다.
 - Django는 사용자 인증, 프로필, 진단 이력, FastAPI proxy를 담당한다.
-- FastAPI는 LangGraph 파이프라인, PDF 분석, RAG 챗봇, LLM 호출을 담당한다.
+- FastAPI는 LangGraph 파이프라인, PDF 분석, RAG AI 어시스턴트, LLM 호출을 담당한다.
 - 결정론적 계산은 코드가 담당하고, LLM은 공고문 구조화/요약/설명/RAG 답변 합성에 사용한다.
 - PDF 원본은 저장하지 않고, 요약/정리본/구조화 필드만 진단 이력에 남긴다.
 
@@ -46,7 +46,7 @@ flowchart LR
 | UC-05 | PDF 모집공고 분석 | PDF 업로드, 요약/정리본 확인, 전략 진단 연결 | `/strategy`, `/pdf`, `POST /api/pdf/analyze` | 완료 (검증 완료) |
 | UC-06 | 진단 이력 조회 | 마이페이지에서 공고별/기본 진단 이력 조회 | `/mypage`, `GET /api/strategy/me` | 완료 |
 | UC-07 | 결과 상세 조회 | 추천 공급유형, 요약, 공고/재무/전략 확인 | `/results/:id`, `GET /api/strategy/{id}` | 완료 |
-| UC-08 | RAG 챗봇 | 질문 입력, 답변/출처 확인, 세션 유지 | Floating 챗봇, `/chatbot`, `POST /api/chatbot` | 완료 (검증 완료) |
+| UC-08 | RAG AI 어시스턴트 | 질문 입력, 답변/출처 확인, 세션 유지 | Floating AI 어시스턴트, `/chatbot`, `POST /api/chatbot` | 완료 (검증 완료) |
 | UC-09 | 계정 관리 | 비밀번호 변경, 비밀번호 확인 후 계정 삭제 | `/mypage`, `/api/auth/password`, `DELETE /api/auth` | 완료 |
 
 ## 4. 기능 요구사항
@@ -91,7 +91,7 @@ flowchart LR
 | FR-PDF-03 | PDF 원본은 저장하지 않아야 한다 | 완료 | 원본 미저장 원칙 및 이력 저장 |
 | FR-PDF-04 | 업로드 용량 제한은 프론트/백엔드/Nginx에서 일관되어야 한다 | 완료 | 15MB 정책, Nginx 20MB 설정 |
 
-### 4.5 마이페이지/챗봇
+### 4.5 마이페이지/AI 어시스턴트
 
 | ID | 요구사항 | 상태 | 구현/검증 |
 |---|---|---|---|
@@ -99,8 +99,8 @@ flowchart LR
 | FR-MYPAGE-02 | 계정 정보 카드와 진단 수를 표시해야 한다 | 완료 | 브라우저 수동 검증 |
 | FR-MYPAGE-03 | 기본 정보 진단은 계정 카드 아래에 위치해야 한다 | 완료 | 브라우저 수동 검증 |
 | FR-MYPAGE-04 | 공고 기반 분석은 공고명/아파트명 중심 카드로 관리되어야 한다 | 완료 | 계약 테스트 |
-| FR-CHAT-01 | 챗봇은 Floating 버튼으로 열고 닫을 수 있어야 한다 | 완료 | 브라우저 수동 검증 |
-| FR-CHAT-02 | 챗봇은 질문/답변과 출처를 표시해야 한다 | 완료 | OpenAI API 및 ChromaDB 출처 노출 검증 |
+| FR-CHAT-01 | AI 어시스턴트는 Floating 버튼으로 열고 닫을 수 있어야 한다 | 완료 | 브라우저 수동 검증 |
+| FR-CHAT-02 | AI 어시스턴트는 질문/답변과 출처를 표시해야 한다 | 완료 | OpenAI API 및 ChromaDB 출처 노출 검증 |
 
 ## 5. 비기능 요구사항
 
@@ -135,7 +135,7 @@ flowchart LR
 | FR-STRATEGY-01~06 | `/strategy`, `/results/:id`, `/mypage` | `/api/strategy*` | MAN-FE-06~08 |
 | FR-PDF-01~04 | `/strategy`, `/pdf` | `/api/pdf/analyze` | TC-PDF-* |
 | FR-MYPAGE-01~04 | `/mypage` | `/api/auth/me`, `/api/strategy/me` | MAN-FE-02~05 |
-| FR-CHAT-01~02 | Floating 챗봇, `/chatbot` | `/api/chatbot` | MAN-FE-04, TC-CHAT-* |
+| FR-CHAT-01~02 | Floating AI 어시스턴트, `/chatbot` | `/api/chatbot` | MAN-FE-04, TC-CHAT-* |
 | NFR-DEP-01 | 배포 구성 | Nginx/Docker Compose | AUTO-DEP-01 |
 
 ## 8. 후속 과제
@@ -143,6 +143,6 @@ flowchart LR
 - HTTP 배포에서 HTTPS 적용 (Let's Encrypt 연동)
 - SQLite에서 PostgreSQL/RDS 전환
 - S3 정적/미디어 파일 운영 분리
-- CI/CD 자동화
+- CI/CD 배포 후 smoke test 및 실패 알림 고도화
 - PDF 구조화 정확도 회귀 테스트 데이터셋 확대
 - LLM/RAG 장애 주입 자동 테스트

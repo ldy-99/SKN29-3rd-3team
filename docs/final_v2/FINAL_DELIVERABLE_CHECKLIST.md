@@ -7,6 +7,8 @@
 | 개발된 LLM 연동 웹 애플리케이션 | 코드/실행 화면 | 구현 및 배포 완료 | EC2 Gunicorn 배포 및 외부 도메인 접속 연동 완료 |
 | 시스템 구성도 | `docs/final_v2/SYSTEM_ARCHITECTURE_FINAL.md` | 작성 완료 | React-Django-FastAPI-Docker(80포트 Nginx) 흐름 정리 |
 | 테스트 계획 및 결과 보고서 | `docs/final_v2/TEST_PLAN_AND_RESULT_REPORT.md` | 작성 완료 | Gunicorn 전환 및 실서버 배포 이슈 해결 이력 완비 |
+| CI/CD 구현 완료 | `.github/workflows/deploy.yml`, `docs/final_v2/DEPLOYMENT_CICD_FINAL.md` | 구현 완료 | GitHub Actions 검증, 이미지 빌드/푸시, EC2 배포 흐름 반영 |
+| 최종 발표자료 PDF | `docs/final_v2/AFIT.pdf` | 첨부 완료 | 17쪽 발표자료 |
 | 발표자료 가이드 | `docs/final_v2/PRESENTATION_GUIDE_10MIN.md` | 작성 완료 | 10분 발표 핵심 흐름 조율 |
 
 ## ## 실제 확인한 구현 및 배포 상태
@@ -19,7 +21,7 @@
 - 마이페이지 새로고침 불필요 버튼 제거를 통해 UX 간소화
 - 결과 상세 화면 내 `내 프로필` Floating 버튼 및 스냅샷 모달 적용 완료
 - `다시 진단하기` 동작 시 프로필 화면 최상단 스크롤 조치 완료
-- 챗봇 패널을 Floating 버튼 형태로 개편하여 화면 가독성 대폭 향상
+- AI 어시스턴트 패널을 Floating 버튼 형태로 개편하여 화면 가독성 대폭 향상
 - PDF 파일 업로드 크기 Nginx edge limit 20MB 설정 완료 (Django 15MB 제한과 일관성 유지)
 - **로컬 Docker 이미지 빌드 및 허브 푸시(Push) 완료**
 - **EC2 실서버에서 최신 이미지 풀(Pull) 및 컨테이너 가동(`docker compose up -d`) 완료**
@@ -33,7 +35,7 @@
 - [o] 로컬 소스 코드 빌드 및 Docker Hub 업로드 완료
 - [o] EC2 배포 서버 최신 이미지 다운로드 및 가동 (`docker compose pull && docker compose up -d`)
 - [o] 외부 도메인 주소(`a-fit.duckdns.org`)로 포트 번호 없이 정상 접속되는지 브라우저에서 최종 확인
-- [o] 테스트 계정을 활용하여 회원가입 ➡️ 로그인 ➡️ 프로필 저장 ➡️ 기본 진단 ➡️ 결과 상세 ➡️ 마이페이지 이력 확인 ➡️ Floating 챗봇 질의 리허설 수행
+- [o] 테스트 계정을 활용하여 회원가입 ➡️ 로그인 ➡️ 프로필 저장 ➡️ 기본 진단 ➡️ 결과 상세 ➡️ 마이페이지 이력 확인 ➡️ Floating AI 어시스턴트 질의 리허설 수행
 - [o] `git push origin pdf-improvement-0707` (혹은 지정된 브랜치로 최종 push 수행)
 - [o] GitHub PR 생성 또는 최신 merge 상태 점검
 - [x] 발표자료(PPT)에 실제 사용하지 않는 기술(RDS, S3, HTTPS 등)을 완료된 것처럼 표기하지 않았는지 검증

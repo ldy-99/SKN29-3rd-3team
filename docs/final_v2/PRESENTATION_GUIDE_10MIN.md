@@ -11,15 +11,15 @@
 | 1 | 표지 | A-FIT 청약 진단 서비스 | 서비스명, 팀명 |
 | 2 | 프로젝트 목표 | AI 진단 엔진을 실제 운영 가능한 웹서비스로 전환 | Before/After |
 | 3 | 기존 한계와 개선 방향 | 사용자의 인증/이력/권한 관리 부재 극복 | 문제-해결 표 |
-| 4 | 사용자 주요 흐름 | 회원가입 ➡️ 프로필 입력 ➡️ 기본/PDF 진단 ➡️ 결과 상세 ➡️ 이력 관리/챗봇 | 플로우차트 |
+| 4 | 사용자 주요 흐름 | 회원가입 ➡️ 프로필 입력 ➡️ 기본/PDF 진단 ➡️ 결과 상세 ➡️ 이력 관리/AI 어시스턴트 | 플로우차트 |
 | 5 | 전체 아키텍처 | React - Nginx - Gunicorn(Django) - FastAPI - DB 분리 및 포트 80 통합 | `SYSTEM_ARCHITECTURE_FINAL.md` Mermaid |
-| 6 | 화면설계/UI 흐름 | 마이페이지, 결과 상세 Floating UI, 개편된 챗봇 UX | 주요 화면 캡처 |
+| 6 | 화면설계/UI 흐름 | 마이페이지, 결과 상세 Floating UI, 개편된 AI 어시스턴트 UX | 주요 화면 캡처 |
 | 7 | PDF 분석 시퀀스 | PDF 업로드 ➡️ 텍스트/표 추출 ➡️ LLM/규칙 요약 ➡️ 전략 진단 연동 | 시퀀스 다이어그램 |
-| 8 | LLM/RAG 챗봇 흐름 | ChromaDB 검색, OpenAI 답변 합성, 출처 표시 | RAG 흐름 |
+| 8 | LLM/RAG AI 어시스턴트 흐름 | ChromaDB 검색, OpenAI 답변 합성, 출처 표시 | RAG 흐름 |
 | 9 | Docker/EC2 배포 구조 | Docker Hub push/pull, EC2 Gunicorn 서버 기동, Named 볼륨 데이터 보존 | 배포 가이드 요약 |
 | 10 | 테스트 및 검증 결과 | lint/typecheck/test/build 패스, DB 보존 및 실서버 배포(포트 80) 검증 성공 | 테스트 결과 표 |
-| 11 | 시연 | 기본 진단, PDF 업로드 진단, 마이페이지 계정 탈퇴, Floating 챗봇 시연 | 실제 동작 화면 |
-| 12 | 한계와 후속 과제 | HTTPS(SSL), PostgreSQL/RDS 전환, S3 미디어 분리, CI/CD 자동화 | TODO |
+| 11 | 시연 | 기본 진단, PDF 업로드 진단, 마이페이지 계정 탈퇴, Floating AI 어시스턴트 시연 | 실제 동작 화면 |
+| 12 | 한계와 후속 과제 | HTTPS(SSL), PostgreSQL/RDS 전환, S3 미디어 분리, 배포 smoke test 고도화 | TODO |
 
 ## 슬라이드별 발표 스크립트 요약
 
@@ -35,7 +35,7 @@
 | 사용자/세션/이력 관리 부족 | Django session, Profile, StrategyRun 모델 도입 및 영구저장 |
 | 공고문 PDF 원문 가독성 저하 | PDF 파싱 추출 및 요약 정리본 제공 후 진단 연동 |
 | 데이터 휘발 문제 | Named Volume 마운트 기반의 SQLite 영구 보존 구조 수립 |
-| 화면 공간을 크게 차지하는 챗봇 | 우하단 Floating 버튼 및 패널 디자인 개편 |
+| 화면 공간을 크게 차지하는 AI 어시스턴트 | 우하단 Floating 버튼 및 패널 디자인 개편 |
 
 ### 4. 사용자 주요 흐름
 ```mermaid
@@ -44,7 +44,7 @@ flowchart LR
     Profile --> Diagnosis["기본/공고/PDF 진단"]
     Diagnosis --> Result["AFIT Report"]
     Result --> MyPage["마이페이지 이력"]
-    MyPage --> Chat["챗봇 질의"]
+    MyPage --> Chat["AI 어시스턴트 질의"]
 ```
 
 ### 5. 전체 아키텍처
@@ -55,7 +55,7 @@ flowchart LR
 ### 6. 화면설계/UI 흐름
 - 기존 `진단 기록` 탭을 **`마이페이지`**로 통합 개편하여 계정 정보, 기본 정보 진단, 공고 분석을 계층적으로 배치했습니다.
 - 결과 상세 화면에서는 언제든 사용자 조건과 비교해볼 수 있게 `내 프로필` 보기 Floating UI를 띄워 스냅샷 정보를 제공합니다.
-- 챗봇은 Floating 버튼으로 변경하여 모바일에서도 화면 가림 현상을 최소화했습니다.
+- AI 어시스턴트는 Floating 버튼으로 변경하여 모바일에서도 화면 가림 현상을 최소화했습니다.
 
 ### 7. PDF 분석 시퀀스
 ```mermaid
@@ -97,12 +97,12 @@ sequenceDiagram
 3. 기본 진단 실행 및 결과 화면으로 이동
 4. 결과 화면에서 `내 프로필` Floating 버튼 클릭 후 스냅샷 팝업 확인
 5. 전략 진단 화면으로 이동 후 PDF 업로드 및 분석 요약본 생성 시연
-6. Floating 챗봇을 열어 자유 질의 수행 및 하단 법령 출처 표시 확인
+6. Floating AI 어시스턴트를 열어 자유 질의 수행 및 하단 법령 출처 표시 확인
 
 ### 12. 한계와 후속 과제
 - SQLite ➡️ PostgreSQL 및 AWS RDS 마이그레이션
 - HTTP 통신 ➡️ SSL 인증서 발급(Certbot)을 통한 HTTPS 보안 강화 및 쿠키 보안 설정 활성화
-- GitHub Actions를 사용한 CI/CD 배포망 자동화
+- GitHub Actions CI/CD는 구현 완료, 향후 배포 후 smoke test와 실패 알림 자동화 고도화
 
 ---
 

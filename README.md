@@ -44,7 +44,7 @@ flowchart LR
     Basic --> Report["AFIT Report"]
     Summary --> Report
     Report --> History["마이페이지 이력"]
-    History --> Chat["RAG 챗봇"]
+    History --> Chat["RAG AI 어시스턴트"]
 ```
 
 ---
@@ -59,7 +59,7 @@ flowchart LR
 | PDF 분석 | PDF 텍스트/표 추출, LLM 요약, 진단 입력 연결 |
 | 배포 | Docker Hub 이미지 기반 AWS EC2 배포 |
 | 운영 URL | `http://a-fit.duckdns.org/` |
-| CI/CD | GitHub Actions 기준 검증, 이미지 빌드/푸시, EC2 배포 흐름 정리 |
+| CI/CD | 구현 완료: GitHub Actions 기준 검증, 이미지 빌드/푸시, EC2 배포 흐름 정리 |
 
 ---
 
@@ -124,7 +124,7 @@ flowchart LR
 |---|---|---|
 | [![준억](https://img.shields.io/badge/GitHub-준억-181717?logo=github)](https://github.com/gripgrap) | Backend / Integration | Django-FastAPI 연동, PDF 공고문 요약/진단 연결, 마이페이지/결과 UX 보강, 최종 산출물 정리 |
 | [![동윤](https://img.shields.io/badge/GitHub-동윤-181717?logo=github)](https://github.com/ldy-99) | Deployment / Backend | Docker 이미지 빌드/푸시, AWS EC2 배포, Nginx 80포트 단일화, Gunicorn/관리자 프록시 설정 |
-| [![지훈](https://img.shields.io/badge/GitHub-지훈-181717?logo=github)](https://github.com/Jihun105) | AI Backend / Planning | LangGraph 진단 파이프라인, RAG 챗봇, 청약 계산/전략 흐름 설계 |
+| [![지훈](https://img.shields.io/badge/GitHub-지훈-181717?logo=github)](https://github.com/Jihun105) | AI Backend / Planning | LangGraph 진단 파이프라인, RAG AI 어시스턴트, 청약 계산/전략 흐름 설계 |
 | [![은진](https://img.shields.io/badge/GitHub-은진-181717?logo=github)](https://github.com/eunjin661) | Frontend / Planning | React/Vite 화면 구현, API 연동 UI, 프로필/진단/결과 화면 사용자 흐름 정리 |
 
 ---
@@ -139,7 +139,7 @@ flowchart LR
 | PDF 모집공고 분석 | 복잡한 공고문을 요약하고 진단 입력으로 변환 | PDF 추출 + LLM 요약 |
 | 공고 기반 리포트 | 공고 조건을 반영한 청약 가능성 분석 | StrategyRun 저장 + 결과 상세 |
 | 마이페이지 | 공고별 분석 이력과 기본 진단 결과 재조회 | 카드형 이력 UI |
-| RAG 챗봇 | 청약 제도 질문에 근거 기반 답변 | ChromaDB + OpenAI |
+| RAG AI 어시스턴트 | 청약 제도 질문에 근거 기반 답변 | ChromaDB + OpenAI |
 | PDF 저장 | 결과 화면을 파일로 보관 | 브라우저 print/export |
 | 계정 관리 | 비밀번호 변경, 계정 삭제 | Django accounts API |
 
@@ -164,7 +164,7 @@ flowchart LR
 | React/Vite | 화면, 라우팅, 입력 상태, 로딩/오류 처리, 결과 표시 |
 | Nginx | 정적 파일 제공, `/api/`, `/admin/`, `/static/admin/` 프록시, PDF 업로드 edge limit |
 | Django | 인증, 세션, 프로필, 진단 이력, FastAPI proxy |
-| FastAPI | PDF 분석, LangGraph 진단, RAG 챗봇, LLM 호출 |
+| FastAPI | PDF 분석, LangGraph 진단, RAG AI 어시스턴트, LLM 호출 |
 | SQLite | 사용자/프로필/진단 이력 저장, Docker volume 보존 |
 | ChromaDB | 청약 제도 문서 기반 RAG 검색 |
 | OpenAI | 공고문 구조화/요약, 답변 합성, 리포트 문장 생성 |
@@ -214,7 +214,7 @@ sequenceDiagram
 | 운영 포트 | HTTP `80:80` |
 | Django runtime | `migrate -> collectstatic -> gunicorn` |
 | DB 보존 | `django-db` Docker volume |
-| CI/CD | GitHub Actions 기반 검증, 이미지 빌드/푸시, EC2 배포 |
+| CI/CD | 구현 완료: GitHub Actions 기반 검증, 이미지 빌드/푸시, EC2 배포 |
 
 ```mermaid
 flowchart LR
@@ -226,7 +226,7 @@ flowchart LR
     Up --> URL["a-fit.duckdns.org"]
 ```
 
-자세한 배포 절차는 [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md)를 참고해 주세요.
+자세한 배포 절차는 [docs/final_v2/DEPLOYMENT_CICD_FINAL.md](docs/final_v2/DEPLOYMENT_CICD_FINAL.md)를 참고해 주세요.
 
 ---
 
@@ -349,7 +349,7 @@ cd ..
 | Docker Hub/AWS EC2 배포 | PASS |
 | HTTP 80 외부 접속 | PASS |
 | PDF 다건 품질 회귀 | 추가 개선 과제 |
-| 챗봇 실제 RAG 질의 회귀 | 추가 개선 과제 |
+| AI 어시스턴트 실제 RAG 질의 회귀 | 추가 개선 과제 |
 
 ---
 
@@ -380,11 +380,8 @@ version-1_check/
 ├── frontend-react/           # React/Vite 웹 앱
 ├── deploy/nginx/             # 운영 Nginx 프록시 설정
 ├── docs/
-│   ├── current/              # 현재 공유 문서
-│   ├── final/                # 최종 평가 산출물
-│   ├── guides/               # 팀 가이드
-│   ├── reports/              # AI/RAG 리포트
-│   └── traces/               # 변경 추적 문서
+│   ├── final_v2/             # 최종 제출용 산출물
+│   └── guides/               # CI/CD 운영 가이드
 ├── tests/                    # 배포/설정 테스트
 ├── docker-compose.yml        # 로컬 빌드 compose
 ├── docker-compose.prod.yml   # Docker Hub pull compose
@@ -406,7 +403,7 @@ version-1_check/
 | PDF 분석 | 모집공고 PDF 업로드, 요약 결과 확인 | 삽입 필요 |
 | 결과 상세 | AFIT Report, 공고 기본 정보, 프로필 확인, PDF 저장 | 삽입 필요 |
 | 마이페이지 | 계정 정보, 기본 진단, 공고별 분석 이력 | 삽입 필요 |
-| 챗봇 | Floating RAG 챗봇, 답변/출처 표시 | 삽입 필요 |
+| AI 어시스턴트 | Floating RAG AI 어시스턴트, 답변/출처 표시 | 삽입 필요 |
 | Django Admin | 포트 80 기반 `/admin/` 관리자 페이지 | 삽입 필요 |
 
 ---
@@ -415,14 +412,15 @@ version-1_check/
 
 | 산출물 | 파일 |
 |---|---|
-| 최종 산출물 색인 | [docs/final/README.md](docs/final/README.md) |
-| 요구사항 정의서 | [docs/final/REQUIREMENTS_SPECIFICATION_FINAL.md](docs/final/REQUIREMENTS_SPECIFICATION_FINAL.md) |
-| 화면설계서 | [docs/final/SCREEN_DESIGN_FINAL.md](docs/final/SCREEN_DESIGN_FINAL.md) |
-| 시스템 구성도 | [docs/final/SYSTEM_ARCHITECTURE_FINAL.md](docs/final/SYSTEM_ARCHITECTURE_FINAL.md) |
-| 테스트 계획 및 결과 보고서 | [docs/final/TEST_PLAN_AND_RESULT_REPORT.md](docs/final/TEST_PLAN_AND_RESULT_REPORT.md) |
-| Docker/AWS/CI-CD 배포 정리 | [docs/final/DEPLOYMENT_CICD_FINAL.md](docs/final/DEPLOYMENT_CICD_FINAL.md) |
-| 발표자료 가이드 | [docs/final/PRESENTATION_GUIDE_10MIN.md](docs/final/PRESENTATION_GUIDE_10MIN.md) |
-| 최종 체크리스트 | [docs/final/FINAL_DELIVERABLE_CHECKLIST.md](docs/final/FINAL_DELIVERABLE_CHECKLIST.md) |
+| 최종 산출물 색인 | [docs/final_v2/README.md](docs/final_v2/README.md) |
+| 요구사항 정의서 | [docs/final_v2/REQUIREMENTS_SPECIFICATION_FINAL.md](docs/final_v2/REQUIREMENTS_SPECIFICATION_FINAL.md) |
+| 화면설계서 | [docs/final_v2/SCREEN_DESIGN_FINAL.md](docs/final_v2/SCREEN_DESIGN_FINAL.md) |
+| 시스템 구성도 | [docs/final_v2/SYSTEM_ARCHITECTURE_FINAL.md](docs/final_v2/SYSTEM_ARCHITECTURE_FINAL.md) |
+| 테스트 계획 및 결과 보고서 | [docs/final_v2/TEST_PLAN_AND_RESULT_REPORT.md](docs/final_v2/TEST_PLAN_AND_RESULT_REPORT.md) |
+| Docker/AWS/CI-CD 배포 정리 | [docs/final_v2/DEPLOYMENT_CICD_FINAL.md](docs/final_v2/DEPLOYMENT_CICD_FINAL.md) |
+| 최종 발표자료 PDF | [docs/final_v2/AFIT.pdf](docs/final_v2/AFIT.pdf) |
+| 발표자료 가이드 | [docs/final_v2/PRESENTATION_GUIDE_10MIN.md](docs/final_v2/PRESENTATION_GUIDE_10MIN.md) |
+| 최종 체크리스트 | [docs/final_v2/FINAL_DELIVERABLE_CHECKLIST.md](docs/final_v2/FINAL_DELIVERABLE_CHECKLIST.md) |
 
 ---
 

@@ -14,7 +14,7 @@
 | 라우팅 | React Router 기반 URL 라우팅 |
 | 인증 | Django session cookie, `AuthProvider`에서 `GET /api/auth/me` 확인 |
 | 보호 화면 | 비로그인 사용자는 `/login`으로 이동 |
-| 반응형 | 모바일 단일 열, 데스크톱 중앙 콘텐츠, 플로팅 챗봇 |
+| 반응형 | 모바일 단일 열, 데스크톱 중앙 콘텐츠, 플로팅 AI 어시스턴트 |
 | 오류 상태 | API 오류 envelope를 사용자 문구와 필드 오류로 변환 |
 | 로딩 상태 | 제출/분석/업로드 중 버튼 비활성화와 진행 UI 표시 |
 | LLM UX | 요청 중 중복 방지, timeout/실패 안내, fallback 정리본 유지 |
@@ -31,7 +31,7 @@ flowchart TD
     Strategy --> Pdf["PDF 업로드/분석 영역"]
     Result --> MyPage["/mypage 마이페이지"]
     MyPage --> Result
-    Chat["Floating 챗봇 또는 /chatbot"] --> Django["Django /api/chatbot"]
+    Chat["Floating AI 어시스턴트 또는 /chatbot"] --> Django["Django /api/chatbot"]
 ```
 
 ## 3. 화면별 상세 설계
@@ -44,7 +44,7 @@ flowchart TD
 | 전략 진단 | `/strategy` | 공고문/PDF 기반 진단 실행 | 로그인 | 공고문 텍스트, PDF, 공고 없음 체크 | `POST /api/strategy`, `POST /api/pdf/analyze` | PDF 추출/진단 진행 카드 | 결과 상세 이동 | 파일/분석/timeout 오류 표시 | 공고문 미입력 안내 |
 | 마이페이지 | `/mypage` | 계정과 진단 이력 확인 | 로그인 | 계정 관리, 기본 진단, 기록 선택 | `GET /api/auth/me`, `GET /api/strategy/me`, `POST /api/strategy` | 목록 조회/기본 진단 중 | 계정 카드, 기본 진단, 공고 기반 분석 표시 | 조회 오류 표시 | 저장된 진단 없음 안내 |
 | 결과 상세 | `/results/:id` | 리포트 확인 | 로그인 | PDF 저장, 내 프로필, 다시 진단하기 | `GET /api/strategy/{id}` | 상세 조회 | AFIT Report, 요약/공고/재무/전략 표시 | 상세 조회 실패 | 항목 없음 문구 |
-| 챗봇 | Floating, `/chatbot` | 청약 제도 RAG 질의응답 | 로그인 | 질문, 추천 질문 | `POST /api/chatbot` | 답변 작성 중 | 답변과 출처 표시 | 챗봇 실패 메시지 | 인사말/추천 질문 |
+| AI 어시스턴트 | Floating, `/chatbot` | 청약 제도 RAG 질의응답 | 로그인 | 질문, 추천 질문 | `POST /api/chatbot` | 답변 작성 중 | 답변과 출처 표시 | AI 어시스턴트 실패 메시지 | 인사말/추천 질문 |
 
 ## 4. 주요 화면 UX
 
@@ -72,10 +72,10 @@ flowchart TD
 - PDF 저장은 `window.print()` 기반으로 동작한다.
 - 리포트 마지막에는 참고용 진단과 공식 공고 확인 필요성을 알리는 면책 조항을 둔다.
 
-### 4.3 챗봇
+### 4.3 AI 어시스턴트
 
 - 전체 레이아웃을 차지하던 우측 고정 패널 대신 우하단 Floating 버튼을 사용한다.
-- 버튼 클릭 시 챗봇 패널이 열리고, 다시 클릭하면 닫힌다.
+- 버튼 클릭 시 AI 어시스턴트 패널이 열리고, 다시 클릭하면 닫힌다.
 - 모바일에서도 화면 폭을 넘지 않도록 `calc(100vw - 40px)` 제한을 둔다.
 - 접근성을 위해 패널에 `role="dialog"`와 `aria-label`을 적용한다.
 
@@ -92,7 +92,7 @@ flowchart TD
 
 ## 6. LLM 상호작용 UX
 
-| 상태 | 전략 진단 | PDF 분석 | 챗봇 |
+| 상태 | 전략 진단 | PDF 분석 | AI 어시스턴트 |
 |---|---|---|---|
 | 대기 | 입력 가능 | 파일 선택/드래그 가능 | 추천 질문/입력 가능 |
 | 요청 중 | 중복 실행 차단, 진행 표시 | 파일 확인 -> 내용 추출 -> 결과 정리 단계 표시 | 답변 작성 중 표시 |
@@ -105,7 +105,7 @@ flowchart TD
 | 설계 영역 | 구현 파일 |
 |---|---|
 | 라우팅 | `frontend-react/src/app/routes.tsx` |
-| 보호 레이아웃/챗봇 | `frontend-react/src/app/components/Layout.tsx` |
+| 보호 레이아웃/AI 어시스턴트 | `frontend-react/src/app/components/Layout.tsx` |
 | 헤더 | `frontend-react/src/app/components/SiteHeader.tsx` |
 | 인증 상태 | `frontend-react/src/app/auth/AuthContext.tsx` |
 | API client | `frontend-react/src/app/api/client.ts` |
@@ -114,7 +114,7 @@ flowchart TD
 | 마이페이지 | `frontend-react/src/app/pages/MyPage.tsx` |
 | 결과 상세 | `frontend-react/src/app/pages/ResultDetail.tsx` |
 | PDF 분석 | `frontend-react/src/app/pages/PdfAnalysis.tsx` |
-| 챗봇 | `frontend-react/src/app/components/ChatbotPanel.tsx` |
+| AI 어시스턴트 | `frontend-react/src/app/components/ChatbotPanel.tsx` |
 
 ## 8. 운영 고도화 및 후속 개선 과제
 

@@ -7,7 +7,7 @@ Node 5: 전략 추론 노드
    analyze_subscription_timing) 후, 결과를 종합하는 LLM 호출 1회로 문장 생성
    (예전에는 create_react_agent로 이 3개 도구 호출까지 LLM이 매번 판단하게 했으나,
    호출 순서/인자가 이미 고정되어 있어 ReAct 루프의 LLM 왕복이 불필요한 지연만
-   유발했음. 자세한 배경은 docs/traces/fix-log.md Fix 4 참고.)
+   유발했음.)
 3. 결과를 State에 저장 후 반환
 
 사용법:

@@ -10,11 +10,14 @@
 | 2 | 요구사항 정의서 | [REQUIREMENTS_SPECIFICATION_FINAL.md](REQUIREMENTS_SPECIFICATION_FINAL.md) |
 | 3 | 화면설계서 | [SCREEN_DESIGN_FINAL.md](SCREEN_DESIGN_FINAL.md) |
 | 4 | 시스템 구성도 | [SYSTEM_ARCHITECTURE_FINAL.md](SYSTEM_ARCHITECTURE_FINAL.md) |
-| 5 | 10분 발표자료 가이드 | [PRESENTATION_GUIDE_10MIN.md](PRESENTATION_GUIDE_10MIN.md) |
-| 6 | 최종 산출물 체크리스트 | [FINAL_DELIVERABLE_CHECKLIST.md](FINAL_DELIVERABLE_CHECKLIST.md) |
+| 5 | Docker/AWS/CI-CD 배포 정리 | [DEPLOYMENT_CICD_FINAL.md](DEPLOYMENT_CICD_FINAL.md) |
+| 6 | 최종 발표자료 PDF | [AFIT.pdf](AFIT.pdf) |
+| 7 | 10분 발표자료 가이드 | [PRESENTATION_GUIDE_10MIN.md](PRESENTATION_GUIDE_10MIN.md) |
+| 8 | 최종 산출물 체크리스트 | [FINAL_DELIVERABLE_CHECKLIST.md](FINAL_DELIVERABLE_CHECKLIST.md) |
 
 ## 사용 원칙
 
 - 실제 확인 및 검증이 완료된 도커 빌드/푸시/풀, Gunicorn 배포, 외부 URL 접속 기능은 `완료` 또는 `PASS`로 적는다.
-- RDS, S3, HTTPS, CI/CD는 현재 완료 기능으로 쓰지 않고 후속 과제로 분리한다.
+- [CI/CD 구현 완료] GitHub Actions 기반 검증, 이미지 빌드/푸시, EC2 배포 흐름은 완료 기능으로 표기한다.
+- RDS, S3, HTTPS는 현재 완료 기능으로 쓰지 않고 후속 과제로 분리한다.
 - 발표자료는 이 폴더의 문서를 요약해 10분 안에 설명한다.
