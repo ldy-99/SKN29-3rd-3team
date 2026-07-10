@@ -393,18 +393,17 @@ version-1_check/
 
 ## 11. 주요 화면
 
-최종 배포 화면 기준 캡처를 삽입합니다.
+파이널 브랜치 기준으로 로컬 서버를 구동한 뒤 주요 사용자 흐름을 캡처했습니다.
 
 | 화면 | 설명 | 캡처 |
 |---|---|---|
-| 랜딩/로그인 | 서비스 진입, 회원가입/로그인 | 삽입 필요 |
-| 프로필 | 청약통장, 거주지, 무주택, 소득 등 입력 | 삽입 필요 |
-| 전략 진단 | 기본 진단, 공고문 직접 입력, PDF 분석 진입 | 삽입 필요 |
-| PDF 분석 | 모집공고 PDF 업로드, 요약 결과 확인 | 삽입 필요 |
-| 결과 상세 | AFIT Report, 공고 기본 정보, 프로필 확인, PDF 저장 | 삽입 필요 |
-| 마이페이지 | 계정 정보, 기본 진단, 공고별 분석 이력 | 삽입 필요 |
-| AI 어시스턴트 | Floating RAG AI 어시스턴트, 답변/출처 표시 | 삽입 필요 |
-| Django Admin | 포트 80 기반 `/admin/` 관리자 페이지 | 삽입 필요 |
+| 랜딩 | 서비스 진입, 핵심 가치와 주요 흐름 안내 | <img src="docs/assets/readme/screens/01-home.png" width="320" alt="AFIT 랜딩 화면" /> |
+| 로그인 | 회원 로그인 및 회원가입 진입 | <img src="docs/assets/readme/screens/02-login.png" width="320" alt="AFIT 로그인 화면" /> |
+| 프로필 | 청약통장, 거주지, 무주택, 소득 등 입력 | <img src="docs/assets/readme/screens/03-profile.png" width="320" alt="내 청약 조건 화면" /> |
+| 전략 진단 | 프로필 기반 진단, 공고문 직접 입력, PDF 분석 진입 | <img src="docs/assets/readme/screens/04-strategy.png" width="320" alt="전략 진단 화면" /> |
+| PDF 분석 | 모집공고 PDF 업로드 및 텍스트 추출 진입 | <img src="docs/assets/readme/screens/05-pdf.png" width="320" alt="PDF 공고문 분석 화면" /> |
+| 마이페이지 | 계정 정보, 기본 진단, 공고별 분석 이력 조회 | <img src="docs/assets/readme/screens/06-mypage.png" width="320" alt="마이페이지 화면" /> |
+| AI 어시스턴트 | 청약 제도 질문과 추천 질문 제공 | <img src="docs/assets/readme/screens/07-ai-assistant.png" width="320" alt="AI 어시스턴트 화면" /> |
 
 ---
 
